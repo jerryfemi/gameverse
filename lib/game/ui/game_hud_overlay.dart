@@ -17,7 +17,6 @@ import 'inbox/match_inbox_sheet.dart';
 import 'stadium_scoreboard.dart';
 import 'tour/onboarding_tour_overlay.dart';
 import '../../notifications/notice_stack.dart';
-import '../../notifications/profile_drawer.dart';
 import 'common/lobby_pill.dart';
 import 'play_friend_button.dart';
 import 'match/live_spectator_status_pill.dart';
