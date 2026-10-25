@@ -11,14 +11,29 @@ class ArcheryPlayer {
   /// Anything [AppAvatar] can draw: asset path, data URI, URL or emoji.
   final String avatar;
 
-  const ArcheryPlayer({required this.name, required this.avatar});
+  /// Firebase Auth UID if online, or null if bot/guest.
+  final String? uid;
+
+  /// Whether this player is an automated bot.
+  final bool isBot;
+
+  const ArcheryPlayer({
+    required this.name,
+    required this.avatar,
+    this.uid,
+    this.isBot = false,
+  });
 
   @override
   bool operator ==(Object other) =>
-      other is ArcheryPlayer && other.name == name && other.avatar == avatar;
+      other is ArcheryPlayer &&
+      other.name == name &&
+      other.avatar == avatar &&
+      other.uid == uid &&
+      other.isBot == isBot;
 
   @override
-  int get hashCode => Object.hash(name, avatar);
+  int get hashCode => Object.hash(name, avatar, uid, isBot);
 }
 
 @immutable
@@ -30,8 +45,11 @@ class ArcheryPlayers {
 
   static const ArcheryPlayer defaultYou =
       ArcheryPlayer(name: 'You', avatar: PlayerDescriptor.defaultAvatar);
-  static const ArcheryPlayer bot =
-      ArcheryPlayer(name: 'Bot', avatar: 'assets/avatars/dunk_heads (2).webp');
+  static const ArcheryPlayer bot = ArcheryPlayer(
+    name: 'Bot',
+    avatar: 'assets/avatars/dunk_heads (2).webp',
+    isBot: true,
+  );
 
   @override
   bool operator ==(Object other) =>
