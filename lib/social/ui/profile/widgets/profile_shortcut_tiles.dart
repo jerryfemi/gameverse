@@ -35,7 +35,6 @@ class ProfileShortcutTiles extends StatelessWidget {
             onTap: () {
               HapticFeedback.lightImpact();
               if (onPlayFriend != null) {
-                onClose();
                 onPlayFriend!();
               } else {
                 ArcheryChallenge.start(context, showGamePicker: true);
