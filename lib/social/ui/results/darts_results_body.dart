@@ -63,8 +63,12 @@ class DartsResultsBody extends StatelessWidget {
     // Checkout
     final myCheckedOut = myRemaining == 0;
     final oppCheckedOut = oppRemaining == 0;
-    final myCheckoutStr = myCheckedOut ? 'D20' : '—';
-    final oppCheckoutStr = oppCheckedOut ? 'D20' : '—';
+    final myCheckoutStr = myCheckedOut && myScores.isNotEmpty
+        ? '${myScores.last}'
+        : '—';
+    final oppCheckoutStr = oppCheckedOut && oppScores.isNotEmpty
+        ? '${oppScores.last}'
+        : '—';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
