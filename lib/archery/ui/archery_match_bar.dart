@@ -9,6 +9,7 @@ import '../../game/ui/match/incoming_challenge_dialog.dart';
 import '../../models/cloud_match.dart';
 import '../../providers/app_providers.dart';
 import '../../notifications/app_notices.dart';
+import '../../social/ui/results/results_sheet.dart';
 
 /// Round icon button for the archery screen's corners (icon only, so it never
 /// collides with the scoreboard on narrow phones). Optional count badge.
@@ -99,7 +100,7 @@ abstract final class ArcheryInbox {
       context,
       // /match/:id opens whichever game the match belongs to.
       onPlayMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
-      onViewPodium: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+      onViewPodium: (m) => ResultsSheet.show(context, m),
       onCreateMatch: onCreateMatch,
     );
   }
