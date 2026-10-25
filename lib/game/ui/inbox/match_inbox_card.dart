@@ -7,6 +7,7 @@ import '../../../services/chat_read_receipt_service.dart';
 import '../common/app_avatar.dart';
 import '../common/app_colors.dart';
 import '../common/match_status_badge.dart';
+import '../../../social/ui/tiles/completed_match_tile.dart';
 
 /// Punchy Arcade Head-to-Head Versus Match Card.
 ///
@@ -32,6 +33,15 @@ class MatchInboxCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (match.isFinished) {
+      return CompletedMatchTile(
+        match: match,
+        myUid: myUid,
+        onDelete: onLeave,
+        onViewResults: onViewPodium,
+      );
+    }
+
     final isMyTurn = match.isMyTurn(myUid);
     final opponent = match.opponentPlayer(myUid);
     final myPlayer = match.myPlayer(myUid);
@@ -383,29 +393,6 @@ class MatchInboxCard extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                ] else if (isCompleted && onViewPodium != null) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 34,
-                    child: OutlinedButton.icon(
-                      onPressed: onViewPodium,
-                      icon: const Icon(Icons.emoji_events_outlined, size: 14),
-                      label: const Text(
-                        'View results',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.amber,
-                        side: const BorderSide(color: Color(0xFF475569)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
                       ),
                     ),
                   ),
