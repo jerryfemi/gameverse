@@ -145,8 +145,9 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     // Connect aim controller firing hook
     controller.onFireAt = (double crossX, double crossY) {
       if (_setOver || arrowPhysics.inFlight || !events.isMyTurn) return;
-      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet)
+      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
         return;
+      }
 
       ArcheryAudio.playReleaseTwang();
 
