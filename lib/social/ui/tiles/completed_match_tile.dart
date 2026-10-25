@@ -1,15 +1,15 @@
-import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/services/auth_service.dart';
-import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/social/models/match_summary.dart';
-import 'package:b_ball/social/ui/common/crown_avatar.dart';
 import 'package:b_ball/social/ui/common/game_chip.dart';
 import 'package:b_ball/social/ui/common/verdict_banner.dart';
 import 'package:b_ball/social/ui/results/results_sheet.dart';
+import 'package:b_ball/social/ui/tiles/widgets/completed_match_delete_dialog.dart';
+import 'package:b_ball/social/ui/tiles/widgets/completed_match_score_row.dart';
 
 /// Card widget for completed matches adhering to Artboard 5 of GameVerse design.
 ///
@@ -79,127 +79,7 @@ class CompletedMatchTile extends StatelessWidget {
           const SizedBox(height: 12.0),
 
           // Row 3: H2H Performance and Avatars
-          Row(
-            children: [
-              // You
-              CrownAvatar(
-                avatar: summary.me.avatar,
-                size: 40.0,
-                crowned: summary.didIWin == true,
-              ),
-              const SizedBox(width: 10.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'YOU',
-                      style: UiFont.style(
-                        size: 11.0,
-                        weight: 800,
-                        color: const Color(0xFF38BDF8),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 1.0),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        summary.me.headline,
-                        maxLines: 1,
-                        style: UiFont.style(
-                          size: 18.0,
-                          weight: 900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (summary.me.unit.isNotEmpty) ...[
-                      const SizedBox(height: 1.0),
-                      Text(
-                        summary.me.unit,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: UiFont.style(
-                          size: 11.0,
-                          weight: 600,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // VS divider
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6.0),
-                child: Text(
-                  'VS',
-                  style: UiFont.style(
-                    size: 11.0,
-                    weight: 800,
-                    color: const Color(0xFF475569),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-
-              // Opponent
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      summary.opponent.name.toUpperCase(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiFont.style(
-                        size: 11.0,
-                        weight: 800,
-                        color: const Color(0xFFF59E0B),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 1.0),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        summary.opponent.headline,
-                        maxLines: 1,
-                        style: UiFont.style(
-                          size: 18.0,
-                          weight: 900,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    if (summary.opponent.unit.isNotEmpty) ...[
-                      const SizedBox(height: 1.0),
-                      Text(
-                        summary.opponent.unit,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: UiFont.style(
-                          size: 11.0,
-                          weight: 600,
-                          color: const Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10.0),
-              CrownAvatar(
-                avatar: summary.opponent.avatar,
-                size: 40.0,
-                crowned: summary.didIWin == false,
-              ),
-            ],
-          ),
+          CompletedMatchScoreRow(summary: summary),
           const SizedBox(height: 14.0),
 
           // Row 4: View Results Button
@@ -270,85 +150,16 @@ class CompletedMatchTile extends StatelessWidget {
           if (onDelete != null) {
             onDelete!();
           } else {
-            _confirmDelete(context, effectiveUid);
+            showCompletedMatchDeleteDialog(
+              context,
+              matchId: match.id,
+              myUid: effectiveUid,
+              onDelete: onDelete,
+            );
           }
         },
       ),
     );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, String effectiveUid) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: const Color(0xFF131826),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(
-            color: Color(0xFF2E3954),
-            width: 1.5,
-          ),
-        ),
-        title: Text(
-          'REMOVE MATCH',
-          style: UiFont.style(
-            size: 16.0,
-            weight: 900,
-            color: Colors.white,
-            letterSpacing: 0.8,
-          ),
-        ),
-        content: Text(
-          'Remove this finished match from your history?',
-          style: UiFont.style(
-            size: 13.0,
-            weight: 500,
-            color: const Color(0xFF94A3B8),
-            height: 1.4,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(false),
-            child: Text(
-              'CANCEL',
-              style: UiFont.style(
-                size: 13.0,
-                weight: 700,
-                color: const Color(0xFF94A3B8),
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              'REMOVE',
-              style: UiFont.style(
-                size: 13.0,
-                weight: 800,
-                color: Colors.white,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && effectiveUid.isNotEmpty) {
-      await FirestoreMatchService.instance.leaveOrDismissMatch(
-        matchId: match.id,
-        myUid: effectiveUid,
-      );
-      onDelete?.call();
-    }
   }
 
   String _formatDate(int timestampMs) {
