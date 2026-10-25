@@ -196,12 +196,12 @@ class ResultsSheet extends ConsumerWidget {
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 14.0,
-              vertical: 12.0,
+              horizontal: 12.0,
+              vertical: 9.0,
             ),
             decoration: BoxDecoration(
               color: const Color(0x1A38BDF8),
-              borderRadius: BorderRadius.circular(16.0),
+              borderRadius: BorderRadius.circular(14.0),
               border: Border.all(color: const Color(0x5538BDF8), width: 1.0),
             ),
             child: Column(
@@ -210,13 +210,13 @@ class ResultsSheet extends ConsumerWidget {
                 Text(
                   'YOU',
                   style: UiFont.style(
-                    size: 11.0,
+                    size: 10.0,
                     weight: 800,
                     color: const Color(0xFF38BDF8),
-                    letterSpacing: 0.8,
+                    letterSpacing: 0.6,
                   ),
                 ),
-                const SizedBox(height: 2.0),
+                const SizedBox(height: 1.0),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
@@ -224,37 +224,40 @@ class ResultsSheet extends ConsumerWidget {
                     summary.me.headline,
                     maxLines: 1,
                     style: UiFont.style(
-                      size: 26.0,
+                      size: 19.0,
                       weight: 900,
                       color: Colors.white,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.4,
                     ),
                   ),
                 ),
-                Text(
-                  summary.me.unit,
-                  style: UiFont.style(
-                    size: 11.0,
-                    weight: 600,
-                    color: const Color(0xFF94A3B8),
+                if (summary.me.unit.isNotEmpty) ...[
+                  const SizedBox(height: 1.0),
+                  Text(
+                    summary.me.unit,
+                    style: UiFont.style(
+                      size: 10.0,
+                      weight: 600,
+                      color: const Color(0xFF94A3B8),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
-        const SizedBox(width: 12.0),
+        const SizedBox(width: 8.0),
 
         // Right: Opponent
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 14.0,
-              vertical: 12.0,
+              horizontal: 12.0,
+              vertical: 9.0,
             ),
             decoration: BoxDecoration(
               color: const Color(0x1AF59E0B),
-              borderRadius: BorderRadius.circular(16.0),
+              borderRadius: BorderRadius.circular(14.0),
               border: Border.all(color: const Color(0x55F59E0B), width: 1.0),
             ),
             child: Column(
@@ -265,13 +268,13 @@ class ResultsSheet extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: UiFont.style(
-                    size: 11.0,
+                    size: 10.0,
                     weight: 800,
                     color: const Color(0xFFF59E0B),
-                    letterSpacing: 0.8,
+                    letterSpacing: 0.6,
                   ),
                 ),
-                const SizedBox(height: 2.0),
+                const SizedBox(height: 1.0),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerRight,
@@ -279,21 +282,24 @@ class ResultsSheet extends ConsumerWidget {
                     summary.opponent.headline,
                     maxLines: 1,
                     style: UiFont.style(
-                      size: 26.0,
+                      size: 19.0,
                       weight: 900,
                       color: Colors.white,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.4,
                     ),
                   ),
                 ),
-                Text(
-                  summary.opponent.unit,
-                  style: UiFont.style(
-                    size: 11.0,
-                    weight: 600,
-                    color: const Color(0xFF94A3B8),
+                if (summary.opponent.unit.isNotEmpty) ...[
+                  const SizedBox(height: 1.0),
+                  Text(
+                    summary.opponent.unit,
+                    style: UiFont.style(
+                      size: 10.0,
+                      weight: 600,
+                      color: const Color(0xFF94A3B8),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
