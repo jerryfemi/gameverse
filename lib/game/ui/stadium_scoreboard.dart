@@ -26,12 +26,14 @@ class StadiumScoreboard extends StatefulWidget {
   final BasketballGame game;
   final VoidCallback? onHelpTapped;
   final VoidCallback? onInboxTapped;
+  final VoidCallback? onOpponentAvatarTap;
 
   const StadiumScoreboard({
     super.key,
     required this.game,
     this.onHelpTapped,
     this.onInboxTapped,
+    this.onOpponentAvatarTap,
   });
 
   @override
@@ -219,6 +221,7 @@ class _StadiumScoreboardState extends State<StadiumScoreboard>
                               : matchSession.player2.id,
                           isBot: matchSession.cloudMatchId == null ||
                               matchSession.player2.id == 'cpu',
+                          onTap: widget.onOpponentAvatarTap,
                         ),
                         // Opponent's connection gauge (from their live shots).
                         if (matchSession.cloudMatchId != null)
