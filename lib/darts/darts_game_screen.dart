@@ -13,7 +13,7 @@ import '../game/ui/match/match_setup_dialog.dart';
 import '../archery/ui/archery_match_bar.dart'
     show ArcheryInbox, ArcheryMatchesButton, ArcheryRoundButton;
 import '../notifications/notice_stack.dart';
-import '../notifications/profile_drawer.dart';
+import '../social/ui/profile/profile_sheet.dart';
 import '../models/cloud_match.dart';
 import '../models/friend_profile.dart';
 import '../models/player_descriptor.dart';
@@ -214,7 +214,7 @@ class DartsGameScreen extends HookConsumerWidget {
 
     void openProfile() {
       openPauseSilently();
-      ProfileDrawer.show(
+      ProfileSheet.show(
         context,
         onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
         onOpenMatches: () => ArcheryInbox.open(
