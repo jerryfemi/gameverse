@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../../models/cloud_match.dart';
 import '../../../models/friend_profile.dart';
 import '../../../models/match_invite.dart';
 import '../../../providers/app_providers.dart';
@@ -14,7 +15,6 @@ import '../../basketball_game.dart';
 import '../../match/match_session.dart';
 import '../common/app_avatar.dart';
 import '../common/inline_feedback.dart';
-import 'match_lobby_dialog.dart';
 import 'match_setup_dialog.dart';
 import 'podium/podium_score_matrix.dart';
 import 'podium/podium_stats_comparison.dart';
@@ -44,10 +44,13 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
     BuildContext context,
     ValueNotifier<String?> rematchError,
     ValueNotifier<bool> isRematching,
+    ValueNotifier<String?> outgoingMatchId,
+    ValueNotifier<bool> oppDeclined,
   ) async {
     if (isRematching.value) return;
     HapticFeedback.mediumImpact();
     rematchError.value = null;
+    oppDeclined.value = false;
     isRematching.value = true;
     final profile = AuthService.instance.currentUser;
     final myUid = profile?.uid ?? '';
@@ -109,17 +112,8 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
           return;
         }
 
-        MatchLobbyDialog.show(
-          context: context,
-          match: newMatch,
-          challengedFriend: opponentFriend,
-          onPlaySoloWhileWaiting: () {
-            game.startCloudMatch(newMatch, userProfile.uid);
-          },
-          onEnterArena: (confirmedMatch) {
-            game.startCloudMatch(confirmedMatch, userProfile.uid);
-          },
-        );
+        // Rematch room created inline: wait for opponent without popping a lobby modal
+        outgoingMatchId.value = newMatch.id;
       }
     } catch (e) {
       debugPrint('[Podium] Failed to create instant rematch: $e');
@@ -137,6 +131,35 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rematchError = useState<String?>(null);
+    final isRematching = useState(false);
+    final outgoingMatchId = useState<String?>(null);
+    final isEnteringArena = useState(false);
+    final oppDeclined = useState(false);
+
+    // Stream outgoing match when waiting for opponent
+    final outgoingMatch = outgoingMatchId.value != null
+        ? ref.watch(singleMatchProvider(outgoingMatchId.value!)).value
+        : null;
+
+    useEffect(() {
+      final m = outgoingMatch;
+      if (m != null && m.player2 != null && !isEnteringArena.value) {
+        isEnteringArena.value = true;
+        HapticFeedback.heavyImpact();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            final profile = AuthService.instance.currentUser;
+            game.startCloudMatch(m, profile?.uid ?? '');
+          }
+        });
+      } else if (m != null && m.status == MatchStatus.declined) {
+        HapticFeedback.mediumImpact();
+        oppDeclined.value = true;
+        outgoingMatchId.value = null;
+      }
+      return null;
+    }, [outgoingMatch?.player2?.uid, outgoingMatch?.status]);
+
     // A rematch challenge from this opponent while I'm still on the podium.
     final opponentId = session.player2.id;
     final rematchInvite = session.isHistoryView || !session.isOnline
@@ -145,7 +168,6 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
                   const <MatchInvite>[])
               .where((i) => i.isPending && i.hostUid == opponentId)
               .firstOrNull;
-    final isRematching = useState(false);
 
     // Online podium: if nobody rematches, both players go back to the court
     // (solo). Shorter when the opponent left. Paused while their rematch
@@ -154,7 +176,11 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
     final bool oppLeft = session.forfeitWinner != null;
     final backIn = useState<int>(oppLeft ? 10 : 45);
     final holdCountdown = useRef(false);
-    holdCountdown.value = rematchInvite != null || isRematching.value || rematchError.value != null;
+    holdCountdown.value = rematchInvite != null ||
+        isRematching.value ||
+        rematchError.value != null ||
+        outgoingMatchId.value != null ||
+        isEnteringArena.value;
     useEffect(() {
       if (!liveEnd) return null;
       final t = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -341,51 +367,169 @@ class MatchWinnerPodiumOverlay extends HookConsumerWidget {
                                     context,
                                     rematchError,
                                     isRematching,
+                                    outgoingMatchId,
+                                    oppDeclined,
                                   ),
                                   onDismiss: () => rematchError.value = null,
                                 )
-                              : SizedBox(
-                          key: const ValueKey('rematch-button'),
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: isRematching.value
-                                ? null
-                                : () => _handleInstantRematch(
-                                      context,
-                                      rematchError,
-                                      isRematching,
-                                    ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: bannerColor,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(vertical: 14.0),
-                              elevation: 8.0,
-                              shadowColor: bannerColor.withValues(alpha: 0.5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.replay_rounded, size: 20.0),
-                                const SizedBox(width: 8.0),
-                                Flexible(
-                                  child: Text(
-                                    'REMATCH ${session.player2.name.toUpperCase()}',
-                                    style: const TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1.1,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                              : isEnteringArena.value
+                                  ? Container(
+                                      key: const ValueKey('rematch-entering'),
+                                      height: 50.0,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0x3322C55E),
+                                        borderRadius: BorderRadius.circular(16.0),
+                                        border: Border.all(color: const Color(0xFF22C55E)),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF22C55E).withValues(alpha: 0.25),
+                                            blurRadius: 16.0,
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.bolt_rounded, color: Color(0xFF22C55E), size: 20.0),
+                                          SizedBox(width: 8.0),
+                                          Text(
+                                            'STARTING REMATCH...',
+                                            style: TextStyle(
+                                              color: Color(0xFF4ADE80),
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.0,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : outgoingMatchId.value != null
+                                      ? Container(
+                                          key: const ValueKey('rematch-waiting'),
+                                          height: 50.0,
+                                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0x2800FFCC),
+                                            borderRadius: BorderRadius.circular(16.0),
+                                            border: Border.all(color: const Color(0x6600FFCC)),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const SizedBox(
+                                                width: 16.0,
+                                                height: 16.0,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.0,
+                                                  color: Color(0xFF00FFCC),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10.0),
+                                              Expanded(
+                                                child: Text(
+                                                  'WAITING FOR ${session.player2.name.toUpperCase()}...',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF00FFCC),
+                                                    fontSize: 12.5,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 0.8,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFF94A3B8)),
+                                                tooltip: 'Cancel Rematch',
+                                                onPressed: () async {
+                                                  final id = outgoingMatchId.value;
+                                                  outgoingMatchId.value = null;
+                                                  if (id != null) {
+                                                    final myUid = AuthService.instance.currentUser?.uid ?? '';
+                                                    await FirestoreMatchService.instance.cancelMatchChallenge(
+                                                      friendUid: session.player2.id,
+                                                      matchId: id,
+                                                    );
+                                                    await FirestoreMatchService.instance.leaveOrDismissMatch(
+                                                      matchId: id,
+                                                      myUid: myUid,
+                                                    );
+                                                  }
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : oppDeclined.value
+                                          ? Container(
+                                              key: const ValueKey('rematch-declined'),
+                                              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0x28EF4444),
+                                                borderRadius: BorderRadius.circular(16.0),
+                                                border: Border.all(color: const Color(0x66EF4444)),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.info_outline_rounded, size: 18.0, color: Color(0xFFF87171)),
+                                                  const SizedBox(width: 8.0),
+                                                  Expanded(
+                                                    child: Text(
+                                                      '${session.player2.name} declined the rematch.',
+                                                      style: const TextStyle(
+                                                        color: Color(0xFFFCA5A5),
+                                                        fontSize: 12.5,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            )
+                                          : SizedBox(
+                                              key: const ValueKey('rematch-button'),
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                onPressed: isRematching.value
+                                                    ? null
+                                                    : () => _handleInstantRematch(
+                                                          context,
+                                                          rematchError,
+                                                          isRematching,
+                                                          outgoingMatchId,
+                                                          oppDeclined,
+                                                        ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: bannerColor,
+                                                  foregroundColor: Colors.black,
+                                                  padding: const EdgeInsets.symmetric(vertical: 14.0),
+                                                  elevation: 8.0,
+                                                  shadowColor: bannerColor.withValues(alpha: 0.5),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(16.0),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment: MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(Icons.replay_rounded, size: 20.0),
+                                                    const SizedBox(width: 8.0),
+                                                    Flexible(
+                                                      child: Text(
+                                                        'REMATCH ${session.player2.name.toUpperCase()}',
+                                                        style: const TextStyle(
+                                                          fontSize: 14.5,
+                                                          fontWeight: FontWeight.w900,
+                                                          letterSpacing: 1.1,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
                         ),
                       const SizedBox(height: 8.0),
 
