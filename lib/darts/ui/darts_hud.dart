@@ -11,6 +11,11 @@ import 'package:b_ball/darts/state/darts_match_notifier.dart';
 import 'package:b_ball/darts/state/darts_match_state.dart';
 import 'package:b_ball/darts/state/darts_players.dart';
 import 'package:b_ball/darts/ui/darts_live_pill.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
 import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flutter HUD overlay over the Darts Flame canvas.
@@ -22,14 +27,18 @@ import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 /// - Top-right: Translucent frosted glass pause menu button.
 /// - Bottom-left: Player 1 avatar, name, glowing badge, remaining score, and active turn points.
 /// - Bottom-right: Opponent avatar, name, glowing badge, remaining score, and active turn points.
-class DartsHud extends ConsumerWidget {
+class DartsHud extends HookConsumerWidget {
   final VoidCallback onOpenPause;
   final DartsOnlineController? online;
+  final VoidCallback? onPauseEngine;
+  final VoidCallback? onResumeEngine;
 
   const DartsHud({
     super.key,
     required this.onOpenPause,
     this.online,
+    this.onPauseEngine,
+    this.onResumeEngine,
   });
 
   /// HUD scale for this screen: 1.0 on a ~420×860 phone, smaller on small
@@ -41,15 +50,16 @@ class DartsHud extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dartsMatchProvider);
     final players = ref.watch(dartsPlayersProvider);
+    final user = ref.watch(currentUserProfileProvider).value;
+    final h2hState = useState<InGameH2HState>(InGameH2HState.closed);
     final double s = scaleFor(MediaQuery.sizeOf(context));
     final double pad = 16.0 * s;
 
-    // Only the pills and badges ignore touches (so throws pass through);
-    // the pause button stays tappable. Wrapping the whole HUD in one
-    // IgnorePointer made the pause button dead.
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: pad, vertical: 8.0 * s),
+    return Stack(
+      children: [
+        SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: pad, vertical: 8.0 * s),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -141,6 +151,12 @@ class DartsHud extends ConsumerWidget {
                         glowColor: const Color(DartsK.accentP2),
                         isLeft: false,
                         matchId: online?.matchId,
+                        onAvatarTap: () {
+                          if (!players.opponent.isBot &&
+                              (players.opponent.uid?.isNotEmpty ?? false)) {
+                            h2hState.value = InGameH2HState.peek;
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -148,6 +164,74 @@ class DartsHud extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    ),
+    if (h2hState.value != InGameH2HState.closed)
+      InGameH2HOverlay(
+        state: h2hState.value,
+        myUid: user?.uid ?? '',
+        myAvatar: user?.avatarEmoji,
+        opponentUid: players.opponent.uid ?? '',
+        opponentName: players.opponent.name,
+        opponentAvatar: players.opponent.avatar,
+        defaultGame: 'darts',
+        footerSummary: _buildDartsFooter(
+          players.opponent.name,
+          state.theirRemaining,
+          () => h2hState.value = InGameH2HState.closed,
+        ),
+        onExpand: () => h2hState.value = InGameH2HState.full,
+        onCollapse: () => h2hState.value = InGameH2HState.closed,
+        onClose: () => h2hState.value = InGameH2HState.closed,
+        turnCountdown: online != null && state.thrower == DartsThrower.you
+            ? online!.shotClock.value
+            : null,
+        isOnline: online != null,
+        isMyTurn: state.thrower == DartsThrower.you,
+        onPauseEngine: onPauseEngine,
+        onResumeEngine: onResumeEngine,
+      ),
+  ],
+);
+  }
+
+  Widget _buildDartsFooter(String name, int remaining, VoidCallback onTap) {
+    return Material(
+      color: const Color(0xCC0F172A),
+      borderRadius: BorderRadius.circular(16.0),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: const Color(0x22FFFFFF), width: 1.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${name.toUpperCase()} · $remaining LEFT',
+                style: UiFont.style(
+                  size: 11.5,
+                  weight: 800,
+                  color: const Color(0xFFF59E0B),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18.0,
+                color: Color(0xFFF59E0B),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -469,6 +553,7 @@ class _ScoreBadge extends StatelessWidget {
   final Color glowColor;
   final bool isLeft;
   final String? matchId;
+  final VoidCallback? onAvatarTap;
 
   const _ScoreBadge({
     required this.scale,
@@ -479,6 +564,7 @@ class _ScoreBadge extends StatelessWidget {
     required this.glowColor,
     required this.isLeft,
     this.matchId,
+    this.onAvatarTap,
   });
 
   @override
@@ -598,6 +684,7 @@ class _ScoreBadge extends StatelessWidget {
       isLeft: false,
       badgeBorderColor: const Color(0xFF0F172A),
       forceAbove: true,
+      onAvatarTap: onAvatarTap,
       child: avatar,
     );
   }
