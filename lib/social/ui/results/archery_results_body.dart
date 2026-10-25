@@ -94,8 +94,8 @@ class ArcheryResultsBody extends StatelessWidget {
             children: [
               _buildStatRow(
                 label: "X's",
-                val1: myXs > 0 ? '$myXs' : '—',
-                val2: oppXs > 0 ? '$oppXs' : '—',
+                val1: '$myXs',
+                val2: '$oppXs',
                 numeric1: myXs,
                 numeric2: oppXs,
               ),
