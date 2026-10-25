@@ -1,5 +1,6 @@
-import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
+
+import 'package:b_ball/game/ui/common/ui_font.dart';
 
 /// 3-column stats panel for [ProfileSheet] displaying Wins, Win Rate, and Best Streak.
 class ProfileStatTiles extends StatelessWidget {
@@ -35,31 +36,38 @@ class ProfileStatTiles extends StatelessWidget {
 
   Widget _buildTile({required String value, required String label}) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14.0),
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 6.0),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),
         borderRadius: BorderRadius.circular(16.0),
         border: Border.all(color: const Color(0xFF1E2638), width: 1.0),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: UiFont.style(
-              size: 22.0,
-              weight: 900,
-              color: Colors.white,
-              letterSpacing: -0.5,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: UiFont.style(
+                size: 22.0,
+                weight: 900,
+                color: Colors.white,
+                letterSpacing: -0.5,
+              ),
             ),
           ),
           const SizedBox(height: 3.0),
-          Text(
-            label,
-            style: UiFont.style(
-              size: 10.5,
-              weight: 800,
-              color: const Color(0xFF64748B),
-              letterSpacing: 0.6,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: UiFont.style(
+                size: 10.5,
+                weight: 800,
+                color: const Color(0xFF64748B),
+                letterSpacing: 0.6,
+              ),
             ),
           ),
         ],
