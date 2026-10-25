@@ -1,6 +1,7 @@
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../game/match/match_config.dart';
@@ -14,12 +15,12 @@ import '../tiles/completed_match_tile.dart';
 
 /// Full matches overview screen adhering to Artboard 10 of GameVerse design.
 ///
-/// Features:
+/// Built with flutter_hooks + hooks_riverpod:
 /// - Segmented control: Active · n / Completed · n.
 /// - Active section grouped into YOUR TURN, WAITING ON THEM, and INVITES.
 /// - Completed section displaying chronological CompletedMatchTile list (newest first).
 /// - Clean empty states with "Play a friend" action.
-class MatchesPage extends ConsumerStatefulWidget {
+class MatchesPage extends HookConsumerWidget {
   final int initialTabIndex; // 0 = Active, 1 = Completed
   final VoidCallback? onClose;
 
@@ -28,26 +29,6 @@ class MatchesPage extends ConsumerStatefulWidget {
     this.initialTabIndex = 0,
     this.onClose,
   });
-
-  @override
-  ConsumerState<MatchesPage> createState() => _MatchesPageState();
-}
-
-class _MatchesPageState extends ConsumerState<MatchesPage> {
-  late int _selectedTab;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTab = widget.initialTabIndex;
-  }
-
-  void _onTabChanged(int index) {
-    if (_selectedTab != index) {
-      HapticFeedback.selectionClick();
-      setState(() => _selectedTab = index);
-    }
-  }
 
   void _playAFriend(BuildContext context) {
     HapticFeedback.lightImpact();
@@ -59,7 +40,8 @@ class _MatchesPageState extends ConsumerState<MatchesPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedTab = useState(initialTabIndex);
     final matchesAsync = ref.watch(userMatchesProvider);
     final myUid = AuthService.instance.currentUser?.uid ?? '';
 
@@ -96,8 +78,8 @@ class _MatchesPageState extends ConsumerState<MatchesPage> {
                     icon: Icons.close_rounded,
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      if (widget.onClose != null) {
-                        widget.onClose!();
+                      if (onClose != null) {
+                        onClose!();
                       } else {
                         Navigator.of(context, rootNavigator: true).maybePop();
                       }
@@ -150,13 +132,20 @@ class _MatchesPageState extends ConsumerState<MatchesPage> {
                         child: _buildSegmentedControl(
                           activeCount: activeMatches.length,
                           completedCount: completedMatches.length,
+                          selectedTab: selectedTab.value,
+                          onTabChanged: (index) {
+                            if (selectedTab.value != index) {
+                              HapticFeedback.selectionClick();
+                              selectedTab.value = index;
+                            }
+                          },
                         ),
                       ),
                       const SizedBox(height: 8.0),
 
                       // Tab View List
                       Expanded(
-                        child: _selectedTab == 0
+                        child: selectedTab.value == 0
                             ? _buildActiveList(context, activeMatches, myUid)
                             : _buildCompletedList(
                                 context,
@@ -181,6 +170,8 @@ class _MatchesPageState extends ConsumerState<MatchesPage> {
   Widget _buildSegmentedControl({
     required int activeCount,
     required int completedCount,
+    required int selectedTab,
+    required ValueChanged<int> onTabChanged,
   }) {
     return Container(
       height: 44.0,
@@ -195,16 +186,16 @@ class _MatchesPageState extends ConsumerState<MatchesPage> {
           Expanded(
             child: _buildSegmentButton(
               title: 'Active · $activeCount',
-              isSelected: _selectedTab == 0,
-              onTap: () => _onTabChanged(0),
+              isSelected: selectedTab == 0,
+              onTap: () => onTabChanged(0),
             ),
           ),
           const SizedBox(width: 4.0),
           Expanded(
             child: _buildSegmentButton(
               title: 'Completed · $completedCount',
-              isSelected: _selectedTab == 1,
-              onTap: () => _onTabChanged(1),
+              isSelected: selectedTab == 1,
+              onTap: () => onTabChanged(1),
             ),
           ),
         ],
