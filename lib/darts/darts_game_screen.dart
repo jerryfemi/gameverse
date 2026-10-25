@@ -350,16 +350,9 @@ class DartsGameScreen extends HookConsumerWidget {
                     child: isOnline
                         ? DartsResultCard(
                             online: true,
-                            onRematch: () async {
-                              final ctrl = online.value;
-                              final finished = ctrl?.match.value;
-                              if (ctrl == null || finished == null) return;
-                              await DartsChallenge.rematch(
-                                context,
-                                finished: finished,
-                                myUid: ctrl.myUid,
-                              );
-                            },
+                            finishedMatch: online.value?.match.value ?? match,
+                            myUid: online.value?.myUid,
+                            onRematch: () {},
                             onPlayFriend: () =>
                                 GoRouter.maybeOf(context)?.go('/darts'),
                           )
@@ -434,15 +427,14 @@ abstract final class DartsChallenge {
     await _createAndEnter(context, chosen);
   }
 
-  static Future<void> rematch(
-    BuildContext context, {
+  /// Dispatches or joins an instant inline rematch.
+  static Future<({CloudMatch match, bool joined})> requestRematch({
     required CloudMatch finished,
     required String myUid,
   }) async {
     final opp = finished.opponentPlayer(myUid);
     if (opp == null || opp.uid.isEmpty) {
-      await start(context);
-      return;
+      throw StateError('Opponent not found');
     }
     final friend = FriendProfile(
       uid: opp.uid,
@@ -460,17 +452,42 @@ abstract final class DartsChallenge {
       opponentFriend: friend,
     );
 
-    final result = await FirestoreMatchService.instance.createOrJoinRematch(
+    return await FirestoreMatchService.instance.createOrJoinRematch(
       finishedMatchId: finished.id,
       config: cfg,
       me: profile,
     );
-    if (!context.mounted) return;
-    if (result.joined) {
-      GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
+  }
+
+  /// Cancels an active rematch challenge and leaves the waiting room.
+  static Future<void> cancelRematch({
+    required String matchId,
+    required String oppUid,
+    required String myUid,
+  }) async {
+    await FirestoreMatchService.instance.cancelMatchChallenge(
+      friendUid: oppUid,
+      matchId: matchId,
+    );
+    await FirestoreMatchService.instance.leaveOrDismissMatch(
+      matchId: matchId,
+      myUid: myUid,
+    );
+  }
+
+  static Future<void> rematch(
+    BuildContext context, {
+    required CloudMatch finished,
+    required String myUid,
+  }) async {
+    final opp = finished.opponentPlayer(myUid);
+    if (opp == null || opp.uid.isEmpty) {
+      await start(context);
       return;
     }
-    await _createAndEnter(context, cfg.copyWith(precreatedMatch: result.match));
+    final result = await requestRematch(finished: finished, myUid: myUid);
+    if (!context.mounted) return;
+    GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
   }
 
   static Future<UserProfile> _me() async {
