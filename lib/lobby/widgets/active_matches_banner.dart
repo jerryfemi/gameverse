@@ -10,6 +10,7 @@ import '../../providers/app_providers.dart';
 import '../game_catalog.dart';
 import '../lobby_style.dart';
 import 'pressable.dart';
+import '../../social/ui/results/results_sheet.dart';
 
 /// "Your matches": the running matches (your turn first), each one tap away
 /// from its game, plus a link to the full inbox (history included).
@@ -31,7 +32,7 @@ class ActiveMatchesSection extends ConsumerWidget {
       // Every game opens through /match/:id, which picks the right screen.
       onPlayMatch: (m) => context.go('/match/${m.id}'),
       onCreateMatch: onCreateMatch,
-      onViewPodium: (m) => context.go('/match/${m.id}'),
+      onViewPodium: (m) => ResultsSheet.show(context, m),
     );
   }
 
