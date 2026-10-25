@@ -102,14 +102,17 @@ class CompletedMatchTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 1.0),
-                    Text(
-                      summary.me.headline,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiFont.style(
-                        size: 18.0,
-                        weight: 900,
-                        color: Colors.white,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        summary.me.headline,
+                        maxLines: 1,
+                        style: UiFont.style(
+                          size: 18.0,
+                          weight: 900,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     if (summary.me.unit.isNotEmpty) ...[
@@ -160,14 +163,17 @@ class CompletedMatchTile extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 1.0),
-                    Text(
-                      summary.opponent.headline,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: UiFont.style(
-                        size: 18.0,
-                        weight: 900,
-                        color: Colors.white,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        summary.opponent.headline,
+                        maxLines: 1,
+                        style: UiFont.style(
+                          size: 18.0,
+                          weight: 900,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     if (summary.opponent.unit.isNotEmpty) ...[
