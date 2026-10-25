@@ -70,7 +70,7 @@ class DartSprites {
 
   /// Loads the atlas image and its JSON once.
   static Future<DartSprites> load({
-    String imagePath = 'assets/darts/sprites/dart_sweep.png',
+    String imagePath = 'assets/darts/sprites/dart_sweep.webp',
     String jsonPath = 'assets/darts/sprites/dart_sweep.json',
   }) async {
     final ByteData imgData = await rootBundle.load(imagePath);
