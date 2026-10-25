@@ -396,17 +396,14 @@ abstract final class ArcheryChallenge {
     await _createAndEnter(context, chosen);
   }
 
-  /// A new archery match against the same opponent, sent to them as a
-  /// challenge (they see it on their card, in the inbox and as a pill).
-  static Future<void> rematch(
-    BuildContext context, {
+  /// Dispatches or joins an instant inline rematch.
+  static Future<({CloudMatch match, bool joined})> requestRematch({
     required CloudMatch finished,
     required String myUid,
   }) async {
     final opp = finished.opponentPlayer(myUid);
     if (opp == null || opp.uid.isEmpty) {
-      await start(context);
-      return;
+      throw StateError('Opponent not found');
     }
     final friend = FriendProfile(
       uid: opp.uid,
@@ -423,19 +420,42 @@ abstract final class ArcheryChallenge {
       player2Uid: opp.uid,
       opponentFriend: friend,
     );
-    // Both archers may tap REMATCH at once: they share one room, so the
-    // second tap joins the first instead of opening a second waiting room.
-    final result = await FirestoreMatchService.instance.createOrJoinRematch(
+    return await FirestoreMatchService.instance.createOrJoinRematch(
       finishedMatchId: finished.id,
       config: cfg,
       me: profile,
     );
-    if (!context.mounted) return;
-    if (result.joined) {
-      GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
+  }
+
+  /// Cancels an active rematch challenge and leaves the waiting room.
+  static Future<void> cancelRematch({
+    required String matchId,
+    required String oppUid,
+    required String myUid,
+  }) async {
+    await FirestoreMatchService.instance.cancelMatchChallenge(
+      friendUid: oppUid,
+      matchId: matchId,
+    );
+    await FirestoreMatchService.instance.leaveOrDismissMatch(
+      matchId: matchId,
+      myUid: myUid,
+    );
+  }
+
+  static Future<void> rematch(
+    BuildContext context, {
+    required CloudMatch finished,
+    required String myUid,
+  }) async {
+    final opp = finished.opponentPlayer(myUid);
+    if (opp == null || opp.uid.isEmpty) {
+      await start(context);
       return;
     }
-    await _createAndEnter(context, cfg.copyWith(precreatedMatch: result.match));
+    final result = await requestRematch(finished: finished, myUid: myUid);
+    if (!context.mounted) return;
+    GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
   }
 
   static Future<UserProfile> _me() async {
