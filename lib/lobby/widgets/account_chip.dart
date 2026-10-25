@@ -12,6 +12,7 @@ import '../../game/ui/common/app_avatar.dart';
 import '../../game/ui/common/edit_profile_dialog.dart';
 import '../../notifications/app_notices.dart';
 import '../../providers/app_providers.dart';
+import '../../social/ui/results/results_sheet.dart';
 import '../lobby_style.dart';
 import 'pressable.dart';
 
@@ -122,7 +123,13 @@ class AccountChip extends HookConsumerWidget {
             ? () => EditProfileDialog.show(context, profile: profile)
             : () => ProfileDrawer.show(
                   context,
-                  onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+                  onOpenMatch: (m) {
+                    if (m.isFinished) {
+                      ResultsSheet.show(context, m);
+                    } else {
+                      GoRouter.maybeOf(context)?.go('/match/${m.id}');
+                    }
+                  },
                   onOpenMatches: () => ArcheryInbox.open(
                     context,
                     onCreateMatch: () => ArcheryChallenge.start(context, showGamePicker: true),
