@@ -145,7 +145,8 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     // Connect aim controller firing hook
     controller.onFireAt = (double crossX, double crossY) {
       if (_setOver || arrowPhysics.inFlight || !events.isMyTurn) return;
-      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) return;
+      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet)
+        return;
 
       ArcheryAudio.playReleaseTwang();
 
@@ -338,12 +339,14 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     if (_introTime < 0.0 || awaitingStart) return;
     _introTime += dt;
     const int n = ArcheryMatchState.arrowsPerSet;
-    if (_introLanded < n && _introTime >= _introFirst + _introLanded * _introGap) {
+    if (_introLanded < n &&
+        _introTime >= _introFirst + _introLanded * _introGap) {
       _introLanded++;
       final ShotScore? shot = events.botArrowLanded();
       if (shot != null) _landBotArrow(shot);
     }
-    if (_introLanded >= n && _introTime >= _introFirst + (n - 1) * _introGap + _introHold) {
+    if (_introLanded >= n &&
+        _introTime >= _introFirst + (n - 1) * _introGap + _introHold) {
       _introTime = -1.0;
       cameraRig.endIntro();
     }
@@ -449,11 +452,7 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     }
 
     // 2. Update Camera Rig with arrow follow and phase transitions
-    cameraRig.update(
-      clampedDt,
-      controller.isHolding,
-      arrow: arrowPhysics,
-    );
+    cameraRig.update(clampedDt, controller.isHolding, arrow: arrowPhysics);
 
     windPill.update(clampedDt);
 
@@ -474,7 +473,8 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
       final bool hitBoss = remote?.hitBoss ?? arrowPhysics.hitBoss;
       final double hitX = remote?.hitX ?? arrowPhysics.hitLocalX;
       final double hitY = remote?.hitY ?? arrowPhysics.hitLocalY;
-      final ShotScore score = remote?.score(targetDistance) ??
+      final ShotScore score =
+          remote?.score(targetDistance) ??
           TargetScoring.calculate(
             localX: hitX,
             localY: hitY,
@@ -493,7 +493,9 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
       // Hit Popup canvas 3D coordinates & event emission (Bug #6)
       hitPopup.trigger(
         worldX: hitBoss ? hitX : arrowPhysics.hitPoint.x,
-        worldY: hitBoss ? ArcheryK.targetCenterY + hitY : arrowPhysics.hitPoint.y,
+        worldY: hitBoss
+            ? ArcheryK.targetCenterY + hitY
+            : arrowPhysics.hitPoint.y,
         worldZ: hitBoss ? targetDistance : arrowPhysics.hitPoint.z,
         score: score,
       );
@@ -512,7 +514,8 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
           score: score,
         );
         // Online: your set is done after three arrows (no fourth draw).
-        if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
+        if (online != null &&
+            events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
           controller.inputEnabled = false;
         }
       }

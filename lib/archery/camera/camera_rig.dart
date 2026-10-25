@@ -1,18 +1,21 @@
 import 'dart:math' as math;
+
 import 'package:b_ball/archery/archery_constants.dart';
 import 'package:b_ball/archery/physics/arrow_physics.dart';
-import 'package:b_ball/archery/camera/archery_camera.dart';
+
+// ignore: always_use_package_imports
+import 'archery_camera.dart';
 
 /// Shot sequence phases matching GamePigeon archery flow.
 enum ShotPhase {
-  intro,    // Set start: parked at the target while the opponent's arrows land
-  atLine,   // Wide view behind shooting line (Z = -2.0)
-  raising,  // Easing in towards aiming stance (Z: -2.0 -> 1.0, zoom: 1.0 -> aimZoom)
-  aiming,   // Static aiming viewpoint with crosshair and steady ring
-  chase,    // Dolly chasing closely behind arrow in flight
-  closeup,  // Close-up impact inspection at target (Z = D - 2.2)
-  returning,// Smooth dolly return back to the shooting line
-  setEnd,   // Set completion summary card display (locked at closeup)
+  intro, // Set start: parked at the target while the opponent's arrows land
+  atLine, // Wide view behind shooting line (Z = -2.0)
+  raising, // Easing in towards aiming stance (Z: -2.0 -> 1.0, zoom: 1.0 -> aimZoom)
+  aiming, // Static aiming viewpoint with crosshair and steady ring
+  chase, // Dolly chasing closely behind arrow in flight
+  closeup, // Close-up impact inspection at target (Z = D - 2.2)
+  returning, // Smooth dolly return back to the shooting line
+  setEnd, // Set completion summary card display (locked at closeup)
 }
 
 /// State-machine camera rig managing smooth cinematic dollies, chase cam, and shake.
@@ -218,14 +221,23 @@ class CameraRig {
 
         if (arrow != null && arrow.inFlight) {
           final double maxZ = targetDistance - ArcheryK.camCloseupDist;
-          final double desiredZ = (arrow.pos.z - ArcheryK.chaseBehind).clamp(ArcheryK.camAimZ, maxZ);
+          final double desiredZ = (arrow.pos.z - ArcheryK.chaseBehind).clamp(
+            ArcheryK.camAimZ,
+            maxZ,
+          );
           final double desiredX = arrow.pos.x * 0.8;
           final double desiredY = arrow.pos.y + ArcheryK.chaseAbove;
 
           const double omega = 14.0;
-          final double ax = omega * omega * (desiredX - currentEyeX) - 2.0 * omega * _chaseVelX;
-          final double ay = omega * omega * (desiredY - currentEyeY) - 2.0 * omega * _chaseVelY;
-          final double az = omega * omega * (desiredZ - currentEyeZ) - 2.0 * omega * _chaseVelZ;
+          final double ax =
+              omega * omega * (desiredX - currentEyeX) -
+              2.0 * omega * _chaseVelX;
+          final double ay =
+              omega * omega * (desiredY - currentEyeY) -
+              2.0 * omega * _chaseVelY;
+          final double az =
+              omega * omega * (desiredZ - currentEyeZ) -
+              2.0 * omega * _chaseVelZ;
 
           _chaseVelX += ax * dt;
           _chaseVelY += ay * dt;
@@ -304,6 +316,8 @@ class CameraRig {
   static double _lerp(double a, double b, double t) => a + (b - a) * t;
 
   double _easeInOutCubic(double t) {
-    return t < 0.5 ? 4.0 * t * t * t : 1.0 - math.pow(-2.0 * t + 2.0, 3.0) / 2.0;
+    return t < 0.5
+        ? 4.0 * t * t * t
+        : 1.0 - math.pow(-2.0 * t + 2.0, 3.0) / 2.0;
   }
 }

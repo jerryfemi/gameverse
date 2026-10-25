@@ -53,7 +53,9 @@ class ArcheryGameScreen extends HookConsumerWidget {
         if (!context.mounted) return;
         final m = match;
         // A refreshed /match/:id page may still be restoring the sign-in.
-        UserProfile? me = _firebaseReady ? AuthService.instance.currentUser : null;
+        UserProfile? me = _firebaseReady
+            ? AuthService.instance.currentUser
+            : null;
         if (m != null && me == null && _firebaseReady) {
           try {
             me = await AuthService.instance.initialize();
@@ -79,27 +81,34 @@ class ArcheryGameScreen extends HookConsumerWidget {
             final cm = controller!.match.value ?? m;
             final mine = cm.myPlayer(self.uid);
             final theirs = cm.opponentPlayer(self.uid);
-            players.set(ArcheryPlayers(
-              you: ArcheryPlayer(
-                name: mine?.displayName ?? self.displayName,
-                avatar: mine?.avatarEmoji ?? self.avatarEmoji,
+            players.set(
+              ArcheryPlayers(
+                you: ArcheryPlayer(
+                  name: mine?.displayName ?? self.displayName,
+                  avatar: mine?.avatarEmoji ?? self.avatarEmoji,
+                ),
+                opponent: theirs == null
+                    ? const ArcheryPlayer(name: 'Opponent', avatar: '⏳')
+                    : ArcheryPlayer(
+                        name: theirs.displayName,
+                        avatar: theirs.avatarEmoji,
+                      ),
               ),
-              opponent: theirs == null
-                  ? const ArcheryPlayer(name: 'Opponent', avatar: '⏳')
-                  : ArcheryPlayer(name: theirs.displayName, avatar: theirs.avatarEmoji),
-            ));
+            );
           }
 
           syncPlayers();
           controller.match.addListener(syncPlayers);
         } else {
           notifier.restartMatch();
-          players.set(ArcheryPlayers(
-            you: me == null
-                ? ArcheryPlayers.defaultYou
-                : ArcheryPlayer(name: me.displayName, avatar: me.avatarEmoji),
-            opponent: ArcheryPlayers.bot,
-          ));
+          players.set(
+            ArcheryPlayers(
+              you: me == null
+                  ? ArcheryPlayers.defaultYou
+                  : ArcheryPlayer(name: me.displayName, avatar: me.avatarEmoji),
+              opponent: ArcheryPlayers.bot,
+            ),
+          );
         }
         online.value = controller;
         // Solo: the bot waits for START (and the how-to-play steps).
@@ -131,13 +140,17 @@ class ArcheryGameScreen extends HookConsumerWidget {
     Future<void> goToLobbyAsync() async {
       final ctrl = online.value;
       final CloudMatch? live = ctrl?.match.value;
-      if (ctrl != null && live != null && live.status == MatchStatus.active && live.player2 != null) {
+      if (ctrl != null &&
+          live != null &&
+          live.status == MatchStatus.active &&
+          live.player2 != null) {
         final opp = live.opponentPlayer(ctrl.myUid);
         final bool? leave = await CleanUi.show<bool>(
           context,
           (c) => CleanDialog(
             title: 'LEAVE MATCH?',
-            subtitle: "You'll forfeit and ${opp?.displayName ?? 'your opponent'} wins.",
+            subtitle:
+                "You'll forfeit and ${opp?.displayName ?? 'your opponent'} wins.",
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,7 +233,8 @@ class ArcheryGameScreen extends HookConsumerWidget {
     }
 
     final matchState = ref.watch(archeryMatchProvider);
-    final bool isModalActive = paused.value ||
+    final bool isModalActive =
+        paused.value ||
         showTour.value ||
         matchState.matchOver ||
         matchState.setOver ||
@@ -276,7 +290,8 @@ class ArcheryGameScreen extends HookConsumerWidget {
                           openPauseSilently();
                           ProfileSheet.show(
                             context,
-                            onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+                            onOpenMatch: (m) =>
+                                GoRouter.maybeOf(context)?.go('/match/${m.id}'),
                             onOpenMatches: () => ArcheryInbox.open(
                               context,
                               onCreateMatch: () => ArcheryChallenge.start(
@@ -331,7 +346,8 @@ class ArcheryGameScreen extends HookConsumerWidget {
                       child: NoticeStack(
                         live: isOnline,
                         onBeforeOpen: openPauseSilently,
-                        onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+                        onOpenMatch: (m) =>
+                            GoRouter.maybeOf(context)?.go('/match/${m.id}'),
                       ),
                     ),
 
@@ -342,7 +358,10 @@ class ArcheryGameScreen extends HookConsumerWidget {
                       matchesKey: matchesKey,
                       onDone: () => showTour.value = false,
                     )
-                  else if (!isOnline && tourChecked.value && !started.value && !paused.value)
+                  else if (!isOnline &&
+                      tourChecked.value &&
+                      !started.value &&
+                      !paused.value)
                     ArcheryStartButton(onStart: startSolo),
 
                   // 4. Pause menu (music / effects / birdsong)
@@ -378,7 +397,10 @@ abstract final class ArcheryChallenge {
     roundDurationSeconds: ArcheryRules.onlineSetSeconds,
   );
 
-  static Future<void> start(BuildContext context, {bool showGamePicker = false}) async {
+  static Future<void> start(
+    BuildContext context, {
+    bool showGamePicker = false,
+  }) async {
     final chosen = await MatchSetupDialog.show(
       context,
       initialConfig: config,
@@ -468,9 +490,13 @@ abstract final class ArcheryChallenge {
         );
   }
 
-  static Future<void> _createAndEnter(BuildContext context, MatchConfig chosen) async {
+  static Future<void> _createAndEnter(
+    BuildContext context,
+    MatchConfig chosen,
+  ) async {
     final profile = await _me();
-    final CloudMatch match = chosen.precreatedMatch ??
+    final CloudMatch match =
+        chosen.precreatedMatch ??
         await FirestoreMatchService.instance.createMatch(
           config: chosen.copyWith(
             player1Name: profile.displayName,
