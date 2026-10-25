@@ -23,6 +23,7 @@ import 'package:b_ball/archery/state/archery_players.dart';
 import 'package:b_ball/archery/ui/live_pill.dart';
 import 'package:b_ball/archery/ui/round_summary.dart';
 import 'package:b_ball/archery/ui/turn_banner.dart';
+import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flutter HUD over the Flame canvas: GamePigeon-style scoreboard, the live
 /// status pill and turn banner (online), and the set-end card. Each piece
@@ -55,17 +56,15 @@ class ArcheryHud extends ConsumerWidget {
           top: top,
           left: 0.0,
           right: 0.0,
-          child: IgnorePointer(
-            child: Center(
-              child: AnimatedSlide(
+          child: Center(
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: showScoreBar ? Offset.zero : const Offset(0, -0.2),
+              child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                offset: showScoreBar ? Offset.zero : const Offset(0, -0.2),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: showScoreBar ? 1.0 : 0.0,
-                  child: const _Scoreboard(),
-                ),
+                opacity: showScoreBar ? 1.0 : 0.0,
+                child: _Scoreboard(matchId: game.online?.matchId),
               ),
             ),
           ),
@@ -278,7 +277,8 @@ class _SetEnd extends HookConsumerWidget {
 /// The coin on each avatar is that archer's set points (first to 6).
 /// Online, the archer whose set it is gets a glowing ring.
 class _Scoreboard extends ConsumerWidget {
-  const _Scoreboard();
+  final String? matchId;
+  const _Scoreboard({this.matchId});
 
   static const Color _youRing = Color(0xFF00FFCC);
   static const Color _themRing = Color(0xFFA78BFA);
@@ -307,15 +307,19 @@ class _Scoreboard extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _PlayerBadge(
-          player: players.you,
-          ring: _youRing,
-          sets: youPts,
-          active: online && shooter == ArcheryShooter.you,
-          chips: [for (final s in you) _ChipData(s.ring, isX: s.isX)],
+        IgnorePointer(
+          child: _PlayerBadge(
+            player: players.you,
+            ring: _youRing,
+            sets: youPts,
+            active: online && shooter == ArcheryShooter.you,
+            chips: [for (final s in you) _ChipData(s.ring, isX: s.isX)],
+          ),
         ),
         const SizedBox(width: 8.0),
-        _ScoreBox(setIndex: setIndex, you: youTotal, them: themTotal),
+        IgnorePointer(
+          child: _ScoreBox(setIndex: setIndex, you: youTotal, them: themTotal),
+        ),
         const SizedBox(width: 8.0),
         _PlayerBadge(
           player: players.opponent,
@@ -323,6 +327,8 @@ class _Scoreboard extends ConsumerWidget {
           sets: themPts,
           active: online && shooter == ArcheryShooter.opponent,
           chips: [for (final s in them) _ChipData(s.ring, isX: s.isX)],
+          isOpponent: true,
+          matchId: matchId,
         ),
       ],
     );
@@ -409,8 +415,9 @@ class _PlayerBadge extends StatelessWidget {
   final int sets;
   final List<_ChipData> chips;
 
-  /// Online: this archer is shooting now (glowing ring).
   final bool active;
+  final bool isOpponent;
+  final String? matchId;
 
   const _PlayerBadge({
     required this.player,
@@ -418,12 +425,44 @@ class _PlayerBadge extends StatelessWidget {
     required this.sets,
     required this.chips,
     this.active = false,
+    this.isOpponent = false,
+    this.matchId,
   });
 
   static const double avatarSize = 42.0;
 
   @override
   Widget build(BuildContext context) {
+    final avatarWidget = DecoratedBox(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: Color(0x59000000), blurRadius: 8.0, offset: Offset(0, 2)),
+        ],
+      ),
+      child: AppAvatar(
+        avatar: player.avatar,
+        size: avatarSize,
+        borderColor: ring,
+        borderWidth: 2.5,
+        showGlow: active,
+        glowColor: ring,
+      ),
+    );
+
+    final effectiveAvatar = isOpponent
+        ? OpponentBadgeSocial(
+            opponentUid: player.uid,
+            opponentName: player.name,
+            matchId: matchId,
+            isBot: player.isBot,
+            isLeft: false,
+            badgeBorderColor: const Color(0xFF0F172A),
+            forceAbove: false,
+            child: avatarWidget,
+          )
+        : avatarWidget;
+
     return SizedBox(
       width: 64.0,
       child: Column(
@@ -432,22 +471,7 @@ class _PlayerBadge extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Color(0x59000000), blurRadius: 8.0, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: AppAvatar(
-                  avatar: player.avatar,
-                  size: avatarSize,
-                  borderColor: ring,
-                  borderWidth: 2.5,
-                  showGlow: active,
-                  glowColor: ring,
-                ),
-              ),
+              effectiveAvatar,
               if (sets > 0)
                 Positioned(
                   right: -5.0,
