@@ -26,7 +26,7 @@ import 'ui/archery_match_bar.dart';
 import 'ui/archery_pause_menu.dart';
 import '../game/ui/common/lobby_pill.dart';
 import '../notifications/notice_stack.dart';
-import '../notifications/profile_drawer.dart';
+import '../social/ui/profile/profile_sheet.dart';
 import 'ui/archery_tour.dart';
 
 /// Full-screen archery: solo against the bot (`/archery`), or a live online
@@ -274,7 +274,7 @@ class ArcheryGameScreen extends HookConsumerWidget {
                         key: matchesKey,
                         onTap: () {
                           openPauseSilently();
-                          ProfileDrawer.show(
+                          ProfileSheet.show(
                             context,
                             onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
                             onOpenMatches: () => ArcheryInbox.open(
