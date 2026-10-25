@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../models/cloud_match.dart';
+import '../../../social/ui/results/results_sheet.dart';
 import '../../../models/player_descriptor.dart';
 import '../../../providers/app_providers.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/firestore_match_service.dart';
 import '../../basketball_game.dart';
-import '../../match/match_session.dart';
 import '../match/match_lobby_dialog.dart';
 import '../match/match_setup_dialog.dart';
 import 'match_inbox_card.dart';
@@ -46,7 +46,7 @@ class MatchInboxSheet extends HookConsumerWidget {
       builder: (ctx) => MatchInboxSheet(
         onPlayMatch: onPlayMatch,
         onCreateMatch: onCreateMatch,
-        onViewPodium: onViewPodium,
+        onViewPodium: onViewPodium ?? ((m) => ResultsSheet.show(ctx, m)),
       ),
     );
   }
@@ -121,17 +121,7 @@ class MatchInboxSheet extends HookConsumerWidget {
       },
       onCreateMatch: () => playAFriend(context, game: game),
       onViewPodium: (match) {
-        if (!match.isBasketball) {
-          // Archery/darts show their own final card on their own screen.
-          game.onOtherGameMatch?.call(match);
-          return;
-        }
-        final myUid = AuthService.instance.currentUser?.uid ?? '';
-        final session = MatchSession.fromCloudMatch(match, myUid);
-        session.phase = MatchTurnPhase.matchComplete;
-        session.isHistoryView = true;
-        game.matchSessionNotifier.value = session;
-        game.gameStateNotifier.value = GameModeState.gameOver;
+        ResultsSheet.show(context, match);
       },
     );
     if (wasPlaying && game.isPaused) {
