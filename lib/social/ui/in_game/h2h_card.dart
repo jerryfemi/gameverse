@@ -1,6 +1,7 @@
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../providers/app_providers.dart';
@@ -16,10 +17,10 @@ enum H2HCardMode { peek, full }
 
 /// Reusable Head-to-Head card widget supporting both in-game `peek` and expanded `full` views.
 ///
-/// Implements Artboards 3 & 4 of GameVerse design:
+/// Built with flutter_hooks + hooks_riverpod:
 /// - Peek: Opponent profile + Add button, aggregate score bar, Last-5 outcome dots, expand button.
 /// - Full: Stacked avatars, sport filter pills, record panel with lead badge, match history list.
-class H2HCard extends ConsumerStatefulWidget {
+class H2HCard extends HookConsumerWidget {
   final String myUid;
   final String opponentUid;
   final String opponentName;
@@ -67,22 +68,15 @@ class H2HCard extends ConsumerStatefulWidget {
   })  : mode = H2HCardMode.full,
         onExpand = null;
 
-  @override
-  ConsumerState<H2HCard> createState() => _H2HCardState();
-}
-
-class _H2HCardState extends ConsumerState<H2HCard> {
-  String _selectedGame = 'all';
-
   void _handleAddFriend() {
     HapticFeedback.lightImpact();
-    if (widget.onAddFriend != null) {
-      widget.onAddFriend!();
+    if (onAddFriend != null) {
+      onAddFriend!();
     } else {
       final myProfile = AuthService.instance.currentUser;
       if (myProfile != null) {
         FriendsService.instance.sendFriendInvite(
-          targetUid: widget.opponentUid,
+          targetUid: opponentUid,
           myProfile: myProfile,
         );
       }
@@ -90,9 +84,10 @@ class _H2HCardState extends ConsumerState<H2HCard> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final h2h = ref.watch(headToHeadProvider(widget.opponentUid));
-    final isFriend = ref.watch(isFriendProvider(widget.opponentUid));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedGame = useState('all');
+    final h2h = ref.watch(headToHeadProvider(opponentUid));
+    final isFriend = ref.watch(isFriendProvider(opponentUid));
 
     return Container(
       decoration: BoxDecoration(
@@ -107,9 +102,9 @@ class _H2HCardState extends ConsumerState<H2HCard> {
           ),
         ],
       ),
-      child: widget.mode == H2HCardMode.peek
+      child: mode == H2HCardMode.peek
           ? _buildPeekView(context, h2h, isFriend)
-          : _buildFullView(context, h2h),
+          : _buildFullView(context, ref, h2h, selectedGame),
     );
   }
 
@@ -131,7 +126,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
           Row(
             children: [
               CrownAvatar(
-                avatar: widget.opponentAvatar,
+                avatar: opponentAvatar,
                 size: 46.0,
               ),
               const SizedBox(width: 12.0),
@@ -140,7 +135,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.opponentName,
+                      opponentName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: UiFont.style(
@@ -318,7 +313,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
               child: InkWell(
                 onTap: () {
                   HapticFeedback.lightImpact();
-                  widget.onExpand?.call();
+                  onExpand?.call();
                 },
                 borderRadius: BorderRadius.circular(12.0),
                 child: Row(
@@ -351,19 +346,25 @@ class _H2HCardState extends ConsumerState<H2HCard> {
   // ===========================================================================
   // FULL VIEW (Artboard 4)
   // ===========================================================================
-  Widget _buildFullView(BuildContext context, HeadToHead h2h) {
-    final filteredMatches = _selectedGame == 'all'
+  Widget _buildFullView(
+    BuildContext context,
+    WidgetRef ref,
+    HeadToHead h2h,
+    ValueNotifier<String> selectedGame,
+  ) {
+    final currentGame = selectedGame.value;
+    final filteredMatches = currentGame == 'all'
         ? h2h.matches
         : h2h.matches
-            .where((m) => m.game.toLowerCase().trim() == _selectedGame)
+            .where((m) => m.game.toLowerCase().trim() == currentGame)
             .toList();
 
-    final filteredWins = _selectedGame == 'all'
+    final filteredWins = currentGame == 'all'
         ? h2h.myWins
-        : (h2h.byGame[_selectedGame]?.myWins ?? 0);
-    final filteredLosses = _selectedGame == 'all'
+        : (h2h.byGame[currentGame]?.myWins ?? 0);
+    final filteredLosses = currentGame == 'all'
         ? h2h.theirWins
-        : (h2h.byGame[_selectedGame]?.theirWins ?? 0);
+        : (h2h.byGame[currentGame]?.theirWins ?? 0);
     final double filteredRatio = (filteredWins + filteredLosses) > 0
         ? (filteredWins / (filteredWins + filteredLosses))
         : 0.5;
@@ -384,7 +385,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'You vs ${widget.opponentName}',
+                      'You vs $opponentName',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: UiFont.style(
@@ -414,7 +415,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
                 ),
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  widget.onCollapse?.call();
+                  onCollapse?.call();
                 },
               ),
             ],
@@ -426,21 +427,32 @@ class _H2HCardState extends ConsumerState<H2HCard> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFilterPill('All ${h2h.totalMatches}', 'all'),
+                _buildFilterPill(
+                  'All ${h2h.totalMatches}',
+                  'all',
+                  currentGame,
+                  (g) => selectedGame.value = g,
+                ),
                 const SizedBox(width: 8.0),
                 _buildFilterPill(
                   'Darts ${h2h.byGame['darts']?.total ?? 0}',
                   'darts',
+                  currentGame,
+                  (g) => selectedGame.value = g,
                 ),
                 const SizedBox(width: 8.0),
                 _buildFilterPill(
                   'Hoops ${h2h.byGame['basketball']?.total ?? h2h.byGame['hoops']?.total ?? 0}',
                   'basketball',
+                  currentGame,
+                  (g) => selectedGame.value = g,
                 ),
                 const SizedBox(width: 8.0),
                 _buildFilterPill(
                   'Archery ${h2h.byGame['archery']?.total ?? 0}',
                   'archery',
+                  currentGame,
+                  (g) => selectedGame.value = g,
                 ),
               ],
             ),
@@ -563,7 +575,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
                     const Divider(color: Color(0xFF1E2638), height: 1.0),
                 itemBuilder: (ctx, i) {
                   final summary = filteredMatches[i];
-                  return _buildMatchRow(context, summary);
+                  return _buildMatchRow(context, ref, summary);
                 },
               ),
             ),
@@ -582,13 +594,13 @@ class _H2HCardState extends ConsumerState<H2HCard> {
       child: Stack(
         children: [
           CrownAvatar(
-            avatar: widget.myAvatar ?? '👤',
+            avatar: myAvatar ?? '👤',
             size: 40.0,
           ),
           Positioned(
             left: 26.0,
             child: CrownAvatar(
-              avatar: widget.opponentAvatar,
+              avatar: opponentAvatar,
               size: 40.0,
             ),
           ),
@@ -600,8 +612,13 @@ class _H2HCardState extends ConsumerState<H2HCard> {
   // ---------------------------------------------------------------------------
   // Filter Pill Button
   // ---------------------------------------------------------------------------
-  Widget _buildFilterPill(String label, String gameKey) {
-    final isSelected = _selectedGame == gameKey;
+  Widget _buildFilterPill(
+    String label,
+    String gameKey,
+    String selectedGame,
+    ValueChanged<String> onSelect,
+  ) {
+    final isSelected = selectedGame == gameKey;
 
     return Material(
       color: isSelected ? Colors.white : const Color(0xFF1E2638),
@@ -609,7 +626,7 @@ class _H2HCardState extends ConsumerState<H2HCard> {
       child: InkWell(
         onTap: () {
           HapticFeedback.selectionClick();
-          setState(() => _selectedGame = gameKey);
+          onSelect(gameKey);
         },
         borderRadius: BorderRadius.circular(16.0),
         child: Container(
@@ -637,7 +654,11 @@ class _H2HCardState extends ConsumerState<H2HCard> {
   // ---------------------------------------------------------------------------
   // Single Match Row in Full List
   // ---------------------------------------------------------------------------
-  Widget _buildMatchRow(BuildContext context, MatchSummary summary) {
+  Widget _buildMatchRow(
+    BuildContext context,
+    WidgetRef ref,
+    MatchSummary summary,
+  ) {
     final allMatches = ref.read(userMatchesProvider).value ?? const [];
     final originalMatch =
         allMatches.where((m) => m.id == summary.matchId).firstOrNull;
@@ -830,8 +851,18 @@ class _H2HCardState extends ConsumerState<H2HCard> {
     if (isYesterday) return 'Yesterday · $hour:$minute';
 
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}';
   }
