@@ -27,6 +27,7 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
 import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
 import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// Flutter HUD over the Flame canvas: GamePigeon-style scoreboard, the live
 /// status pill and turn banner (online), and the set-end card. Each piece
@@ -352,6 +353,9 @@ class _SetEnd extends HookConsumerWidget {
       autoContinueSeconds: online != null ? 5 : null,
       secondaryLabel: secondaryLabel,
       onSecondary: onSecondary,
+      onViewRecap: (s.matchOver && endDoc != null)
+          ? () => ResultsSheet.show(context, endDoc)
+          : null,
     );
   }
 }
@@ -565,12 +569,11 @@ class _PlayerBadge extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               effectiveAvatar,
-              if (sets > 0)
-                Positioned(
-                  right: -5.0,
-                  bottom: -3.0,
-                  child: _SetCoinTracker(count: sets),
-                ),
+              Positioned(
+                right: -5.0,
+                bottom: -3.0,
+                child: _SetCoinTracker(count: sets),
+              ),
             ],
           ),
           const SizedBox(height: 3.0),
@@ -683,12 +686,16 @@ class _SetCoinTracker extends StatefulWidget {
 }
 
 class _SetCoinTrackerState extends State<_SetCoinTracker> {
-  late int _gain = widget.count;
+  late int _gain = 0;
 
   @override
   void didUpdateWidget(_SetCoinTracker old) {
     super.didUpdateWidget(old);
-    if (widget.count > old.count) _gain = widget.count - old.count;
+    if (widget.count > old.count) {
+      _gain = widget.count - old.count;
+    } else {
+      _gain = 0;
+    }
   }
 
   @override
@@ -715,8 +722,8 @@ class _SetCoin extends StatelessWidget {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            Transform.scale(scale: 0.3 + 0.7 * pop, child: coin),
-            if (t < 1.0)
+            Transform.scale(scale: count > 0 ? (0.3 + 0.7 * pop) : 1.0, child: coin),
+            if (t < 1.0 && gain > 0)
               Positioned(
                 top: -14.0 - 22.0 * rise,
                 child: Opacity(
@@ -741,17 +748,26 @@ class _SetCoin extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.3, -0.4),
-            colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFB45309)],
-            stops: [0.0, 0.6, 1.0],
+          gradient: count > 0
+              ? const RadialGradient(
+                  center: Alignment(-0.3, -0.4),
+                  colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFB45309)],
+                  stops: [0.0, 0.6, 1.0],
+                )
+              : const RadialGradient(
+                  center: Alignment(-0.3, -0.4),
+                  colors: [Color(0xFF334155), Color(0xFF1E293B), Color(0xFF0F172A)],
+                  stops: [0.0, 0.6, 1.0],
+                ),
+          border: Border.all(
+            color: count > 0 ? const Color(0xFF0A0E1A) : const Color(0xFF475569),
+            width: 1.5,
           ),
-          border: Border.all(color: const Color(0xFF0A0E1A), width: 1.5),
         ),
         child: Text(
           '$count',
-          style: const TextStyle(
-            color: Color(0xFF3B1F04),
+          style: TextStyle(
+            color: count > 0 ? const Color(0xFF3B1F04) : const Color(0xFF94A3B8),
             fontSize: 10.5,
             fontWeight: FontWeight.w900,
           ),
