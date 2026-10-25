@@ -46,13 +46,13 @@ class GameHudOverlay extends StatelessWidget {
 
   /// Your avatar opens the profile sheet: what's waiting, friends, matches.
   Future<void> _openDrawer(BuildContext context) => ProfileSheet.show(
-        context,
-        onOpenMatch: (m) =>
-            game.startCloudMatch(m, AuthService.instance.currentUser?.uid ?? ''),
-        onOpenMatches: () => _handleInboxTapped(context),
-        onPlayFriend: () => MatchInboxSheet.playAFriend(context, game: game),
-        onHowToPlay: () => _handleHelpTapped(context),
-      );
+    context,
+    onOpenMatch: (m) =>
+        game.startCloudMatch(m, AuthService.instance.currentUser?.uid ?? ''),
+    onOpenMatches: () => _handleInboxTapped(context),
+    onPlayFriend: () => MatchInboxSheet.playAFriend(context, game: game),
+    onHowToPlay: () => _handleHelpTapped(context),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +149,8 @@ class GameHudOverlay extends StatelessWidget {
               game.isTourActiveNotifier,
             ]),
             builder: (context, _) {
-              final isModalOrInactive = game.matchSessionNotifier.value != null ||
+              final isModalOrInactive =
+                  game.matchSessionNotifier.value != null ||
                   game.isPausedNotifier.value ||
                   game.gameStateNotifier.value == GameModeState.gameOver ||
                   game.gameStateNotifier.value == GameModeState.replay ||
@@ -157,9 +158,7 @@ class GameHudOverlay extends StatelessWidget {
 
               if (isModalOrInactive) return const SizedBox.shrink();
 
-              return LobbyPill(
-                onTap: () => GoRouter.maybeOf(context)?.go('/'),
-              );
+              return LobbyPill(onTap: () => GoRouter.maybeOf(context)?.go('/'));
             },
           ),
         ),
@@ -176,7 +175,8 @@ class GameHudOverlay extends StatelessWidget {
               game.isTourActiveNotifier,
             ]),
             builder: (context, _) {
-              final isModalOrInactive = game.matchSessionNotifier.value != null ||
+              final isModalOrInactive =
+                  game.matchSessionNotifier.value != null ||
                   game.isPausedNotifier.value ||
                   game.gameStateNotifier.value == GameModeState.gameOver ||
                   game.gameStateNotifier.value == GameModeState.replay ||
