@@ -3,27 +3,27 @@ import 'dart:math' as math;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-import 'archery_constants.dart';
-import 'audio/archery_audio.dart';
-import 'camera/archery_camera.dart';
-import 'camera/camera_rig.dart';
-import 'components/bow_overlay.dart';
-import 'components/distance_tag.dart';
-import 'components/flying_arrow.dart';
-import 'components/hit_popup_canvas.dart';
-import 'components/range_background.dart';
-import 'components/stuck_arrow.dart';
-import 'components/target_board.dart';
-import 'components/wind_pill.dart';
-import 'input/draw_aim_controller.dart';
-import 'online/archery_live_event.dart';
-import 'online/archery_online_controller.dart';
-import 'physics/arrow_physics.dart';
-import 'physics/sight_solver.dart';
-import 'physics/target_scoring.dart';
-import 'physics/wind_model.dart';
-import 'state/archery_match_notifier.dart';
-import 'state/archery_match_state.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/audio/archery_audio.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/components/bow_overlay.dart';
+import 'package:b_ball/archery/components/distance_tag.dart';
+import 'package:b_ball/archery/components/flying_arrow.dart';
+import 'package:b_ball/archery/components/hit_popup_canvas.dart';
+import 'package:b_ball/archery/components/range_background.dart';
+import 'package:b_ball/archery/components/stuck_arrow.dart';
+import 'package:b_ball/archery/components/target_board.dart';
+import 'package:b_ball/archery/components/wind_pill.dart';
+import 'package:b_ball/archery/input/draw_aim_controller.dart';
+import 'package:b_ball/archery/online/archery_live_event.dart';
+import 'package:b_ball/archery/online/archery_online_controller.dart';
+import 'package:b_ball/archery/physics/arrow_physics.dart';
+import 'package:b_ball/archery/physics/sight_solver.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/physics/wind_model.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
 
 /// Flame game for the 50 ft GamePigeon-style archery range.
 ///

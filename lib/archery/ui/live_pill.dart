@@ -5,8 +5,8 @@ import 'package:b_ball/archery/archery_game.dart';
 import 'package:b_ball/archery/state/archery_match_notifier.dart';
 import 'package:b_ball/archery/state/archery_match_state.dart';
 import 'package:b_ball/archery/state/archery_players.dart';
-import 'claim_button.dart';
-import 'pulse.dart';
+import 'package:b_ball/archery/ui/claim_button.dart';
+import 'package:b_ball/archery/ui/pulse.dart';
 
 /// Online status under the scoreboard: your shot clock, or what the
 /// opponent is doing. Archery's own pill (not basketball's).

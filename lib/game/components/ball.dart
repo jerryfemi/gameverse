@@ -15,8 +15,8 @@ import 'package:b_ball/game/physics/perspective_camera.dart';
 import 'package:b_ball/game/physics/launch_solver.dart';
 import 'package:b_ball/game/fx/glow_sprite.dart';
 import 'package:b_ball/game/fx/streak_celebration.dart' show streakTierFor;
-import 'fiery_trail.dart';
-import 'wall_impact_puff.dart';
+import 'package:b_ball/game/components/fiery_trail.dart';
+import 'package:b_ball/game/components/wall_impact_puff.dart';
 
 /// Basketball component featuring true 3D projectile kinematics,
 /// exact 3D Torus rim collision, backboard glass bounce, hardwood floor roll,

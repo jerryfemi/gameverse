@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import 'app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// In-container feedback primitives that replace floating SnackBars.
 ///

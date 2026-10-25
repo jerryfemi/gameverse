@@ -4,7 +4,7 @@ import 'package:b_ball/archery/state/archery_rules.dart';
 import 'package:b_ball/darts/state/darts_rules.dart';
 import 'package:b_ball/game/physics/shot_difficulty.dart';
 import 'package:b_ball/game/telemetry/shot_telemetry.dart';
-import 'player_descriptor.dart';
+import 'package:b_ball/models/player_descriptor.dart';
 
 /// Status state of a remote cloud match.
 enum MatchStatus {

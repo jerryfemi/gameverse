@@ -9,7 +9,7 @@ import 'package:b_ball/archery/physics/target_scoring.dart';
 import 'package:b_ball/archery/state/archery_match_notifier.dart';
 import 'package:b_ball/archery/state/archery_match_state.dart';
 import 'package:b_ball/archery/state/archery_rules.dart';
-import 'archery_live_event.dart';
+import 'package:b_ball/archery/online/archery_live_event.dart';
 
 /// What the online controller drives in the Flame game.
 abstract interface class ArcheryOnlineGame {

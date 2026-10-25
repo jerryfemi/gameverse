@@ -18,9 +18,9 @@ import 'package:b_ball/social/ui/common/crown_avatar.dart';
 import 'package:b_ball/social/ui/common/game_chip.dart';
 import 'package:b_ball/social/ui/common/verdict_banner.dart';
 import 'package:b_ball/social/ui/in_game/h2h_card.dart';
-import 'archery_results_body.dart';
-import 'darts_results_body.dart';
-import 'hoops_results_body.dart';
+import 'package:b_ball/social/ui/results/archery_results_body.dart';
+import 'package:b_ball/social/ui/results/darts_results_body.dart';
+import 'package:b_ball/social/ui/results/hoops_results_body.dart';
 
 /// Full-screen modern match recap modal sheet displaying comprehensive scores,
 /// player performance analytics, and instant rematch triggers without launching Flame.

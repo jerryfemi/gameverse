@@ -10,7 +10,7 @@ import 'package:b_ball/darts/online/darts_online_controller.dart';
 import 'package:b_ball/darts/state/darts_match_notifier.dart';
 import 'package:b_ball/darts/state/darts_match_state.dart';
 import 'package:b_ball/darts/state/darts_players.dart';
-import 'darts_live_pill.dart';
+import 'package:b_ball/darts/ui/darts_live_pill.dart';
 
 /// Flutter HUD overlay over the Darts Flame canvas.
 ///

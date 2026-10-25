@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
-import 'game_over/game_over_header.dart';
-import 'game_over/game_over_stats_grid.dart';
-import 'game_over/play_again_button.dart';
-import 'game_over/see_replay_button.dart';
-import 'inbox/match_inbox_sheet.dart';
+import 'package:b_ball/game/ui/game_over/game_over_header.dart';
+import 'package:b_ball/game/ui/game_over/game_over_stats_grid.dart';
+import 'package:b_ball/game/ui/game_over/play_again_button.dart';
+import 'package:b_ball/game/ui/game_over/see_replay_button.dart';
+import 'package:b_ball/game/ui/inbox/match_inbox_sheet.dart';
 
 /// Celebratory Game Over recap modal shown when the 60-second round clock expires.
 class GameOverOverlay extends HookWidget {

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
-import 'audio_backend.dart';
+import 'package:b_ball/game/audio/audio_backend.dart';
 
 AudioBackend createAudioBackend() => SoLoudBackend();
 

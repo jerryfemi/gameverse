@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:b_ball/services/auth_service.dart';
-import 'app_avatar.dart';
-import 'inline_feedback.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
 /// Standalone dialog for viewing and updating player display name and avatar.
 /// Used in the GameVerse lobby account chip and in MatchInboxSheet.

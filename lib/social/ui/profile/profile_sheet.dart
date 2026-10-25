@@ -10,14 +10,14 @@ import 'package:b_ball/providers/app_providers.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/social/ui/common/section_label.dart';
 import 'package:b_ball/social/ui/tiles/active_match_tile.dart';
-import 'friends_page.dart';
-import 'matches_page.dart';
-import 'widgets/profile_friends_row.dart';
-import 'widgets/profile_header.dart';
-import 'widgets/profile_menu_rows.dart';
-import 'widgets/profile_shortcut_tiles.dart';
-import 'widgets/profile_stat_tiles.dart';
-import 'widgets/sound_settings_modal.dart';
+import 'package:b_ball/social/ui/profile/friends_page.dart';
+import 'package:b_ball/social/ui/profile/matches_page.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_friends_row.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_header.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_menu_rows.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_shortcut_tiles.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_stat_tiles.dart';
+import 'package:b_ball/social/ui/profile/widgets/sound_settings_modal.dart';
 
 /// Full-screen modern Profile Sheet adhering to Artboard 9 of GameVerse design.
 ///

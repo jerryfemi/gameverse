@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/models/player_descriptor.dart';
-import 'app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Centralized, high-performance avatar widget for the entire application.
 ///

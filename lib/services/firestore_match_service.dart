@@ -13,9 +13,9 @@ import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/models/live_reaction_event.dart';
 import 'package:b_ball/models/match_invite.dart';
-import 'auth_service.dart';
-import 'friends_service.dart';
-import 'update/update_platform.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/services/update/update_platform.dart';
 
 /// Exception thrown when no match document exists for the requested join code.
 /// [FirestoreMatchService.createMatch] with a fixed code found the room taken.

@@ -15,10 +15,10 @@ import 'package:b_ball/game/basketball_game.dart';
 import 'package:b_ball/game/match/match_session.dart';
 import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
-import 'match_setup_dialog.dart';
-import 'podium/podium_score_matrix.dart';
-import 'podium/podium_stats_comparison.dart';
-import 'podium/podium_trophy_header.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/game/ui/match/podium/podium_score_matrix.dart';
+import 'package:b_ball/game/ui/match/podium/podium_stats_comparison.dart';
+import 'package:b_ball/game/ui/match/podium/podium_trophy_header.dart';
 
 /// Grand celebration podium overlay shown upon match conclusion.
 class MatchWinnerPodiumOverlay extends HookConsumerWidget {

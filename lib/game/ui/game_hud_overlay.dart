@@ -5,23 +5,24 @@ import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/game/basketball_game.dart';
 import 'package:b_ball/game/match/match_session.dart';
 import 'package:b_ball/services/update/update_service.dart';
-import 'common/update_available_banner.dart';
-import 'floating_score_toast.dart';
-import 'game_over_overlay.dart';
-import 'game_rules_dialog.dart';
-import 'match/match_winner_podium_overlay.dart';
-import 'match/round_intermission_overlay.dart';
-import 'pause_overlay.dart';
-import 'replay_hud_overlay.dart';
-import 'inbox/match_inbox_sheet.dart';
-import 'stadium_scoreboard.dart';
-import 'tour/onboarding_tour_overlay.dart';
+import 'package:b_ball/game/ui/common/update_available_banner.dart';
+import 'package:b_ball/game/ui/floating_score_toast.dart';
+import 'package:b_ball/game/ui/game_over_overlay.dart';
+import 'package:b_ball/game/ui/game_rules_dialog.dart';
+import 'package:b_ball/game/ui/match/match_winner_podium_overlay.dart';
+import 'package:b_ball/game/ui/match/round_intermission_overlay.dart';
+import 'package:b_ball/game/ui/pause_overlay.dart';
+import 'package:b_ball/game/ui/replay_hud_overlay.dart';
+import 'package:b_ball/game/ui/inbox/match_inbox_sheet.dart';
+import 'package:b_ball/game/ui/stadium_scoreboard.dart';
+import 'package:b_ball/game/ui/tour/onboarding_tour_overlay.dart';
 import 'package:b_ball/notifications/notice_stack.dart';
-import 'common/lobby_pill.dart';
-import 'play_friend_button.dart';
-import 'match/live_spectator_status_pill.dart';
-import 'match/live_turn_transition_overlay.dart';
-import 'reactions/live_floating_reactions_overlay.dart';
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
+import 'package:b_ball/game/ui/common/lobby_pill.dart';
+import 'package:b_ball/game/ui/play_friend_button.dart';
+import 'package:b_ball/game/ui/match/live_spectator_status_pill.dart';
+import 'package:b_ball/game/ui/match/live_turn_transition_overlay.dart';
+import 'package:b_ball/game/ui/reactions/live_floating_reactions_overlay.dart';
 
 /// Top-level Game HUD Overlay mounted via Flame's [GameWidget.overlayBuilderMap].
 class GameHudOverlay extends StatelessWidget {
@@ -43,8 +44,8 @@ class GameHudOverlay extends StatelessWidget {
   Future<void> _handleInboxTapped(BuildContext context) =>
       MatchInboxSheet.openWithGame(context, game: game);
 
-  /// Your avatar opens the profile drawer: what's waiting, friends, matches.
-  Future<void> _openDrawer(BuildContext context) => ProfileDrawer.show(
+  /// Your avatar opens the profile sheet: what's waiting, friends, matches.
+  Future<void> _openDrawer(BuildContext context) => ProfileSheet.show(
         context,
         onOpenMatch: (m) =>
             game.startCloudMatch(m, AuthService.instance.currentUser?.uid ?? ''),

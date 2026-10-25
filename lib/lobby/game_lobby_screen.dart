@@ -7,13 +7,13 @@ import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/notifications/app_notices.dart';
 import 'package:b_ball/notifications/notice_stack.dart';
-import 'game_catalog.dart';
-import 'lobby_style.dart';
-import 'widgets/active_matches_banner.dart';
-import 'widgets/featured_hero.dart';
-import 'widgets/game_card.dart';
-import 'widgets/lobby_header.dart';
-import 'widgets/made_by_footer.dart';
+import 'package:b_ball/lobby/game_catalog.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
+import 'package:b_ball/lobby/widgets/active_matches_banner.dart';
+import 'package:b_ball/lobby/widgets/featured_hero.dart';
+import 'package:b_ball/lobby/widgets/game_card.dart';
+import 'package:b_ball/lobby/widgets/lobby_header.dart';
+import 'package:b_ball/lobby/widgets/made_by_footer.dart';
 
 /// The GameVerse lobby (`/games`): jersey wordmark and account chip, a
 /// banner that slides through the games (featured one first), your running

@@ -1,4 +1,4 @@
-import 'player_descriptor.dart';
+import 'package:b_ball/models/player_descriptor.dart';
 
 /// Lightweight profile representation of an in-game friend.
 class FriendProfile implements PlayerDescriptor {

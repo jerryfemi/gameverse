@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Centralized, high-contrast text field for modal forms and search bars.
 ///

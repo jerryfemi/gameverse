@@ -6,7 +6,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 
 import 'package:b_ball/lobby/game_catalog.dart';
 import 'package:b_ball/lobby/lobby_style.dart';
-import 'pressable.dart';
+import 'package:b_ball/lobby/widgets/pressable.dart';
 
 /// The banner at the top of the lobby: one slide per game, featured game
 /// first. Swipe (or drag with a mouse) to move between them; it also moves

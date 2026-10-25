@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
-import 'common/app_button.dart';
-import 'common/app_colors.dart';
-import 'common/app_modal_dialog.dart';
+import 'package:b_ball/game/ui/common/app_button.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
 
 /// Displays the collegiate "HOW TO PLAY" rules dialog.
 Future<void> showGameRulesDialog(BuildContext context, {BasketballGame? game}) {

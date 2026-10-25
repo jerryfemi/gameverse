@@ -3,7 +3,7 @@ import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 import 'package:b_ball/game/physics/perspective_camera.dart';
 import 'package:b_ball/game/telemetry/shot_telemetry.dart';
-import 'ball.dart';
+import 'package:b_ball/game/components/ball.dart';
 
 /// Translucent replay basketball that extends [Basketball], inheriting
 /// 100% of the authentic GLSL fragment shader, 3D perspective foreshortening,

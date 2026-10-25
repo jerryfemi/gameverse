@@ -19,18 +19,18 @@ import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/models/player_descriptor.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
-import 'audio/darts_audio.dart';
-import 'darts_constants.dart';
-import 'darts_game.dart';
-import 'online/darts_online_controller.dart';
-import 'state/darts_match_notifier.dart';
-import 'state/darts_players.dart';
-import 'state/darts_rules.dart';
-import 'ui/darts_hud.dart';
-import 'ui/darts_pause_menu.dart';
-import 'ui/darts_result_card.dart';
-import 'ui/darts_tour.dart';
-import 'ui/darts_turn_banner.dart';
+import 'package:b_ball/darts/audio/darts_audio.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/darts_game.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/darts/ui/darts_hud.dart';
+import 'package:b_ball/darts/ui/darts_pause_menu.dart';
+import 'package:b_ball/darts/ui/darts_result_card.dart';
+import 'package:b_ball/darts/ui/darts_tour.dart';
+import 'package:b_ball/darts/ui/darts_turn_banner.dart';
 
 /// Full-screen Darts 301: solo vs bot (`/darts`), or live online 1v1 (`/match/:id`).
 ///

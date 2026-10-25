@@ -18,7 +18,7 @@ import 'package:b_ball/game/ui/common/clean_ui.dart';
 import 'package:b_ball/game/ui/common/difficulty_stepped_slider.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
 import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
-import 'components/friend_selector_ribbon.dart';
+import 'package:b_ball/game/ui/match/components/friend_selector_ribbon.dart';
 
 /// "Play a friend": create a 1v1 match (share a code or challenge a friend)
 /// or join one with a code. Same clean look as the archery pause menu, for

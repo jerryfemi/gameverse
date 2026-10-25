@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:b_ball/archery/camera/camera_rig.dart';
 import 'package:b_ball/archery/physics/target_scoring.dart';
-import 'archery_rules.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 
 /// Who is shooting the current set.
 enum ArcheryShooter { you, opponent }

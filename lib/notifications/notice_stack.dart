@@ -11,7 +11,7 @@ import 'package:b_ball/game/ui/match/incoming_challenge_dialog.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/providers/app_providers.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
-import 'app_notices.dart';
+import 'package:b_ball/notifications/app_notices.dart';
 
 /// Colour and icon per source, shared by chips and bubbles.
 abstract final class NoticeStyle {

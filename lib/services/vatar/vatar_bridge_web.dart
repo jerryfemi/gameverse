@@ -2,7 +2,7 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'package:flutter/foundation.dart';
 
-import 'vatar_models.dart';
+import 'package:b_ball/services/vatar/vatar_models.dart';
 
 /// Web implementation of the Lagos Life / Vatar Games SDK bridge using modern dart:js_interop.
 class VatarPlatformBridge {

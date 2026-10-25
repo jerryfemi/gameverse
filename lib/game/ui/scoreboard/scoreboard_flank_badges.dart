@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/game/basketball_game.dart';
 
-export 'scoreboard_opponent_avatar.dart';
-export 'scoreboard_player_avatar.dart';
+export 'package:b_ball/game/ui/scoreboard/scoreboard_opponent_avatar.dart';
+export 'package:b_ball/game/ui/scoreboard/scoreboard_player_avatar.dart';
 
 /// Flanking help button pill with "?" icon.
 class ScoreboardHelpBadge extends StatelessWidget {

@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:b_ball/darts/darts_constants.dart';
 import 'package:b_ball/darts/scene/board_projection.dart';
-import 'dart_sprites.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
 
 /// Draws a dart in 3D from the angle-sweep sprite sheet.
 ///

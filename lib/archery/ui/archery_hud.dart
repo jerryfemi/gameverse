@@ -20,9 +20,9 @@ import 'package:b_ball/archery/camera/camera_rig.dart';
 import 'package:b_ball/archery/state/archery_match_notifier.dart';
 import 'package:b_ball/archery/state/archery_match_state.dart';
 import 'package:b_ball/archery/state/archery_players.dart';
-import 'live_pill.dart';
-import 'round_summary.dart';
-import 'turn_banner.dart';
+import 'package:b_ball/archery/ui/live_pill.dart';
+import 'package:b_ball/archery/ui/round_summary.dart';
+import 'package:b_ball/archery/ui/turn_banner.dart';
 
 /// Flutter HUD over the Flame canvas: GamePigeon-style scoreboard, the live
 /// status pill and turn banner (online), and the set-end card. Each piece

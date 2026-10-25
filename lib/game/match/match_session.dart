@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/player_descriptor.dart';
 import 'package:b_ball/game/telemetry/shot_telemetry.dart';
-import 'match_config.dart';
+import 'package:b_ball/game/match/match_config.dart';
 
-export 'match_config.dart';
+export 'package:b_ball/game/match/match_config.dart';
 
 /// Game modes supported by the basketball engine.
 enum MatchGameMode { solo, passAndPlay1v1, onlineCloud1v1 }

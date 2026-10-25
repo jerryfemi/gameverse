@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'vatar_models.dart';
+import 'package:b_ball/services/vatar/vatar_models.dart';
 
 /// Non-web fallback stub for platforms where Lagos Life iframe bridge is unavailable.
 class VatarPlatformBridge {

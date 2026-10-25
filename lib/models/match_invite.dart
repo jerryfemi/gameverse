@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'player_descriptor.dart';
+import 'package:b_ball/models/player_descriptor.dart';
 
 /// Status state of a 1v1 match invitation / challenge.
 enum MatchInviteStatus {

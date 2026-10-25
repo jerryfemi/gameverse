@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:b_ball/lobby/lobby_style.dart';
-import 'pressable.dart';
+import 'package:b_ball/lobby/widgets/pressable.dart';
 
 /// Bottom of the lobby: who made GameVerse and where to find him.
 class MadeByFooter extends StatelessWidget {

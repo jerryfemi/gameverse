@@ -3,24 +3,24 @@ import 'dart:ui';
 
 import 'package:flame/game.dart';
 
-import 'audio/darts_audio.dart';
-import 'components/board_backdrop.dart';
-import 'components/dartboard.dart';
-import 'components/dart_sprites.dart';
-import 'components/flying_dart.dart';
-import 'components/hit_popup_canvas.dart';
-import 'components/resting_dart.dart';
-import 'components/stuck_dart.dart';
-import 'darts_constants.dart';
-import 'input/flick_controller.dart';
-import 'online/darts_live_event.dart';
-import 'online/darts_online_controller.dart';
-import 'physics/dart_scoring.dart';
-import 'physics/flick_solver.dart';
-import 'scene/board_projection.dart';
-import 'state/darts_bot.dart';
-import 'state/darts_match_notifier.dart';
-import 'state/darts_rules.dart';
+import 'package:b_ball/darts/audio/darts_audio.dart';
+import 'package:b_ball/darts/components/board_backdrop.dart';
+import 'package:b_ball/darts/components/dartboard.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
+import 'package:b_ball/darts/components/flying_dart.dart';
+import 'package:b_ball/darts/components/hit_popup_canvas.dart';
+import 'package:b_ball/darts/components/resting_dart.dart';
+import 'package:b_ball/darts/components/stuck_dart.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/input/flick_controller.dart';
+import 'package:b_ball/darts/online/darts_live_event.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/physics/flick_solver.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
+import 'package:b_ball/darts/state/darts_bot.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
 
 /// Flame game engine for Darts 301.
 ///

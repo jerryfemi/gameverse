@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'ui_font.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
 
 /// "‹ Lobby": a labelled way back to the GameVerse lobby, top-left in every
 /// game. Words beat an icon here; players didn't recognise the old grid icon.

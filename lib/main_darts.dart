@@ -5,15 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'darts/darts_constants.dart';
-import 'darts/darts_game.dart';
-import 'darts/state/darts_match_notifier.dart';
-import 'darts/ui/darts_hud.dart';
-import 'darts/ui/darts_pause_menu.dart';
-import 'darts/ui/darts_result_card.dart';
-import 'darts/ui/darts_tour.dart';
-import 'darts/ui/darts_turn_banner.dart';
-import 'game/audio/audio_engine.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/darts_game.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/ui/darts_hud.dart';
+import 'package:b_ball/darts/ui/darts_pause_menu.dart';
+import 'package:b_ball/darts/ui/darts_result_card.dart';
+import 'package:b_ball/darts/ui/darts_tour.dart';
+import 'package:b_ball/darts/ui/darts_turn_banner.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

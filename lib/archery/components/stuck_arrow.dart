@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:b_ball/archery/archery_constants.dart';
 import 'package:b_ball/archery/camera/archery_camera.dart';
-import 'arrow_renderer.dart';
+import 'package:b_ball/archery/components/arrow_renderer.dart';
 
 /// Renders an arrow embedded in the target boss with damped tail quiver using the unified 3D arrow renderer.
 class StuckArrow {

@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'room_geometry.dart';
+import 'package:b_ball/game/components/background/room_geometry.dart';
 
 /// Renders the authentic GamePigeon hardwood court floor:
 /// - Supports both photorealistic blonde maple wood texture ([assets/images/court_floor_blonde.jpg])

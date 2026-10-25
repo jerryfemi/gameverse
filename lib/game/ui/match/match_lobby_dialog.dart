@@ -12,7 +12,7 @@ import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:b_ball/game/ui/common/app_colors.dart';
 import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
-import 'components/match_lobby_vs_card.dart';
+import 'package:b_ball/game/ui/match/components/match_lobby_vs_card.dart';
 
 /// Pre-match lobby waiting room presented to the host while waiting for an opponent.
 ///

@@ -4,8 +4,8 @@ import 'package:flame/components.dart';
 
 import 'package:b_ball/darts/darts_constants.dart';
 import 'package:b_ball/darts/scene/board_projection.dart';
-import 'dart_renderer.dart';
-import 'dart_sprites.dart';
+import 'package:b_ball/darts/components/dart_renderer.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
 
 /// The dart in your hand, drawn in 3D at the release point: big, near the
 /// bottom of the screen, pointing up at the board so its body shows, with

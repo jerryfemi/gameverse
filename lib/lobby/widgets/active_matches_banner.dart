@@ -9,7 +9,7 @@ import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/providers/app_providers.dart';
 import 'package:b_ball/lobby/game_catalog.dart';
 import 'package:b_ball/lobby/lobby_style.dart';
-import 'pressable.dart';
+import 'package:b_ball/lobby/widgets/pressable.dart';
 import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// "Your matches": the running matches (your turn first), each one tap away

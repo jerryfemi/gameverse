@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'audio_backend.dart';
+import 'package:b_ball/game/audio/audio_backend.dart';
 
 /// Represents a background soundtrack item with instant-start bundled asset support.
 class MusicTrack {

@@ -14,20 +14,20 @@ import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/models/player_descriptor.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
-import 'archery_game.dart';
-import 'audio/archery_audio.dart';
-import 'camera/camera_rig.dart';
-import 'online/archery_online_controller.dart';
-import 'state/archery_match_notifier.dart';
-import 'state/archery_players.dart';
-import 'state/archery_rules.dart';
-import 'ui/archery_hud.dart';
-import 'ui/archery_match_bar.dart';
-import 'ui/archery_pause_menu.dart';
+import 'package:b_ball/archery/archery_game.dart';
+import 'package:b_ball/archery/audio/archery_audio.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/online/archery_online_controller.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_players.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/archery/ui/archery_hud.dart';
+import 'package:b_ball/archery/ui/archery_match_bar.dart';
+import 'package:b_ball/archery/ui/archery_pause_menu.dart';
 import 'package:b_ball/game/ui/common/lobby_pill.dart';
 import 'package:b_ball/notifications/notice_stack.dart';
 import 'package:b_ball/social/ui/profile/profile_sheet.dart';
-import 'ui/archery_tour.dart';
+import 'package:b_ball/archery/ui/archery_tour.dart';
 
 /// Full-screen archery: solo against the bot (`/archery`), or a live online
 /// match when [match] is given (`/match/:id`).

@@ -2,13 +2,13 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'archery/archery_game_screen.dart';
-import 'darts/darts_game_screen.dart';
-import 'game/audio/audio_engine.dart';
-import 'game/basketball_game.dart';
-import 'game/ui/game_hud_overlay.dart';
-import 'lobby/game_lobby_screen.dart';
-import 'routes/match_route_screen.dart';
+import 'package:b_ball/archery/archery_game_screen.dart';
+import 'package:b_ball/darts/darts_game_screen.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/ui/game_hud_overlay.dart';
+import 'package:b_ball/lobby/game_lobby_screen.dart';
+import 'package:b_ball/routes/match_route_screen.dart';
 
 /// Central GameVerse GoRouter setup.
 ///

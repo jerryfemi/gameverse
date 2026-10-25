@@ -1,4 +1,4 @@
-import 'update_platform_stub.dart'
+import 'package:b_ball/services/update/update_platform_stub.dart'
     if (dart.library.html) 'update_platform_web.dart' as platform;
 
 Future<void> reloadPage() => platform.reloadPage();

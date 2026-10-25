@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:vector_math/vector_math_64.dart';
-import 'shot_difficulty.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
 
 /// Solves and calibrates the physical 3D launch velocity vector $(V_x, V_y, V_z)$
 /// for basketball trajectories based on analytic ballistic kinematics.

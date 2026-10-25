@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'room_geometry.dart';
+import 'package:b_ball/game/components/background/room_geometry.dart';
 
 /// Renders the authentic GamePigeon exposed red clay brick gym back wall:
 /// - Supports both photorealistic seamless 3D brick texture ([assets/images/brick_wall.jpg])

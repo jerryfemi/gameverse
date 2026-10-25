@@ -12,7 +12,7 @@ import 'package:b_ball/game/basketball_game.dart';
 import 'package:b_ball/game/match/match_session.dart';
 import 'package:b_ball/game/performance/adaptive_quality.dart';
 import 'package:b_ball/game/physics/shot_difficulty.dart';
-import 'common/difficulty_stepped_slider.dart';
+import 'package:b_ball/game/ui/common/difficulty_stepped_slider.dart';
 
 /// Frosted obsidian glass Pause Overlay displayed when mid-round action is paused.
 class PauseOverlay extends HookWidget {

@@ -14,7 +14,7 @@ import 'package:b_ball/notifications/app_notices.dart';
 import 'package:b_ball/providers/app_providers.dart';
 import 'package:b_ball/social/ui/results/results_sheet.dart';
 import 'package:b_ball/lobby/lobby_style.dart';
-import 'pressable.dart';
+import 'package:b_ball/lobby/widgets/pressable.dart';
 
 /// Lobby account chip: avatar and name (avatar only when [compact]). Tapping
 /// it opens the profile editor.

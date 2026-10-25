@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import 'room_geometry.dart';
+import 'package:b_ball/game/components/background/room_geometry.dart';
 
 /// Baked arena lighting (drawn once into the background texture, so it costs
 /// nothing per frame):

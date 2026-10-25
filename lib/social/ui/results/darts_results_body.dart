@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:b_ball/darts/state/darts_rules.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/social/ui/common/section_label.dart';
-import 'race_to_zero_chart.dart';
+import 'package:b_ball/social/ui/results/race_to_zero_chart.dart';
 
 /// Darts 301 match recap body presenting the Race-to-Zero trajectory
 /// and 3-column head-to-head performance statistics.
