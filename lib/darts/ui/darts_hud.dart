@@ -11,6 +11,7 @@ import 'package:b_ball/darts/state/darts_match_notifier.dart';
 import 'package:b_ball/darts/state/darts_match_state.dart';
 import 'package:b_ball/darts/state/darts_players.dart';
 import 'package:b_ball/darts/ui/darts_live_pill.dart';
+import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flutter HUD overlay over the Darts Flame canvas.
 ///
@@ -91,59 +92,60 @@ class DartsHud extends ConsumerWidget {
             ),
 
             // ── Bottom Bar: P1 and Opponent Remaining Score Badges ───────────
-            IgnorePointer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Player 1 (You) Badge. Sizes are scaled for real (so the
-                  // layout shrinks too); FittedBox is a last guard for long
-                  // names on tiny screens.
-                  Flexible(
-                    child: Align(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Player 1 (You) Badge. Sizes are scaled for real (so the
+                // layout shrinks too); FittedBox is a last guard for long
+                // names on tiny screens.
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.bottomLeft,
+                      child: IgnorePointer(
                         child: _ScoreBadge(
-                    scale: s,
-                    player: players.you,
-                    remaining: state.yourRemaining,
-                    turnScore: state.thrower == DartsThrower.you
-                        ? state.turnScore
-                        : 0,
-                    isActive: state.thrower == DartsThrower.you,
-                    glowColor: const Color(DartsK.accentP1),
-                    isLeft: true,
-                  ),
+                          scale: s,
+                          player: players.you,
+                          remaining: state.yourRemaining,
+                          turnScore: state.thrower == DartsThrower.you
+                              ? state.turnScore
+                              : 0,
+                          isActive: state.thrower == DartsThrower.you,
+                          glowColor: const Color(DartsK.accentP1),
+                          isLeft: true,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.0 * s),
+                ),
+                SizedBox(width: 12.0 * s),
 
-                  // Opponent Badge
-                  Flexible(
-                    child: Align(
+                // Opponent Badge
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomRight,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.bottomRight,
-                        child: _ScoreBadge(
-                    scale: s,
-                    player: players.opponent,
-                    remaining: state.theirRemaining,
-                    turnScore: state.thrower == DartsThrower.opponent
-                        ? state.turnScore
-                        : 0,
-                    isActive: state.thrower == DartsThrower.opponent,
-                    glowColor: const Color(DartsK.accentP2),
-                    isLeft: false,
-                  ),
+                      child: _ScoreBadge(
+                        scale: s,
+                        player: players.opponent,
+                        remaining: state.theirRemaining,
+                        turnScore: state.thrower == DartsThrower.opponent
+                            ? state.turnScore
+                            : 0,
+                        isActive: state.thrower == DartsThrower.opponent,
+                        glowColor: const Color(DartsK.accentP2),
+                        isLeft: false,
+                        matchId: online?.matchId,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -466,6 +468,7 @@ class _ScoreBadge extends StatelessWidget {
   final bool isActive;
   final Color glowColor;
   final bool isLeft;
+  final String? matchId;
 
   const _ScoreBadge({
     required this.scale,
@@ -475,6 +478,7 @@ class _ScoreBadge extends StatelessWidget {
     required this.isActive,
     required this.glowColor,
     required this.isLeft,
+    this.matchId,
   });
 
   @override
@@ -505,44 +509,38 @@ class _ScoreBadge extends StatelessWidget {
                     ),
                   ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20.0 * scale),
-            child: SizedBox(
-              // No backdrop blur here: over the live game it re-blurs every frame.
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12.0 * scale,
-                  vertical: 8.0 * scale,
-                ),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xEB0F172A)
-                      : const Color(0xCC0F172A),
-                  borderRadius: BorderRadius.circular(20.0 * scale),
-                  border: Border.all(
-                    color: isActive
-                        ? glowColor.withValues(alpha: 0.8)
-                        : const Color(0x22FFFFFF),
-                    width: isActive ? 1.8 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: isLeft
-                      ? [
-                          _buildAvatar(),
-                          SizedBox(width: 9.0 * scale),
-                          _buildNameAndScore(),
-                        ]
-                      : [
-                          _buildNameAndScore(),
-                          SizedBox(width: 9.0 * scale),
-                          _buildAvatar(),
-                        ],
-                ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.0 * scale,
+              vertical: 8.0 * scale,
+            ),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? const Color(0xEB0F172A)
+                  : const Color(0xCC0F172A),
+              borderRadius: BorderRadius.circular(20.0 * scale),
+              border: Border.all(
+                color: isActive
+                    ? glowColor.withValues(alpha: 0.8)
+                    : const Color(0x22FFFFFF),
+                width: isActive ? 1.8 : 1.0,
               ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: isLeft
+                  ? [
+                      _buildAvatar(),
+                      SizedBox(width: 9.0 * scale),
+                      _buildNameAndScore(),
+                    ]
+                  : [
+                      _buildNameAndScore(),
+                      SizedBox(width: 9.0 * scale),
+                      _buildAvatar(),
+                    ],
             ),
           ),
         ),
@@ -583,9 +581,24 @@ class _ScoreBadge extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    return AppAvatar(
+    final avatar = AppAvatar(
       avatar: player.avatar,
       size: 36.0 * scale,
+    );
+
+    if (isLeft) {
+      return avatar;
+    }
+
+    return OpponentBadgeSocial(
+      opponentUid: player.uid,
+      opponentName: player.name,
+      matchId: matchId,
+      isBot: player.isBot,
+      isLeft: false,
+      badgeBorderColor: const Color(0xFF0F172A),
+      forceAbove: true,
+      child: avatar,
     );
   }
 
