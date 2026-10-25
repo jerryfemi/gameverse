@@ -13,9 +13,11 @@ import '../../../models/player_descriptor.dart';
 import '../../../services/auth_service.dart';
 import '../../../services/firestore_match_service.dart';
 import '../../models/match_summary.dart';
+import '../../providers/social_providers.dart';
 import '../common/crown_avatar.dart';
 import '../common/game_chip.dart';
 import '../common/verdict_banner.dart';
+import '../in_game/h2h_card.dart';
 import 'archery_results_body.dart';
 import 'darts_results_body.dart';
 import 'hoops_results_body.dart';
@@ -93,7 +95,7 @@ class ResultsSheet extends ConsumerWidget {
                   const SizedBox(height: 18.0),
 
                   // 5. Head-to-Head Peek Row
-                  _buildH2HPeek(context, summary),
+                  _buildH2HPeek(context, ref, summary),
                   const SizedBox(height: 24.0),
                 ],
               ),
@@ -300,13 +302,49 @@ class ResultsSheet extends ConsumerWidget {
     return HoopsResultsBody(match: match, myUid: myUid);
   }
 
-  Widget _buildH2HPeek(BuildContext context, MatchSummary summary) {
+  Widget _buildH2HPeek(
+    BuildContext context,
+    WidgetRef ref,
+    MatchSummary summary,
+  ) {
+    final h2h = ref.watch(headToHeadProvider(summary.opponent.uid));
+
+    final String leadWord;
+    if (h2h.myWins > h2h.theirWins) {
+      leadWord = 'You lead ';
+    } else if (h2h.theirWins > h2h.myWins) {
+      leadWord = '${summary.opponent.name} leads ';
+    } else {
+      leadWord = 'Level ';
+    }
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
           HapticFeedback.lightImpact();
-          onOpenH2H?.call();
+          if (onOpenH2H != null) {
+            onOpenH2H!();
+          } else {
+            showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (sheetCtx) => SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: H2HCard.full(
+                    myUid: summary.me.uid,
+                    opponentUid: summary.opponent.uid,
+                    opponentName: summary.opponent.name,
+                    opponentAvatar: summary.opponent.avatar,
+                    myAvatar: summary.me.avatar,
+                    onCollapse: () => Navigator.of(sheetCtx).pop(),
+                  ),
+                ),
+              ),
+            );
+          }
         },
         borderRadius: BorderRadius.circular(14.0),
         child: Container(
@@ -332,19 +370,19 @@ class ResultsSheet extends ConsumerWidget {
                 child: RichText(
                   text: TextSpan(
                     style: UiFont.style(size: 12.0, weight: 700),
-                    children: const [
-                      TextSpan(text: 'You lead '),
+                    children: [
+                      TextSpan(text: leadWord),
                       TextSpan(
-                        text: '7',
-                        style: TextStyle(
+                        text: '${h2h.myWins}',
+                        style: const TextStyle(
                           color: Color(0xFF38BDF8),
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      TextSpan(text: ' – '),
+                      const TextSpan(text: ' – '),
                       TextSpan(
-                        text: '4',
-                        style: TextStyle(
+                        text: '${h2h.theirWins}',
+                        style: const TextStyle(
                           color: Color(0xFFF59E0B),
                           fontWeight: FontWeight.w900,
                         ),
