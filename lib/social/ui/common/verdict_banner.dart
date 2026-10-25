@@ -46,22 +46,22 @@ class VerdictBanner extends StatelessWidget {
           titleText,
           textAlign: TextAlign.center,
           style: UiFont.style(
-            size: 34.0,
+            size: 26.0,
             weight: 900,
             color: titleColor,
-            letterSpacing: -0.6,
-            height: 1.1,
+            letterSpacing: -0.4,
+            height: 1.15,
           ),
         ),
         if (line.isNotEmpty) ...[
-          const SizedBox(height: 6.0),
+          const SizedBox(height: 5.0),
           Text(
             line,
             textAlign: TextAlign.center,
             style: UiFont.style(
-              size: 14.0,
+              size: 13.0,
               weight: 600,
-              color: const Color(0xFFE2E8F0),
+              color: const Color(0xFFCBD5E1),
               height: 1.3,
             ),
           ),
