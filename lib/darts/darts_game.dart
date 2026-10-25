@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+
 import 'package:flame/game.dart';
 
 import 'audio/darts_audio.dart';
@@ -101,7 +102,13 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
       final double sx = restingDart.startXm;
       final double sy = restingDart.startYm;
       flyingDart.launch(
-        launchVel: FlickSolver.launchFor(targetMmX, targetMmY, DartsK.idealSpeed, sx, sy),
+        launchVel: FlickSolver.launchFor(
+          targetMmX,
+          targetMmY,
+          DartsK.idealSpeed,
+          sx,
+          sy,
+        ),
         playerIndex: 0,
         onLanded: _onLocalDartLanded,
         startXm: sx,
@@ -137,11 +144,15 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   void _setupCurrentDart() {
     restingDart.resetToRest();
     flickController.inputEnabled =
-        events.isMyTurn && !flyingDart.isFlying && !_turnTransitioning && !_isBotTurnActive;
+        events.isMyTurn &&
+        !flyingDart.isFlying &&
+        !_turnTransitioning &&
+        !_isBotTurnActive;
   }
 
   void _updateCheckoutGlow() {
-    final bool canThrow = events.isMyTurn &&
+    final bool canThrow =
+        events.isMyTurn &&
         !events.isMatchOver &&
         !_turnTransitioning &&
         !_isBotTurnActive &&
@@ -397,12 +408,15 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     );
 
     // Clamp frame dt to avoid spiral of death on lag spikes (50 ms max)
-    final double clampedDt =
-        dt > DartsK.dtClamp ? DartsK.dtClamp : (dt < 0.0 ? 0.0 : dt);
+    final double clampedDt = dt > DartsK.dtClamp
+        ? DartsK.dtClamp
+        : (dt < 0.0 ? 0.0 : dt);
 
     // Online: shot clocks, then the opponent's next dart once the board is free.
     online?.update(clampedDt);
-    if (_remoteQueue.isNotEmpty && !flyingDart.isFlying && !_turnTransitioning) {
+    if (_remoteQueue.isNotEmpty &&
+        !flyingDart.isFlying &&
+        !_turnTransitioning) {
       _launchRemoteDart(_remoteQueue.removeAt(0));
     }
 
@@ -422,8 +436,11 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     restingDart.visible = false;
     flickController.inputEnabled = false;
 
-    final launchVel =
-        FlickSolver.launchFor(targetMmX, targetMmY, DartsK.idealSpeed);
+    final launchVel = FlickSolver.launchFor(
+      targetMmX,
+      targetMmY,
+      DartsK.idealSpeed,
+    );
 
     DartsAudio.playThrow();
     flyingDart.launch(
