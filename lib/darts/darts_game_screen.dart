@@ -95,12 +95,15 @@ class DartsGameScreen extends HookConsumerWidget {
               you: DartsPlayer(
                 name: mine?.displayName ?? self.displayName,
                 avatar: mine?.avatarEmoji ?? self.avatarEmoji,
+                uid: self.uid,
               ),
               opponent: theirs == null
                   ? const DartsPlayer(name: 'Opponent', avatar: '⏳')
                   : DartsPlayer(
                       name: theirs.displayName,
                       avatar: theirs.avatarEmoji,
+                      uid: theirs.uid,
+                      isBot: false,
                     ),
             ));
           }
