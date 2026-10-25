@@ -30,6 +30,10 @@ abstract interface class DartsGameEvents {
   /// Points remaining for Player 2 (opponent / bot).
   int get theirRemaining;
 
+  /// Points remaining for the active thrower's next dart (accounting for darts
+  /// already thrown in the active turn).
+  int get currentThrowRemaining;
+
   /// Reports a landed dart for the current thrower.
   /// Evaluates bust, checkout, and turn over, updating match state.
   DartTurnResult dartLanded(DartHit hit);
@@ -73,6 +77,14 @@ class DartsMatchNotifier extends Notifier<DartsMatchState>
 
   @override
   int get theirRemaining => state.theirRemaining;
+
+  @override
+  int get currentThrowRemaining {
+    final bool isYou = state.thrower == DartsThrower.you;
+    final int startRem = isYou ? state.yourRemaining : state.theirRemaining;
+    final int turnPts = state.turnDarts.fold<int>(0, (sum, d) => sum + d.points);
+    return math.max(0, startRem - turnPts);
+  }
 
   @override
   DartTurnResult dartLanded(DartHit hit) {
