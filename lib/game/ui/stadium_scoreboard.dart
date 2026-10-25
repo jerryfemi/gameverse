@@ -214,6 +214,11 @@ class _StadiumScoreboardState extends State<StadiumScoreboard>
                           isWaiting: matchSession.isWaitingForOpponent,
                           joinCode: matchSession.joinCode,
                           activeMatchId: matchSession.cloudMatchId,
+                          opponentUid: matchSession.cloudMatchId == null
+                              ? null
+                              : matchSession.player2.id,
+                          isBot: matchSession.cloudMatchId == null ||
+                              matchSession.player2.id == 'cpu',
                         ),
                         // Opponent's connection gauge (from their live shots).
                         if (matchSession.cloudMatchId != null)
