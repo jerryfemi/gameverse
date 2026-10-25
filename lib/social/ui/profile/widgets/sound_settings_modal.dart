@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../../../../game/audio/audio_engine.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 /// Modal dialog/bottom sheet for managing background music, sound effects, and master mute.
 class SoundSettingsModal extends HookWidget {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Unified chat input bar with quick banter chips, stylized text field,
 /// and responsive action dispatch.

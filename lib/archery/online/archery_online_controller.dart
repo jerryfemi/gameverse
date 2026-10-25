@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../models/cloud_match.dart';
-import '../../services/firestore_match_service.dart';
-import '../archery_constants.dart';
-import '../physics/target_scoring.dart';
-import '../state/archery_match_notifier.dart';
-import '../state/archery_match_state.dart';
-import '../state/archery_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 import 'archery_live_event.dart';
 
 /// What the online controller drives in the Flame game.

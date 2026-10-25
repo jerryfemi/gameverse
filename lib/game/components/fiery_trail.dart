@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 
-import '../physics/perspective_camera.dart';
+import 'package:b_ball/game/physics/perspective_camera.dart';
 
 /// Historical 3D point along the ball's flight path.
 class _TrailNode {

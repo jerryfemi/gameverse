@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../darts_constants.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
 
 /// Animated turn transition banner.
 ///

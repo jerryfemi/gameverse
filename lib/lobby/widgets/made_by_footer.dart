@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../lobby_style.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
 import 'pressable.dart';
 
 /// Bottom of the lobby: who made GameVerse and where to find him.

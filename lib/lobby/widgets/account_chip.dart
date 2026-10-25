@@ -4,16 +4,16 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../archery/archery_game_screen.dart' show ArcheryChallenge;
-import '../../archery/ui/archery_match_bar.dart' show ArcheryInbox;
-import '../../social/ui/profile/profile_sheet.dart';
+import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/archery/ui/archery_match_bar.dart' show ArcheryInbox;
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/common/edit_profile_dialog.dart';
-import '../../notifications/app_notices.dart';
-import '../../providers/app_providers.dart';
-import '../../social/ui/results/results_sheet.dart';
-import '../lobby_style.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
+import 'package:b_ball/notifications/app_notices.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
 import 'pressable.dart';
 
 /// Lobby account chip: avatar and name (avatar only when [compact]). Tapping

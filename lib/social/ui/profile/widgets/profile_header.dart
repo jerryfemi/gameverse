@@ -2,9 +2,9 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../game/ui/common/edit_profile_dialog.dart';
-import '../../../../services/auth_service.dart';
-import '../../common/crown_avatar.dart';
+import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
 
 /// Top header for [ProfileSheet] displaying 64px avatar, user display name,
 /// "Edit name and avatar" trigger, and sheet close button.

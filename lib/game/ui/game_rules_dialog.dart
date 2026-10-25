@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 import 'common/app_button.dart';
 import 'common/app_colors.dart';
 import 'common/app_modal_dialog.dart';

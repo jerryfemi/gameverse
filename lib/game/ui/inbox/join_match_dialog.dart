@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../common/clean_ui.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
 
 /// Modal dialog for entering a 6-character arcade code to join a remote match.
 class JoinMatchDialog extends HookWidget {

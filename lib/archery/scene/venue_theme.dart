@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// Specification for a single billboard object in 3D world space.
 class BillboardSpec {

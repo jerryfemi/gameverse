@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 import 'game_over/game_over_header.dart';
 import 'game_over/game_over_stats_grid.dart';
 import 'game_over/play_again_button.dart';

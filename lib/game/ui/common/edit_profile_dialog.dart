@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../services/auth_service.dart';
+import 'package:b_ball/services/auth_service.dart';
 import 'app_avatar.dart';
 import 'inline_feedback.dart';
 

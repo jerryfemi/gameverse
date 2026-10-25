@@ -1,6 +1,6 @@
-import '../darts_constants.dart';
-import '../physics/flick_solver.dart';
-import '../scene/board_projection.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/flick_solver.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
 
 class _PointerSample {
   double x = 0.0;

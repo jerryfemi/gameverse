@@ -7,13 +7,13 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../archery/state/archery_rules.dart';
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../common/crown_avatar.dart';
-import '../common/game_chip.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
+import 'package:b_ball/social/ui/common/game_chip.dart';
 
 /// Card widget for active matches adhering to Artboard 10 of GameVerse design.
 ///

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../archery/archery_game_screen.dart';
-import '../darts/darts_game_screen.dart';
-import '../game/audio/audio_engine.dart';
-import '../game/basketball_game.dart';
-import '../game/ui/common/inline_feedback.dart';
-import '../game/ui/game_hud_overlay.dart';
-import '../models/cloud_match.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_match_service.dart';
+import 'package:b_ball/archery/archery_game_screen.dart';
+import 'package:b_ball/darts/darts_game_screen.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
+import 'package:b_ball/game/ui/game_hud_overlay.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:flame/game.dart';
 
 /// Route screen for `/match/:id`.

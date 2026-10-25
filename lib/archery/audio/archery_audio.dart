@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../../game/audio/audio_engine.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 /// Archery's sounds, played through the app's shared [AudioEngine]: same
 /// mixer and the same app-wide mute, volume and SOUND EFFECTS / MUSIC

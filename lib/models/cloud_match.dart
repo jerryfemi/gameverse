@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../archery/state/archery_rules.dart';
-import '../darts/state/darts_rules.dart';
-import '../game/physics/shot_difficulty.dart';
-import '../game/telemetry/shot_telemetry.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
+import 'package:b_ball/game/telemetry/shot_telemetry.dart';
 import 'player_descriptor.dart';
 
 /// Status state of a remote cloud match.

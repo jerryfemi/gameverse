@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../models/player_descriptor.dart';
-import '../../services/auth_service.dart';
-import '../basketball_game.dart';
-import '../match/match_session.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
 import 'scoreboard/hot_streak_pill.dart';
 import 'scoreboard/net_signal_badge.dart';
 import 'scoreboard/round_indicator_badge.dart';

@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../services/auth_service.dart';
-import '../../services/firestore_match_service.dart';
-import '../audio/audio_engine.dart';
-import '../basketball_game.dart';
-import '../match/match_session.dart';
-import '../performance/adaptive_quality.dart';
-import '../physics/shot_difficulty.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
+import 'package:b_ball/game/performance/adaptive_quality.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
 import 'common/difficulty_stepped_slider.dart';
 
 /// Frosted obsidian glass Pause Overlay displayed when mid-round action is paused.

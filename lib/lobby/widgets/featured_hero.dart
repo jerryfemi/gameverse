@@ -4,8 +4,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../game_catalog.dart';
-import '../lobby_style.dart';
+import 'package:b_ball/lobby/game_catalog.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
 import 'pressable.dart';
 
 /// The banner at the top of the lobby: one slide per game, featured game

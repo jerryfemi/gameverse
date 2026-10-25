@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../services/auth_service.dart';
-import '../basketball_game.dart';
-import '../match/match_session.dart';
-import '../../services/update/update_service.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
+import 'package:b_ball/services/update/update_service.dart';
 import 'common/update_available_banner.dart';
 import 'floating_score_toast.dart';
 import 'game_over_overlay.dart';
@@ -16,7 +16,7 @@ import 'replay_hud_overlay.dart';
 import 'inbox/match_inbox_sheet.dart';
 import 'stadium_scoreboard.dart';
 import 'tour/onboarding_tour_overlay.dart';
-import '../../notifications/notice_stack.dart';
+import 'package:b_ball/notifications/notice_stack.dart';
 import 'common/lobby_pill.dart';
 import 'play_friend_button.dart';
 import 'match/live_spectator_status_pill.dart';

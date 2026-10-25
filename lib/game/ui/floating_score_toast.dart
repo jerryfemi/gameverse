@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 
 /// Floating score toast item model
 class _ToastItem {

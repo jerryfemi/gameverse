@@ -6,18 +6,18 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../models/cloud_match.dart';
-import '../../models/match_invite.dart';
-import '../../models/player_descriptor.dart';
-import '../../providers/app_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_match_service.dart';
-import '../darts_constants.dart';
-import '../darts_game_screen.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/darts_game_screen.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
 
 /// End-of-match card for Darts 301 (solo vs the bot, or a live 1v1).
 ///

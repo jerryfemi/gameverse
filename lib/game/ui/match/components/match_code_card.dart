@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../../models/cloud_match.dart';
-import '../../../../services/auth_service.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
 
 /// Card component displaying either a generated match code or the button to generate one.
 class MatchCodeCard extends StatelessWidget {

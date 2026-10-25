@@ -4,17 +4,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../game/match/match_config.dart';
-import '../../../game/ui/match/match_setup_dialog.dart';
-import '../../../game/ui/social/add_friend_dialog.dart';
-import '../../../models/friend_profile.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/friends_service.dart';
-import '../../providers/social_providers.dart';
-import '../common/crown_avatar.dart';
-import '../common/section_label.dart';
-import '../in_game/h2h_card.dart';
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/game/ui/social/add_friend_dialog.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/social/providers/social_providers.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
+import 'package:b_ball/social/ui/in_game/h2h_card.dart';
 
 /// Full friends directory screen adhering to Artboard 11 of GameVerse design.
 ///

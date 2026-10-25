@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../camera/camera_rig.dart';
-import '../physics/target_scoring.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
 import 'archery_rules.dart';
 
 /// Who is shooting the current set.

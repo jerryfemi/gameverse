@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 
 /// Interactive spotlight walkthrough overlay that guides new players
 /// through key controls (Avatar profile hub, 1v1 chat, and shooting gesture).

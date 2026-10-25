@@ -2,10 +2,10 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../models/friend_profile.dart';
-import '../../common/crown_avatar.dart';
-import '../../common/section_label.dart';
-import '../../in_game/h2h_card.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
+import 'package:b_ball/social/ui/in_game/h2h_card.dart';
 
 /// Horizontal friends row in [ProfileSheet] displaying 52px avatars, presence dots,
 /// display names, and "See all" navigation shortcut.

@@ -1,7 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../providers/app_providers.dart';
-import '../models/head_to_head.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/models/head_to_head.dart';
 
 /// Client-side Riverpod provider computing Head-to-Head performance records
 /// between the authenticated player and a specified [opponentUid].

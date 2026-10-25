@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../game_catalog.dart';
-import '../lobby_style.dart';
+import 'package:b_ball/lobby/game_catalog.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
 import 'pressable.dart';
 
 /// A game in the "All games" shelf: gameplay picture on top, the name and

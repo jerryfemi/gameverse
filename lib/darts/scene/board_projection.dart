@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:vector_math/vector_math.dart';
-import '../darts_constants.dart';
+import 'package:b_ball/darts/darts_constants.dart';
 
 /// The camera: maps board millimetres and 3D flight positions to screen pixels.
 ///

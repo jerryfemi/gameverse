@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 
 /// Header section of the Game Over card showing accolades, final score, and labels.
 class GameOverHeader extends StatelessWidget {

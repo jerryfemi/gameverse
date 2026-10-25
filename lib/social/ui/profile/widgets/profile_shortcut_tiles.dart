@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../archery/archery_game_screen.dart' show ArcheryChallenge;
-import '../../../../game/ui/inbox/join_match_dialog.dart';
-import '../../../../game/ui/social/add_friend_dialog.dart';
-import '../../../../models/friend_profile.dart';
+import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
+import 'package:b_ball/game/ui/social/add_friend_dialog.dart';
+import 'package:b_ball/models/friend_profile.dart';
 
 /// 3 shortcut action tiles in [ProfileSheet]: Play a friend, Join with code, and Add friend.
 class ProfileShortcutTiles extends StatelessWidget {

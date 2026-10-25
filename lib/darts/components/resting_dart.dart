@@ -2,8 +2,8 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 
-import '../darts_constants.dart';
-import '../scene/board_projection.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
 import 'dart_renderer.dart';
 import 'dart_sprites.dart';
 

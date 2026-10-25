@@ -4,14 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/friends_service.dart';
-import '../../models/head_to_head.dart';
-import '../../models/match_summary.dart';
-import '../../providers/social_providers.dart';
-import '../common/crown_avatar.dart';
-import '../results/results_sheet.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/social/models/head_to_head.dart';
+import 'package:b_ball/social/models/match_summary.dart';
+import 'package:b_ball/social/providers/social_providers.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 enum H2HCardMode { peek, full }
 

@@ -1,6 +1,6 @@
-import '../darts_constants.dart';
-import '../physics/dart_scoring.dart';
-import '../state/darts_rules.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
 
 /// One live darts event in `/matches/{id}/live_shots` (shared with
 /// basketball and archery, told apart by `game: 'darts'`).

@@ -1,5 +1,5 @@
-import '../../../models/cloud_match.dart';
-import 'match_summary.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/social/models/match_summary.dart';
 
 /// Single-sport head-to-head breakdown (e.g. Darts, Hoops, Archery).
 class GameH2H {

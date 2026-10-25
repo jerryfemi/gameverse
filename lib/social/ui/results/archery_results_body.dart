@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 
-import '../../../archery/state/archery_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../common/section_label.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
 
 /// Archery match recap body presenting set-by-set outcomes (+2 / +1 / +0 set points)
 /// and archery shooting statistics (Xs, arrow averages, best sets).

@@ -1,6 +1,6 @@
-import '../../../archery/state/archery_rules.dart';
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
 
 /// Single player score recap inside [MatchSummary].
 class PlayerSummary {
@@ -68,7 +68,8 @@ class MatchSummary {
       didIWin = null;
     }
 
-    final bool byForfeit = match.status == MatchStatus.forfeited ||
+    final bool byForfeit =
+        match.status == MatchStatus.forfeited ||
         match.forfeitedByUid != null && match.forfeitedByUid!.isNotEmpty;
 
     final myScores = myPlayer?.roundScores ?? const <int>[];
@@ -163,14 +164,16 @@ class MatchSummary {
           verdict = 'You reached 6 set points';
         } else {
           final diff = mySets - oppSets;
-          verdict = 'You won by $diff ${diff == 1 ? "set point" : "set points"}';
+          verdict =
+              'You won by $diff ${diff == 1 ? "set point" : "set points"}';
         }
       } else if (didIWin == false) {
         if (oppSets >= ArcheryRules.pointsToWin) {
           verdict = '$oppName reached 6 set points';
         } else {
           final diff = oppSets - mySets;
-          verdict = '$oppName won by $diff ${diff == 1 ? "set point" : "set points"}';
+          verdict =
+              '$oppName won by $diff ${diff == 1 ? "set point" : "set points"}';
         }
       } else {
         verdict = 'Tied at $mySets set points';
@@ -188,7 +191,8 @@ class MatchSummary {
       final roundsCount = match.totalRounds > 0
           ? match.totalRounds
           : (myScores.isNotEmpty ? myScores.length : 1);
-      final roundsText = '$roundsCount ${roundsCount == 1 ? "round" : "rounds"}';
+      final roundsText =
+          '$roundsCount ${roundsCount == 1 ? "round" : "rounds"}';
       myUnit = roundsText;
       theirUnit = roundsText;
 

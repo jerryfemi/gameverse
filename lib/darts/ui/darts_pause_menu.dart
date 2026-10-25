@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../archery/ui/archery_pause_menu.dart';
+import 'package:b_ball/archery/ui/archery_pause_menu.dart';
 
 /// Darts pause menu: the same compact menu as archery (music, sound effects
 /// and pub ambience with switches and sliders; resume / how to play /

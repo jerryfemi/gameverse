@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// Zero-rotation, dolly-only pinhole camera with lens shift (Build Plan v2).
 ///

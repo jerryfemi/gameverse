@@ -4,14 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../game/match/match_config.dart';
-import '../../../game/ui/match/match_setup_dialog.dart';
-import '../../../models/cloud_match.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../common/section_label.dart';
-import '../tiles/active_match_tile.dart';
-import '../tiles/completed_match_tile.dart';
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
+import 'package:b_ball/social/ui/tiles/active_match_tile.dart';
+import 'package:b_ball/social/ui/tiles/completed_match_tile.dart';
 
 /// Full matches overview screen adhering to Artboard 10 of GameVerse design.
 ///

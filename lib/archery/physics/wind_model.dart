@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// Per-arrow wind, shown to the player in mph (the range is measured in
 /// feet, so the wind is too: imperial throughout).

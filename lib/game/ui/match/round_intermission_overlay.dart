@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../basketball_game.dart';
-import '../../match/match_session.dart';
-import '../common/app_avatar.dart';
-import '../inbox/share_turn_sheet.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/inbox/share_turn_sheet.dart';
 
 /// Clean, non-intrusive Round Over recap modal.
 ///

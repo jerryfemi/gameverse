@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../providers/app_providers.dart';
-import '../common/app_avatar.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 
 /// Flanking circular opponent avatar with illuminated badge and "Them" label.
 class ScoreboardOpponentAvatar extends HookConsumerWidget {

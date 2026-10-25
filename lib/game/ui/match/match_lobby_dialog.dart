@@ -5,13 +5,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/friend_profile.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/firestore_match_service.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
-import '../common/app_modal_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
 import 'components/match_lobby_vs_card.dart';
 
 /// Pre-match lobby waiting room presented to the host while waiting for an opponent.

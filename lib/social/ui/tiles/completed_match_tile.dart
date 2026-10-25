@@ -2,14 +2,14 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../models/match_summary.dart';
-import '../common/crown_avatar.dart';
-import '../common/game_chip.dart';
-import '../common/verdict_banner.dart';
-import '../results/results_sheet.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/social/models/match_summary.dart';
+import 'package:b_ball/social/ui/common/crown_avatar.dart';
+import 'package:b_ball/social/ui/common/game_chip.dart';
+import 'package:b_ball/social/ui/common/verdict_banner.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// Card widget for completed matches adhering to Artboard 5 of GameVerse design.
 ///

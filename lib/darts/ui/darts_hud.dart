@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../darts_constants.dart';
-import '../online/darts_online_controller.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
 import 'darts_live_pill.dart';
 
 /// Flutter HUD overlay over the Darts Flame canvas.

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../darts_constants.dart';
+import 'package:b_ball/darts/darts_constants.dart';
 
 /// Interactive walkthrough tour introducing Darts 301 mechanics.
 ///

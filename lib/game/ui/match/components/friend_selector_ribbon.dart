@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../../models/friend_profile.dart';
-import '../../../../providers/app_providers.dart';
-import '../../../../services/auth_service.dart';
-import '../../common/app_avatar.dart';
-import '../../social/add_friend_dialog.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/social/add_friend_dialog.dart';
 
 /// Horizontal scrollable ribbon displaying friends for 1v1 match challenges.
 class FriendSelectorRibbon extends ConsumerWidget {

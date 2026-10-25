@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../common/section_label.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
 import 'race_to_zero_chart.dart';
 
 /// Darts 301 match recap body presenting the Race-to-Zero trajectory

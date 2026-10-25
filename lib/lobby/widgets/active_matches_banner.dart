@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../archery/state/archery_rules.dart';
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/inbox/match_inbox_sheet.dart';
-import '../../models/cloud_match.dart';
-import '../../providers/app_providers.dart';
-import '../game_catalog.dart';
-import '../lobby_style.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/inbox/match_inbox_sheet.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/lobby/game_catalog.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
 import 'pressable.dart';
-import '../../social/ui/results/results_sheet.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// "Your matches": the running matches (your turn first), each one tap away
 /// from its game, plus a link to the full inbox (history included).

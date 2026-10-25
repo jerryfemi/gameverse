@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../match/match_session.dart';
+import 'package:b_ball/game/match/match_session.dart';
 
 /// Round-by-round score matrix comparing Player 1 and Player 2 scores.
 class PodiumScoreMatrix extends StatelessWidget {

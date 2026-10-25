@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 
-import '../common/section_label.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
 
 /// Interactive/static Race-to-Zero line chart visualizing the 301 countdown
 /// trajectory for both players across all played rounds.

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../physics/shot_difficulty.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
 
 /// Compact, premium discrete stepped slider for selecting [ShotDifficulty].
 ///

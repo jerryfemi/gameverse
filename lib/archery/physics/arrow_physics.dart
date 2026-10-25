@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:vector_math/vector_math_64.dart';
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 import 'wind_model.dart';
 
 /// Full 3D Arrow Physics simulation with 240 Hz fixed-step Euler integration.

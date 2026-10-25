@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 
 /// Wraps [AppAvatar] to render victory crowns, gold winner rings,
 /// and online presence status dots per the GameVerse design spec.

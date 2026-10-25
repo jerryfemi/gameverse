@@ -5,20 +5,20 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../game/match/match_config.dart';
-import '../game/ui/common/clean_ui.dart';
-import '../game/ui/common/lobby_pill.dart';
-import '../game/ui/match/match_lobby_dialog.dart';
-import '../game/ui/match/match_setup_dialog.dart';
-import '../archery/ui/archery_match_bar.dart'
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
+import 'package:b_ball/game/ui/common/lobby_pill.dart';
+import 'package:b_ball/game/ui/match/match_lobby_dialog.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/archery/ui/archery_match_bar.dart'
     show ArcheryInbox, ArcheryMatchesButton, ArcheryRoundButton;
-import '../notifications/notice_stack.dart';
-import '../social/ui/profile/profile_sheet.dart';
-import '../models/cloud_match.dart';
-import '../models/friend_profile.dart';
-import '../models/player_descriptor.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_match_service.dart';
+import 'package:b_ball/notifications/notice_stack.dart';
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
 import 'audio/darts_audio.dart';
 import 'darts_constants.dart';
 import 'darts_game.dart';

@@ -4,12 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/friend_profile.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../common/section_label.dart';
-import '../tiles/active_match_tile.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
+import 'package:b_ball/social/ui/tiles/active_match_tile.dart';
 import 'friends_page.dart';
 import 'matches_page.dart';
 import 'widgets/profile_friends_row.dart';

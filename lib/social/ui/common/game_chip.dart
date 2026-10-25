@@ -1,7 +1,7 @@
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 
-import '../../../models/cloud_match.dart';
+import 'package:b_ball/models/cloud_match.dart';
 
 /// Translucent pill chip displaying the game's icon and label according to the design canvas.
 class GameChip extends StatelessWidget {

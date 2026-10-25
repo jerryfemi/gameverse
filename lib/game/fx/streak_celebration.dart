@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-import '../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 import 'glow_sprite.dart';
 
 /// Streak tiers, matching the ball's existing effects:

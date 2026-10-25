@@ -1,4 +1,4 @@
-import '../physics/target_scoring.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
 
 /// One live archery event in `/matches/{id}/live_shots` (shared with
 /// basketball's live shots, told apart by `game: 'archery'`).

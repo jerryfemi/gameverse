@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import '../../physics/perspective_camera.dart';
+import 'package:b_ball/game/physics/perspective_camera.dart';
 
 /// Encapsulates the 1-point perspective spatial geometry of the gymnasium room.
 /// All sub-renderers share this single source of truth for horizon, vanishing point,

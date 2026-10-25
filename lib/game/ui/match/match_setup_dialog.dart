@@ -3,21 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../archery/state/archery_rules.dart';
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../../../models/friend_profile.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../../services/update/update_platform.dart';
-import '../../match/match_config.dart';
-import '../../physics/shot_difficulty.dart';
-import '../common/app_colors.dart';
-import '../common/clean_ui.dart';
-import '../common/difficulty_stepped_slider.dart';
-import '../common/inline_feedback.dart';
-import '../inbox/join_match_dialog.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/services/update/update_platform.dart';
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
+import 'package:b_ball/game/ui/common/difficulty_stepped_slider.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
+import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
 import 'components/friend_selector_ribbon.dart';
 
 /// "Play a friend": create a 1v1 match (share a code or challenge a friend)

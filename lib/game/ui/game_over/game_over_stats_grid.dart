@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../basketball_game.dart';
+import 'package:b_ball/game/basketball_game.dart';
 
 /// 2x2 grid displaying shooting statistics at the end of a round.
 class GameOverStatsGrid extends StatelessWidget {

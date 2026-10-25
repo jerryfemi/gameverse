@@ -1,9 +1,9 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/friend_profile.dart';
-import '../models/match_invite.dart';
-import '../providers/app_providers.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/providers/app_providers.dart';
 
 /// Where a notice came from; picks its colour and its bubble during a live 1v1.
 enum NoticeSource { basketball, archery, darts, friends }

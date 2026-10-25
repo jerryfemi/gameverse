@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../audio/audio_engine.dart';
-import '../../basketball_game.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/game/basketball_game.dart';
 
 export 'scoreboard_opponent_avatar.dart';
 export 'scoreboard_player_avatar.dart';

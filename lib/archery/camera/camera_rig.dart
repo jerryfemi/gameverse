@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
-import '../physics/arrow_physics.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/physics/arrow_physics.dart';
 import 'archery_camera.dart';
 
 /// Shot sequence phases matching GamePigeon archery flow.

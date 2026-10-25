@@ -1,7 +1,7 @@
-import '../../models/cloud_match.dart';
-import '../../models/friend_profile.dart';
-import '../../models/player_descriptor.dart';
-import '../physics/shot_difficulty.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/game/physics/shot_difficulty.dart';
 
 /// Immutable configuration parameters for a 1v1 turn-based match.
 class MatchConfig {

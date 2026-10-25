@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../../../services/chat_read_receipt_service.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
-import '../common/match_status_badge.dart';
-import '../../../social/ui/tiles/completed_match_tile.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/match_status_badge.dart';
+import 'package:b_ball/social/ui/tiles/completed_match_tile.dart';
 
 /// Punchy Arcade Head-to-Head Versus Match Card.
 ///

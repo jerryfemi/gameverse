@@ -2,9 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:flame/components.dart';
 
-import '../darts_constants.dart';
-import '../physics/dart_scoring.dart';
-import '../scene/board_projection.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
 
 /// Renders score callout pops and BUST / CHECKOUT banners upon dart impact.
 ///

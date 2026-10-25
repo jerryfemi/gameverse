@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../archery/archery_game_screen.dart' show ArcheryChallenge;
-import '../game/audio/audio_engine.dart';
-import '../notifications/app_notices.dart';
-import '../notifications/notice_stack.dart';
+import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/notifications/app_notices.dart';
+import 'package:b_ball/notifications/notice_stack.dart';
 import 'game_catalog.dart';
 import 'lobby_style.dart';
 import 'widgets/active_matches_banner.dart';

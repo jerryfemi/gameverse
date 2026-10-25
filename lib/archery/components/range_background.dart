@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../scene/billboard_renderer.dart';
-import '../scene/venue_theme.dart';
-import '../util/image_loader.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/scene/billboard_renderer.dart';
+import 'package:b_ball/archery/scene/venue_theme.dart';
+import 'package:b_ball/archery/util/image_loader.dart';
 
 /// Renders the outdoor daytime archery park scene.
 ///

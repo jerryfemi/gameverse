@@ -4,22 +4,22 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../social/ui/results/results_sheet.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../basketball_game.dart';
-import '../match/match_lobby_dialog.dart';
-import '../match/match_setup_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/ui/match/match_lobby_dialog.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
 import 'match_inbox_card.dart';
 import 'match_thread_dialog.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
-import '../common/app_modal_sheet.dart';
-import '../common/edit_profile_dialog.dart';
-import '../social/friends_hub_sheet.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
+import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
+import 'package:b_ball/game/ui/social/friends_hub_sheet.dart';
 
 /// The central 1v1 Match Hub bottom sheet modal.
 class MatchInboxSheet extends HookConsumerWidget {

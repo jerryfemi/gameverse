@@ -5,10 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/cloud_match.dart';
-import '../models/friend_profile.dart';
-import '../models/player_descriptor.dart';
-import 'auth_service.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
 
 /// Service managing social friends list, user discovery, and 1v1 conversation bindings.
 class FriendsService {
@@ -22,8 +22,7 @@ class FriendsService {
   }
   static final FriendsService instance = FriendsService._internal();
 
-  AuthService get _effectiveAuthService =>
-      authService ?? AuthService.instance;
+  AuthService get _effectiveAuthService => authService ?? AuthService.instance;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _prefFriendsCacheKey = 'bball_cached_friends_json';
@@ -212,8 +211,7 @@ class FriendsService {
           uid: doc.id,
           displayName: data['displayName'] as String? ?? 'Player',
           avatarEmoji:
-              data['avatarEmoji'] as String? ??
-              PlayerDescriptor.defaultAvatar,
+              data['avatarEmoji'] as String? ?? PlayerDescriptor.defaultAvatar,
           addedAt: DateTime.now().millisecondsSinceEpoch,
         );
       }).toList();
@@ -438,8 +436,10 @@ class FriendsService {
             legacy = rawChat == null
                 ? const []
                 : rawChat
-                      .map((e) =>
-                          CloudChatMessage.fromMap(e as Map<String, dynamic>))
+                      .map(
+                        (e) =>
+                            CloudChatMessage.fromMap(e as Map<String, dynamic>),
+                      )
                       .toList();
             emit();
           },
@@ -479,45 +479,51 @@ class FriendsService {
   ///
   /// Reads only root metadata fields; the legacy `chat` array is consulted
   /// solely as a fallback for conversations written by older builds.
-  Stream<List<DirectConversationSummary>> streamUserConversations(String myUid) {
+  Stream<List<DirectConversationSummary>> streamUserConversations(
+    String myUid,
+  ) {
     if (myUid.isEmpty) return Stream.value(const []);
     return _conversationsRef
         .where('participants', arrayContains: myUid)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) {
-              final data = doc.data();
-              final participants = (data['participants'] as List<dynamic>?)
-                      ?.map((e) => e.toString())
-                      .toList() ??
-                  [];
-              final otherUid = participants.firstWhere(
-                (p) => p != myUid,
-                orElse: () => '',
+        .map(
+          (snap) => snap.docs.map((doc) {
+            final data = doc.data();
+            final participants =
+                (data['participants'] as List<dynamic>?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [];
+            final otherUid = participants.firstWhere(
+              (p) => p != myUid,
+              orElse: () => '',
+            );
+            CloudChatMessage? legacyLast;
+            final rawChat = data['chat'] as List<dynamic>?;
+            if (rawChat != null && rawChat.isNotEmpty) {
+              legacyLast = CloudChatMessage.fromMap(
+                rawChat.last as Map<String, dynamic>,
               );
-              CloudChatMessage? legacyLast;
-              final rawChat = data['chat'] as List<dynamic>?;
-              if (rawChat != null && rawChat.isNotEmpty) {
-                legacyLast = CloudChatMessage.fromMap(
-                  rawChat.last as Map<String, dynamic>,
-                );
-              }
-              final lastSenderUid = data['lastMsgSenderUid'] as String? ??
-                  legacyLast?.senderUid ??
-                  '';
-              final lastTimestamp =
-                  (data['lastMsgTimestamp'] as num?)?.toInt() ??
-                      legacyLast?.timestamp ??
-                      (data['updatedAt'] as num?)?.toInt() ??
-                      0;
-              return DirectConversationSummary(
-                id: doc.id,
-                friendUid: otherUid,
-                lastSenderUid: lastSenderUid,
-                lastTimestamp: lastTimestamp,
-                lastMessageText:
-                    data['lastMsgText'] as String? ?? legacyLast?.text,
-              );
-            }).toList())
+            }
+            final lastSenderUid =
+                data['lastMsgSenderUid'] as String? ??
+                legacyLast?.senderUid ??
+                '';
+            final lastTimestamp =
+                (data['lastMsgTimestamp'] as num?)?.toInt() ??
+                legacyLast?.timestamp ??
+                (data['updatedAt'] as num?)?.toInt() ??
+                0;
+            return DirectConversationSummary(
+              id: doc.id,
+              friendUid: otherUid,
+              lastSenderUid: lastSenderUid,
+              lastTimestamp: lastTimestamp,
+              lastMessageText:
+                  data['lastMsgText'] as String? ?? legacyLast?.text,
+            );
+          }).toList(),
+        )
         .handleError((e) {
           debugPrint('[FriendsService] Stream user conversations error: $e');
           return const <DirectConversationSummary>[];

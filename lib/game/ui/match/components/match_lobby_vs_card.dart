@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../models/cloud_match.dart';
-import '../../common/app_avatar.dart';
-import '../../common/app_button.dart';
-import '../../common/app_colors.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_button.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Luxury obsidian Head-to-Head matchup card revealed when both players are connected.
 class MatchLobbyVsCard extends StatelessWidget {

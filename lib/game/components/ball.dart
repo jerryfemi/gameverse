@@ -8,13 +8,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 
-import '../audio/audio_engine.dart';
-import '../basketball_game.dart';
-import '../physics/ball_physics_3d.dart';
-import '../physics/perspective_camera.dart';
-import '../physics/launch_solver.dart';
-import '../fx/glow_sprite.dart';
-import '../fx/streak_celebration.dart' show streakTierFor;
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/physics/ball_physics_3d.dart';
+import 'package:b_ball/game/physics/perspective_camera.dart';
+import 'package:b_ball/game/physics/launch_solver.dart';
+import 'package:b_ball/game/fx/glow_sprite.dart';
+import 'package:b_ball/game/fx/streak_celebration.dart' show streakTierFor;
 import 'fiery_trail.dart';
 import 'wall_impact_puff.dart';
 

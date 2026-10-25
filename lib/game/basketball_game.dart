@@ -10,11 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/cloud_match.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_match_service.dart';
-import '../services/update/update_platform.dart';
-import '../services/vatar/vatar_bridge.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/services/update/update_platform.dart';
+import 'package:b_ball/services/vatar/vatar_bridge.dart';
 import 'audio/audio_engine.dart';
 import 'components/background.dart';
 import 'components/background/distant_wall_renderer.dart';

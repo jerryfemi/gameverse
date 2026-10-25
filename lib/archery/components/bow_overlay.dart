@@ -3,10 +3,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../camera/camera_rig.dart';
-import '../util/image_loader.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/util/image_loader.dart';
 
 /// The bow and the nocked arrow at the shooting line, framed like GamePigeon
 /// (measured from a GamePigeon recording; numbers below are in refW = the

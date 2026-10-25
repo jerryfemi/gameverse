@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../models/cloud_match.dart';
+import 'package:b_ball/models/cloud_match.dart';
 import 'app_colors.dart';
 
 /// Standard status badge for 1v1 multiplayer matches.

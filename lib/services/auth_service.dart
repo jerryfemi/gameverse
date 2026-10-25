@@ -6,10 +6,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../firebase_options.dart';
-import '../models/player_descriptor.dart';
-import 'friends_service.dart';
-import 'vatar/vatar_bridge.dart';
+import 'package:b_ball/firebase_options.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/services/vatar/vatar_bridge.dart';
 
 /// Exception thrown when an online feature is attempted without valid Firebase authentication.
 class AuthRequiredException implements Exception {

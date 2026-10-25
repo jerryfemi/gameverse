@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
 
 /// 80 cm World Archery face on a 1.0 m square white board with a wooden
 /// A-frame stand.

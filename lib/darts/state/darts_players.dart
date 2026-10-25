@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../models/player_descriptor.dart';
+import 'package:b_ball/models/player_descriptor.dart';
 
 /// Representation of a single player on the darts scoreboard.
 @immutable

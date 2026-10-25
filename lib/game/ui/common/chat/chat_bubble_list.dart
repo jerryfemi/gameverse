@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../../models/cloud_match.dart';
-import '../app_avatar.dart';
-import '../app_colors.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Centralized, high-performance chat bubble list for in-game banter and direct messaging.
 ///

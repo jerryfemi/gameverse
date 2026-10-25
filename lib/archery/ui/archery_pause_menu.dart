@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../game/audio/audio_engine.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 /// Archery's pause menu: music, sound effects and birdsong (each with an
 /// on/off switch and a volume slider), plus resume / restart / lobby.

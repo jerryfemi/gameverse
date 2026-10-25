@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../match/match_session.dart';
+import 'package:b_ball/game/match/match_session.dart';
 
 /// Detailed shooting analytics comparison table (Accuracy, Swishes, Streaks, Field Goals).
 class PodiumStatsComparison extends StatelessWidget {

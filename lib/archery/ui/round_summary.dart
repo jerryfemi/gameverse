@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/common/clean_ui.dart';
-import '../physics/target_scoring.dart';
-import '../state/archery_players.dart';
-import '../state/archery_rules.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/state/archery_players.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 
 /// Set result card (and, on the last set, the match result).
 ///

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../camera/archery_camera.dart';
-import '../physics/target_scoring.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
 
 /// Floating visual hit score popup rendered directly on the Flame canvas (Build Plan v2 §8.4, Review §1.2, §3, Bug #6).
 ///

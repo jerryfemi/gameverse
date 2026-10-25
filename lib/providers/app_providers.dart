@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../models/cloud_match.dart';
-import '../models/friend_profile.dart';
-import '../models/match_invite.dart';
-import '../services/auth_service.dart';
-import '../services/chat_read_receipt_service.dart';
-import '../services/firestore_match_service.dart';
-import '../services/friends_service.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/services/friends_service.dart';
 
 // ==========================================
 // 1. Core Services Providers

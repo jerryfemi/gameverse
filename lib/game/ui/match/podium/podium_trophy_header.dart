@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../match/match_session.dart';
+import 'package:b_ball/game/match/match_session.dart';
 
 /// Top section of the Winner Podium showing the Trophy icon, winner banner, and subtitle.
 class PodiumTrophyHeader extends StatelessWidget {

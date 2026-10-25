@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 
-import '../../../models/cloud_match.dart';
-import '../common/section_label.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/social/ui/common/section_label.dart';
 
 /// Hoops / Basketball match recap body displaying round-by-round point breakdown
 /// and shooting analytics (accuracy, swishes, streaks).

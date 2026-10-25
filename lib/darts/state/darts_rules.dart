@@ -1,4 +1,4 @@
-import '../darts_constants.dart';
+import 'package:b_ball/darts/darts_constants.dart';
 
 /// Immutable result of applying a single dart throw to a player's turn.
 class DartTurnResult {

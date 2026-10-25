@@ -2,7 +2,7 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../../game/ui/game_rules_dialog.dart';
+import 'package:b_ball/game/ui/game_rules_dialog.dart';
 
 /// Grouped list rows in [ProfileSheet] for Matches, How to play, and Sound settings.
 class ProfileMenuRows extends StatelessWidget {

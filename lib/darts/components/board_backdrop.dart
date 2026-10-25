@@ -5,7 +5,7 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../scene/board_projection.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
 
 /// The wall behind the board: warm wood planks filling the whole screen.
 ///
