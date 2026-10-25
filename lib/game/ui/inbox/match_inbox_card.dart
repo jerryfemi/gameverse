@@ -394,7 +394,7 @@ class MatchInboxCard extends StatelessWidget {
                       onPressed: onViewPodium,
                       icon: const Icon(Icons.emoji_events_outlined, size: 14),
                       label: const Text(
-                        'VIEW PODIUM',
+                        'View results',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
