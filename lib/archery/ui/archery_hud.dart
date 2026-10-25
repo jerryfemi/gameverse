@@ -6,10 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/match/incoming_challenge_dialog.dart';
+import 'package:flutter/services.dart';
 import '../../models/cloud_match.dart';
 import '../../models/match_invite.dart';
+import '../../models/player_descriptor.dart';
 import '../../providers/app_providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_match_service.dart';
 import '../archery_game_screen.dart' show ArcheryChallenge;
 import '../archery_constants.dart';
 import '../archery_game.dart';
@@ -103,11 +106,42 @@ class _SetEnd extends HookConsumerWidget {
     final left = useState<int>(oppLeft ? 10 : 45);
     final acted = useRef(false);
     final inviteWaiting = useRef(false);
+    final outgoingMatchId = useState<String?>(null);
+    final isEnteringArena = useState(false);
+    final oppDeclined = useState(false);
+
+    final outgoingMatch = outgoingMatchId.value != null
+        ? ref.watch(singleMatchProvider(outgoingMatchId.value!)).value
+        : null;
+
+    useEffect(() {
+      final m = outgoingMatch;
+      if (m != null && m.player2 != null && !isEnteringArena.value) {
+        isEnteringArena.value = true;
+        HapticFeedback.heavyImpact();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            GoRouter.maybeOf(context)?.go('/match/${m.id}');
+          }
+        });
+      } else if (m != null && m.status == MatchStatus.declined) {
+        HapticFeedback.mediumImpact();
+        oppDeclined.value = true;
+        outgoingMatchId.value = null;
+      }
+      return null;
+    }, [outgoingMatch?.player2?.uid, outgoingMatch?.status]);
+
     useEffect(() {
       if (!onlineOver) return null;
       left.value = oppLeft ? 10 : 45;
       final t = Timer.periodic(const Duration(seconds: 1), (t) {
-        if (acted.value || inviteWaiting.value) return;
+        if (acted.value ||
+            inviteWaiting.value ||
+            outgoingMatchId.value != null ||
+            isEnteringArena.value) {
+          return;
+        }
         left.value--;
         if (left.value <= 0) {
           t.cancel();
@@ -138,32 +172,80 @@ class _SetEnd extends HookConsumerWidget {
               .where((i) => i.isPending && i.hostUid == oppUid)
               .firstOrNull;
       inviteWaiting.value = theirRematch != null;
-      if (theirRematch != null) {
-        label = 'JOIN ${theirRematch.hostName.toUpperCase()}\'S REMATCH';
-        onContinue = () {
+
+      if (isEnteringArena.value) {
+        label = 'STARTING REMATCH...';
+        onContinue = () {};
+      } else if (theirRematch != null) {
+        label = 'ACCEPT ${theirRematch.hostName.toUpperCase()}\'S REMATCH';
+        onContinue = () async {
           acted.value = true;
-          IncomingChallengeDialog.show(
-            context: context,
-            invite: theirRematch,
-            onAccepted: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
-          );
+          try {
+            final profile = await AuthService.instance.ensureAuthenticated();
+            final userProfile = AuthService.instance.currentUser ??
+                UserProfile(
+                  uid: profile.uid,
+                  displayName: profile.displayName ?? 'Player',
+                  avatarEmoji: PlayerDescriptor.defaultAvatar,
+                );
+            await FirestoreMatchService.instance.acceptMatchChallenge(
+              invite: theirRematch,
+              recipientProfile: userProfile,
+            );
+            if (context.mounted) {
+              GoRouter.maybeOf(context)?.go('/match/${theirRematch.matchId}');
+            }
+          } catch (_) {
+            acted.value = false;
+          }
         };
+      } else if (outgoingMatchId.value != null) {
+        label = 'WAITING FOR OPPONENT...';
+        onContinue = () {};
+      } else if (oppDeclined.value) {
+        label = '${players.opponent.name} DECLINED';
+        onContinue = () {};
       } else {
         label = 'REMATCH';
         onContinue = () async {
           if (finished == null) return;
           acted.value = true;
           try {
-            await ArcheryChallenge.rematch(context, finished: finished, myUid: online.myUid);
+            final result = await ArcheryChallenge.requestRematch(
+              finished: finished,
+              myUid: online.myUid,
+            );
+            if (!context.mounted) return;
+            if (result.joined) {
+              GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
+              return;
+            }
+            outgoingMatchId.value = result.match.id;
           } catch (_) {
             acted.value = false; // couldn't start it: let the countdown resume
           }
         };
       }
-      secondaryLabel = acted.value || inviteWaiting.value
-          ? 'BACK TO SOLO'
-          : 'BACK TO SOLO · ${left.value}s';
-      onSecondary = () => GoRouter.maybeOf(context)?.go('/archery');
+
+      secondaryLabel = outgoingMatchId.value != null
+          ? 'CANCEL REMATCH'
+          : (acted.value || inviteWaiting.value
+              ? 'BACK TO SOLO'
+              : 'BACK TO SOLO · ${left.value}s');
+      onSecondary = () async {
+        if (outgoingMatchId.value != null) {
+          final id = outgoingMatchId.value!;
+          outgoingMatchId.value = null;
+          acted.value = false;
+          await ArcheryChallenge.cancelRematch(
+            matchId: id,
+            oppUid: oppUid,
+            myUid: online.myUid,
+          );
+          return;
+        }
+        GoRouter.maybeOf(context)?.go('/archery');
+      };
     }
 
     return SetEndCard(
