@@ -532,7 +532,7 @@ class _ArrowChip extends StatelessWidget {
           border: Border.all(color: const Color(0x66000000), width: 0.8),
         ),
         child: Text(
-          d.isX ? 'X' : (d.ring > 0 ? '${d.ring}' : 'M'),
+          d.ring > 0 ? '${d.ring}' : 'M',
           style: TextStyle(
             color: text,
             fontSize: 9.5,
