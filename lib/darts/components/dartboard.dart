@@ -30,7 +30,7 @@ class Dartboard extends Component {
 
   /// Pre-rendered board face; null until loaded (or if missing).
   ui.Image? _boardImage;
-  static const String boardImagePath = 'assets/darts/board.png';
+  static const String boardImagePath = 'assets/darts/board.webp';
 
   /// The image's radius relative to the board's outer radius.
   static const double _imageRadiusFrac = 1.004;
@@ -46,6 +46,17 @@ class Dartboard extends Component {
   static const double _flashDuration = 0.45; // 450 ms
 
   final Paint _flashPaint = Paint()..style = PaintingStyle.fill;
+
+  // ─── Checkout Guidance Glow (Soft Gold Pulse) ──────────────────────────────
+  final List<Path> _checkoutPaths = <Path>[];
+  int? _activeCheckoutScore;
+  double _glowTime = 0.0;
+
+  final Paint _checkoutFillPaint = Paint()..style = PaintingStyle.fill;
+  final Paint _checkoutStrokePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round
+    ..strokeJoin = StrokeJoin.round;
 
   Dartboard({required this.projection}) : super(priority: 1);
 
@@ -92,6 +103,59 @@ class Dartboard extends Component {
       return 'S${hit.segment}_outer';
     } else {
       return 'S${hit.segment}_inner';
+    }
+  }
+
+  /// Sets the active checkout target score to highlight winning beds in soft gold.
+  /// Pass null or 0 to clear.
+  void setCheckoutTarget(int? remaining) {
+    if (remaining == _activeCheckoutScore) return;
+    _activeCheckoutScore = remaining;
+    _rebuildCheckoutPaths();
+  }
+
+  /// Clears any active checkout bed highlights.
+  void clearCheckoutTarget() => setCheckoutTarget(null);
+
+  void _rebuildCheckoutPaths() {
+    _checkoutPaths.clear();
+    final int? remaining = _activeCheckoutScore;
+    if (remaining == null || remaining <= 0 || remaining > 60) return;
+
+    // 1. Fat single beds: remaining is 1..20
+    if (remaining <= 20) {
+      final String outer = 'S${remaining}_outer';
+      final String inner = 'S${remaining}_inner';
+      if (_flashPaths.containsKey(outer)) _checkoutPaths.add(_flashPaths[outer]!);
+      if (_flashPaths.containsKey(inner)) _checkoutPaths.add(_flashPaths[inner]!);
+    }
+
+    // 2. Double finish: remaining is even and <= 40
+    if (remaining <= 40 && remaining % 2 == 0) {
+      final int seg = remaining ~/ 2;
+      final String dKey = 'D$seg';
+      if (_flashPaths.containsKey(dKey) && !_checkoutPaths.contains(_flashPaths[dKey])) {
+        _checkoutPaths.add(_flashPaths[dKey]!);
+      }
+    }
+
+    // 3. Treble finish: remaining is divisible by 3 and 21..60
+    if (remaining > 20 && remaining <= 60 && remaining % 3 == 0) {
+      final int seg = remaining ~/ 3;
+      final String tKey = 'T$seg';
+      if (_flashPaths.containsKey(tKey) && !_checkoutPaths.contains(_flashPaths[tKey])) {
+        _checkoutPaths.add(_flashPaths[tKey]!);
+      }
+    }
+
+    // 4. Outer bull (25 pts)
+    if (remaining == 25 && _flashPaths.containsKey('bull_outer')) {
+      _checkoutPaths.add(_flashPaths['bull_outer']!);
+    }
+
+    // 5. Inner bull (50 pts)
+    if (remaining == 50 && _flashPaths.containsKey('bull_inner')) {
+      _checkoutPaths.add(_flashPaths['bull_inner']!);
     }
   }
 
@@ -275,6 +339,7 @@ class Dartboard extends Component {
     }
 
     _boardPicture = recorder.endRecording();
+    _rebuildCheckoutPaths();
   }
 
   Path _buildAnnularSector(
@@ -327,6 +392,10 @@ class Dartboard extends Component {
   @override
   void update(double dt) {
     super.update(dt);
+    if (_checkoutPaths.isNotEmpty) {
+      _glowTime += dt;
+      if (_glowTime > 1000.0) _glowTime -= 1000.0;
+    }
     if (_flashTime > 0.0) {
       _flashTime = math.max(0.0, _flashTime - dt);
       if (_flashTime == 0.0) {
@@ -342,7 +411,22 @@ class Dartboard extends Component {
       canvas.drawPicture(_boardPicture!);
     }
 
-    // 2. Draw hit-area flash overlay
+    // 2. Draw soft breathing golden checkout glow on winning target bed(s)
+    if (_checkoutPaths.isNotEmpty) {
+      // Smooth sinusoidal breathing between 0.16 and 0.38 alpha
+      final double pulse = 0.27 + 0.13 * math.sin(_glowTime * 3.5);
+      _checkoutFillPaint.color = const Color(0xFFF59E0B).withValues(alpha: pulse);
+      _checkoutStrokePaint
+        ..color = const Color(0xFFFFD54F).withValues(alpha: (pulse + 0.15).clamp(0.0, 1.0))
+        ..strokeWidth = math.max(1.5, projection.boardRadiusPx * 0.008);
+
+      for (final Path path in _checkoutPaths) {
+        canvas.drawPath(path, _checkoutFillPaint);
+        canvas.drawPath(path, _checkoutStrokePaint);
+      }
+    }
+
+    // 3. Draw hit-area flash overlay
     if (_flashTime > 0.0 && _activeFlashPath != null) {
       final double alpha = (_flashTime / _flashDuration).clamp(0.0, 1.0) * 0.7;
       _flashPaint.color = const Color(0xFFA9DCFF).withValues(alpha: alpha);
@@ -357,6 +441,7 @@ class Dartboard extends Component {
     _boardImage?.dispose();
     _boardImage = null;
     _flashPaths.clear();
+    _checkoutPaths.clear();
     super.onRemove();
   }
 }
