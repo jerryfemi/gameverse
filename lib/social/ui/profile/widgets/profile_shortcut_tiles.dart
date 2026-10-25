@@ -1,9 +1,9 @@
-import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
 import 'package:b_ball/game/ui/social/add_friend_dialog.dart';
 import 'package:b_ball/models/friend_profile.dart';
@@ -97,7 +97,7 @@ class ProfileShortcutTiles extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18.0),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 6.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18.0),
             border: Border.all(color: const Color(0xFF1E2638), width: 1.0),
@@ -106,24 +106,26 @@ class ProfileShortcutTiles extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40.0,
-                height: 40.0,
+                width: 38.0,
+                height: 38.0,
                 decoration: BoxDecoration(
                   color: iconBg,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: iconColor, size: 20.0),
+                child: Icon(icon, color: iconColor, size: 19.0),
               ),
-              const SizedBox(height: 8.0),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: UiFont.style(
-                  size: 11.5,
-                  weight: 800,
-                  color: Colors.white,
+              const SizedBox(height: 7.0),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: UiFont.style(
+                    size: 11.5,
+                    weight: 800,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
