@@ -53,8 +53,8 @@ class H2HCard extends HookConsumerWidget {
     this.myAvatar,
     this.onExpand,
     this.onAddFriend,
-  })  : mode = H2HCardMode.peek,
-        onCollapse = null;
+  }) : mode = H2HCardMode.peek,
+       onCollapse = null;
 
   const H2HCard.full({
     super.key,
@@ -65,8 +65,8 @@ class H2HCard extends HookConsumerWidget {
     this.myAvatar,
     this.onCollapse,
     this.onAddFriend,
-  })  : mode = H2HCardMode.full,
-        onExpand = null;
+  }) : mode = H2HCardMode.full,
+       onExpand = null;
 
   void _handleAddFriend() {
     HapticFeedback.lightImpact();
@@ -113,8 +113,9 @@ class H2HCard extends HookConsumerWidget {
   // ===========================================================================
   Widget _buildPeekView(BuildContext context, HeadToHead h2h, bool isFriend) {
     final total = h2h.totalMatches;
-    final double myRatio =
-        total > 0 ? (h2h.myWins / (h2h.myWins + h2h.theirWins).clamp(1, 999)) : 0.5;
+    final double myRatio = total > 0
+        ? (h2h.myWins / (h2h.myWins + h2h.theirWins).clamp(1, 999))
+        : 0.5;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -125,10 +126,7 @@ class H2HCard extends HookConsumerWidget {
           // Opponent Header + Add Friend Button
           Row(
             children: [
-              CrownAvatar(
-                avatar: opponentAvatar,
-                size: 46.0,
-              ),
+              CrownAvatar(avatar: opponentAvatar, size: 46.0),
               const SizedBox(width: 12.0),
               Expanded(
                 child: Column(
@@ -356,8 +354,8 @@ class H2HCard extends HookConsumerWidget {
     final filteredMatches = currentGame == 'all'
         ? h2h.matches
         : h2h.matches
-            .where((m) => m.game.toLowerCase().trim() == currentGame)
-            .toList();
+              .where((m) => m.game.toLowerCase().trim() == currentGame)
+              .toList();
 
     final filteredWins = currentGame == 'all'
         ? h2h.myWins
@@ -593,16 +591,10 @@ class H2HCard extends HookConsumerWidget {
       height: 40.0,
       child: Stack(
         children: [
-          CrownAvatar(
-            avatar: myAvatar ?? '👤',
-            size: 40.0,
-          ),
+          CrownAvatar(avatar: myAvatar ?? '👤', size: 40.0),
           Positioned(
             left: 26.0,
-            child: CrownAvatar(
-              avatar: opponentAvatar,
-              size: 40.0,
-            ),
+            child: CrownAvatar(avatar: opponentAvatar, size: 40.0),
           ),
         ],
       ),
@@ -643,7 +635,9 @@ class H2HCard extends HookConsumerWidget {
             style: UiFont.style(
               size: 12.0,
               weight: 800,
-              color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF94A3B8),
+              color: isSelected
+                  ? const Color(0xFF0F172A)
+                  : const Color(0xFF94A3B8),
             ),
           ),
         ),
@@ -660,8 +654,9 @@ class H2HCard extends HookConsumerWidget {
     MatchSummary summary,
   ) {
     final allMatches = ref.read(userMatchesProvider).value ?? const [];
-    final originalMatch =
-        allMatches.where((m) => m.id == summary.matchId).firstOrNull;
+    final originalMatch = allMatches
+        .where((m) => m.id == summary.matchId)
+        .firstOrNull;
 
     final IconData icon;
     final Color iconColor;
@@ -709,10 +704,7 @@ class H2HCard extends HookConsumerWidget {
             Container(
               width: 32.0,
               height: 32.0,
-              decoration: BoxDecoration(
-                color: iconBg,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
               child: Icon(icon, size: 16.0, color: iconColor),
             ),
             const SizedBox(width: 10.0),
@@ -815,18 +807,11 @@ class H2HCard extends HookConsumerWidget {
     return Container(
       width: 22.0,
       height: 22.0,
-      decoration: BoxDecoration(
-        color: bg,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
       child: Center(
         child: Text(
           label,
-          style: UiFont.style(
-            size: 11.0,
-            weight: 900,
-            color: textColor,
-          ),
+          style: UiFont.style(size: 11.0, weight: 900, color: textColor),
         ),
       ),
     );
