@@ -217,13 +217,18 @@ class ResultsSheet extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 2.0),
-                Text(
-                  summary.me.headline,
-                  style: UiFont.style(
-                    size: 26.0,
-                    weight: 900,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    summary.me.headline,
+                    maxLines: 1,
+                    style: UiFont.style(
+                      size: 26.0,
+                      weight: 900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
                 Text(
@@ -267,13 +272,18 @@ class ResultsSheet extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 2.0),
-                Text(
-                  summary.opponent.headline,
-                  style: UiFont.style(
-                    size: 26.0,
-                    weight: 900,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    summary.opponent.headline,
+                    maxLines: 1,
+                    style: UiFont.style(
+                      size: 26.0,
+                      weight: 900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
                 Text(
