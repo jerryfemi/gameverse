@@ -291,6 +291,8 @@ class DartsGameScreen extends HookConsumerWidget {
                   DartsHud(
                     onOpenPause: openPause,
                     online: online.value,
+                    onPauseEngine: () => g.pauseEngine(),
+                    onResumeEngine: () => g.resumeEngine(),
                   ),
 
                   // 3. Quick Lobby Navigation Pill under Top Bar (hidden during modals)
