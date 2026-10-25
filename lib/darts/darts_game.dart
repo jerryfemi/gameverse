@@ -140,6 +140,21 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
         events.isMyTurn && !flyingDart.isFlying && !_turnTransitioning && !_isBotTurnActive;
   }
 
+  void _updateCheckoutGlow() {
+    final bool canThrow = events.isMyTurn &&
+        !events.isMatchOver &&
+        !_turnTransitioning &&
+        !_isBotTurnActive &&
+        !_awaitingOnlineTurn;
+
+    if (canThrow) {
+      final int rem = events.currentThrowRemaining;
+      dartboard.setCheckoutTarget(rem <= 60 ? rem : null);
+    } else {
+      dartboard.clearCheckoutTarget();
+    }
+  }
+
   /// [launched] is false for a shot-clock timeout: the dart counts as a miss
   /// but was never thrown, so nothing sticks in the wall.
   void _onLocalDartLanded(DartHit hit, {bool launched = true}) {
@@ -390,6 +405,8 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     if (_remoteQueue.isNotEmpty && !flyingDart.isFlying && !_turnTransitioning) {
       _launchRemoteDart(_remoteQueue.removeAt(0));
     }
+
+    _updateCheckoutGlow();
 
     super.update(dt);
   }
