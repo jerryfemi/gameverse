@@ -86,12 +86,15 @@ class ArcheryGameScreen extends HookConsumerWidget {
                 you: ArcheryPlayer(
                   name: mine?.displayName ?? self.displayName,
                   avatar: mine?.avatarEmoji ?? self.avatarEmoji,
+                  uid: self.uid,
                 ),
                 opponent: theirs == null
                     ? const ArcheryPlayer(name: 'Opponent', avatar: '⏳')
                     : ArcheryPlayer(
                         name: theirs.displayName,
                         avatar: theirs.avatarEmoji,
+                        uid: theirs.uid,
+                        isBot: false,
                       ),
               ),
             );
