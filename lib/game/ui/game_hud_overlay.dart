@@ -24,8 +24,17 @@ import 'package:b_ball/game/ui/match/live_spectator_status_pill.dart';
 import 'package:b_ball/game/ui/match/live_turn_transition_overlay.dart';
 import 'package:b_ball/game/ui/reactions/live_floating_reactions_overlay.dart';
 
+import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
+
 /// Top-level Game HUD Overlay mounted via Flame's [GameWidget.overlayBuilderMap].
-class GameHudOverlay extends StatelessWidget {
+class GameHudOverlay extends HookConsumerWidget {
   final BasketballGame game;
 
   const GameHudOverlay({super.key, required this.game});
@@ -55,7 +64,11 @@ class GameHudOverlay extends StatelessWidget {
   );
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final h2hState = useState<InGameH2HState>(InGameH2HState.closed);
+    final user = ref.watch(currentUserProfileProvider).value;
+    final session = useValueListenable(game.matchSessionNotifier);
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -66,6 +79,14 @@ class GameHudOverlay extends StatelessWidget {
             game: game,
             onHelpTapped: () => _handleHelpTapped(context),
             onInboxTapped: () => _openDrawer(context),
+            onOpponentAvatarTap: () {
+              if (session != null &&
+                  session.cloudMatchId != null &&
+                  session.player2.id.isNotEmpty &&
+                  session.player2.id != 'cpu') {
+                h2hState.value = InGameH2HState.peek;
+              }
+            },
           ),
         ),
 
@@ -272,7 +293,76 @@ class GameHudOverlay extends StatelessWidget {
             );
           },
         ),
+
+        // 9. In-Game Head-to-Head Peek & Full Panel Overlay (Artboards 3, 4)
+        if (h2hState.value != InGameH2HState.closed && session != null)
+          InGameH2HOverlay(
+            state: h2hState.value,
+            myUid: user?.uid ?? '',
+            myAvatar: user?.avatarEmoji,
+            opponentUid: session.player2.id,
+            opponentName: session.player2.name,
+            opponentAvatar: session.player2.avatar,
+            defaultGame: 'basketball',
+            footerSummary: _buildHoopsFooter(
+              session.player2.name,
+              session.player2.totalScore,
+              () => h2hState.value = InGameH2HState.closed,
+            ),
+            onExpand: () => h2hState.value = InGameH2HState.full,
+            onCollapse: () => h2hState.value = InGameH2HState.closed,
+            onClose: () => h2hState.value = InGameH2HState.closed,
+            turnCountdown: session.cloudMatchId != null &&
+                    session.activePlayerIndex == 0
+                ? game.timeRemainingNotifier.value
+                : null,
+            isOnline: session.cloudMatchId != null,
+            isMyTurn: session.activePlayerIndex == 0,
+            onPauseEngine: () => game.pauseGame(manual: true),
+            onResumeEngine: () => game.resumeGame(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildHoopsFooter(String name, int score, VoidCallback onTap) {
+    return Material(
+      color: const Color(0xCC0F172A),
+      borderRadius: BorderRadius.circular(16.0),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: const Color(0x22FFFFFF), width: 1.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${name.toUpperCase()} · $score PTS',
+                style: UiFont.style(
+                  size: 11.5,
+                  weight: 800,
+                  color: const Color(0xFFF59E0B),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18.0,
+                color: Color(0xFFF59E0B),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
