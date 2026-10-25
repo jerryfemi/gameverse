@@ -6,7 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../archery/archery_game_screen.dart' show ArcheryChallenge;
 import '../../archery/ui/archery_match_bar.dart' show ArcheryInbox;
-import '../../notifications/profile_drawer.dart';
+import '../../social/ui/profile/profile_sheet.dart';
 
 import '../../game/ui/common/app_avatar.dart';
 import '../../game/ui/common/edit_profile_dialog.dart';
@@ -121,7 +121,7 @@ class AccountChip extends HookConsumerWidget {
         // Online: the profile drawer (what's waiting, friends, matches).
         onTap: Firebase.apps.isEmpty
             ? () => EditProfileDialog.show(context, profile: profile)
-            : () => ProfileDrawer.show(
+            : () => ProfileSheet.show(
                   context,
                   onOpenMatch: (m) {
                     if (m.isFinished) {
