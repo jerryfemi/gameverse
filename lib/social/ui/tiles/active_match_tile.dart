@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../archery/state/archery_rules.dart';
 import '../../../darts/state/darts_rules.dart';
@@ -15,11 +17,11 @@ import '../common/game_chip.dart';
 
 /// Card widget for active matches adhering to Artboard 10 of GameVerse design.
 ///
-/// Supports three canonical states:
+/// Built with flutter_hooks + hooks_riverpod:
 /// 1. Your Turn: Mint glow, "YOUR TURN" filled pill, game action CTA.
 /// 2. Waiting On Them: Dark card, amber "THEIR TURN" pill, lead narrative, "Watch live".
 /// 3. Invite Not Joined: Dark card, slate "NOT JOINED" pill, code copy with confirmation, cancel.
-class ActiveMatchTile extends StatefulWidget {
+class ActiveMatchTile extends HookConsumerWidget {
   final CloudMatch match;
   final String? myUid;
   final VoidCallback? onPlay;
@@ -31,30 +33,13 @@ class ActiveMatchTile extends StatefulWidget {
     this.onPlay,
   });
 
-  @override
-  State<ActiveMatchTile> createState() => _ActiveMatchTileState();
-}
-
-class _ActiveMatchTileState extends State<ActiveMatchTile> {
-  bool _codeCopied = false;
-  Timer? _copyResetTimer;
-
-  @override
-  void dispose() {
-    _copyResetTimer?.cancel();
-    super.dispose();
-  }
-
-  void _copyJoinCode() {
-    HapticFeedback.lightImpact();
-    Clipboard.setData(ClipboardData(text: widget.match.joinCode));
-    setState(() => _codeCopied = true);
-    _copyResetTimer?.cancel();
-    _copyResetTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _codeCopied = false);
-      }
-    });
+  void _navigateToMatch(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    if (onPlay != null) {
+      onPlay!();
+    } else {
+      GoRouter.maybeOf(context)?.go('/match/${match.id}');
+    }
   }
 
   Future<void> _cancelInvite(BuildContext context, String effectiveUid) async {
@@ -125,32 +110,44 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
 
     if (confirmed == true && effectiveUid.isNotEmpty) {
       await FirestoreMatchService.instance.leaveOrDismissMatch(
-        matchId: widget.match.id,
+        matchId: match.id,
         myUid: effectiveUid,
       );
     }
   }
 
-  void _navigateToMatch() {
-    HapticFeedback.mediumImpact();
-    if (widget.onPlay != null) {
-      widget.onPlay!();
-    } else {
-      GoRouter.maybeOf(context)?.go('/match/${widget.match.id}');
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final codeCopied = useState(false);
+    final copyResetTimer = useRef<Timer?>(null);
+
+    useEffect(() {
+      return () => copyResetTimer.value?.cancel();
+    }, const []);
+
+    void copyJoinCode() {
+      HapticFeedback.lightImpact();
+      Clipboard.setData(ClipboardData(text: match.joinCode));
+      codeCopied.value = true;
+      copyResetTimer.value?.cancel();
+      copyResetTimer.value = Timer(const Duration(seconds: 2), () {
+        codeCopied.value = false;
+      });
+    }
+
     final effectiveUid =
-        widget.myUid ?? AuthService.instance.currentUser?.uid ?? '';
-    final match = widget.match;
+        myUid ?? AuthService.instance.currentUser?.uid ?? '';
     final isInvite =
         match.status == MatchStatus.waitingForOpponent || match.player2 == null;
     final isMyTurn = !isInvite && match.isMyTurn(effectiveUid);
 
     if (isInvite) {
-      return _buildInviteCard(context, effectiveUid);
+      return _buildInviteCard(
+        context: context,
+        effectiveUid: effectiveUid,
+        codeCopied: codeCopied.value,
+        onCopy: copyJoinCode,
+      );
     } else if (isMyTurn) {
       return _buildYourTurnCard(context, effectiveUid);
     } else {
@@ -162,7 +159,6 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   // 1. YOUR TURN CARD (Artboard 10 - top card)
   // ---------------------------------------------------------------------------
   Widget _buildYourTurnCard(BuildContext context, String effectiveUid) {
-    final match = widget.match;
     final myPlayer = match.myPlayer(effectiveUid);
     final oppPlayer = match.opponentPlayer(effectiveUid);
     final oppName = oppPlayer?.displayName ?? 'Opponent';
@@ -248,7 +244,7 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
           SizedBox(
             height: 44.0,
             child: ElevatedButton.icon(
-              onPressed: _navigateToMatch,
+              onPressed: () => _navigateToMatch(context),
               icon: Icon(ctaIcon, size: 16.0),
               label: Text(
                 ctaVerb,
@@ -278,7 +274,6 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   // 2. THEIR TURN CARD (Artboard 10 - middle card)
   // ---------------------------------------------------------------------------
   Widget _buildTheirTurnCard(BuildContext context, String effectiveUid) {
-    final match = widget.match;
     final myPlayer = match.myPlayer(effectiveUid);
     final oppPlayer = match.opponentPlayer(effectiveUid);
     final oppName = oppPlayer?.displayName ?? 'Opponent';
@@ -360,7 +355,7 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
           SizedBox(
             height: 40.0,
             child: ElevatedButton(
-              onPressed: _navigateToMatch,
+              onPressed: () => _navigateToMatch(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF38BDF8),
                 foregroundColor: const Color(0xFF0F172A),
@@ -387,8 +382,12 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   // ---------------------------------------------------------------------------
   // 3. INVITE NOT JOINED CARD (Artboard 10 - bottom card)
   // ---------------------------------------------------------------------------
-  Widget _buildInviteCard(BuildContext context, String effectiveUid) {
-    final match = widget.match;
+  Widget _buildInviteCard({
+    required BuildContext context,
+    required String effectiveUid,
+    required bool codeCopied,
+    required VoidCallback onCopy,
+  }) {
     final myPlayer = match.myPlayer(effectiveUid);
     final oppName = match.player2?.displayName ?? 'Opponent';
     final oppAvatar = match.player2?.avatarEmoji ?? '⏳';
@@ -543,11 +542,11 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
                 child: SizedBox(
                   height: 40.0,
                   child: OutlinedButton(
-                    onPressed: _copyJoinCode,
+                    onPressed: onCopy,
                     style: OutlinedButton.styleFrom(
                       backgroundColor: const Color(0xFF1E2638),
                       side: BorderSide(
-                        color: _codeCopied
+                        color: codeCopied
                             ? const Color(0xFF00FFCC)
                             : const Color(0xFF2A344A),
                       ),
@@ -556,11 +555,11 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
                       ),
                     ),
                     child: Text(
-                      _codeCopied ? '✓ CODE COPIED' : 'Copy code',
+                      codeCopied ? '✓ CODE COPIED' : 'Copy code',
                       style: UiFont.style(
                         size: 12.5,
                         weight: 800,
-                        color: _codeCopied
+                        color: codeCopied
                             ? const Color(0xFF00FFCC)
                             : Colors.white,
                       ),
@@ -718,7 +717,6 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   // Score Calculations
   // ---------------------------------------------------------------------------
   _ScoreResult _computeScores(String effectiveUid) {
-    final match = widget.match;
     final myPlayer = match.myPlayer(effectiveUid);
     final oppPlayer = match.opponentPlayer(effectiveUid);
 
@@ -766,7 +764,6 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   }
 
   String _computeRoundText() {
-    final match = widget.match;
     final p1Rounds = match.player1.roundScores.length;
     final p2Rounds = match.player2?.roundScores.length ?? 0;
     final currentRound = math.max(p1Rounds, p2Rounds) + 1;
@@ -779,7 +776,6 @@ class _ActiveMatchTileState extends State<ActiveMatchTile> {
   }
 
   String _computeLeadNarrative(String oppName, _ScoreResult scoreData) {
-    final match = widget.match;
     final verb = match.isDarts
         ? 'throwing'
         : (match.isArchery ? 'shooting set' : 'shooting');
