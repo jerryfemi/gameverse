@@ -2,10 +2,19 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../game/ui/common/app_avatar.dart';
+import '../../models/cloud_match.dart';
+import '../../models/match_invite.dart';
+import '../../models/player_descriptor.dart';
+import '../../providers/app_providers.dart';
+import '../../services/auth_service.dart';
+import '../../services/firestore_match_service.dart';
 import '../darts_constants.dart';
+import '../darts_game_screen.dart';
 import '../state/darts_match_notifier.dart';
 import '../state/darts_match_state.dart';
 import '../state/darts_players.dart';
@@ -18,19 +27,28 @@ import '../state/darts_players.dart';
 ///   bar showing how much of the 301 they knocked off.
 /// - Three quick stats each: 3-dart average, best turn, tons (100+ turns).
 /// - REMATCH, then CHALLENGE A FRIEND (solo) or BACK TO SOLO (online).
-/// - Pops in with a short scale and fade.
-class DartsResultCard extends ConsumerWidget {
+/// - Seamless inline rematch: no popup lobby modals, instant auto-entry
+///   upon opponent acceptance.
+class DartsResultCard extends HookConsumerWidget {
   final VoidCallback onRematch;
   final VoidCallback? onPlayFriend;
 
   /// Live 1v1: name the opponent instead of the bot, and relabel the buttons.
   final bool online;
 
+  /// The finished match details when in online mode.
+  final CloudMatch? finishedMatch;
+
+  /// Current user's UID when in online mode.
+  final String? myUid;
+
   const DartsResultCard({
     super.key,
     required this.onRematch,
     this.onPlayFriend,
     this.online = false,
+    this.finishedMatch,
+    this.myUid,
   });
 
   @override
@@ -38,6 +56,53 @@ class DartsResultCard extends ConsumerWidget {
     final match = ref.watch(dartsMatchProvider);
     final players = ref.watch(dartsPlayersProvider);
     if (!match.matchOver) return const SizedBox.shrink();
+
+    // ── Online Rematch Reactive State ─────────────────────────────────────
+    final isCreatingOrJoining = useState(false);
+    final outgoingMatchId = useState<String?>(null);
+    final rematchDeclined = useState(false);
+    final rematchError = useState<String?>(null);
+    final isStartingArena = useState(false);
+
+    final effectiveUid = myUid ?? AuthService.instance.currentUser?.uid ?? '';
+    final oppPlayer = finishedMatch?.opponentPlayer(effectiveUid);
+    final String oppUid = oppPlayer?.uid ?? '';
+    final String oppName = oppPlayer?.displayName ?? players.opponent.name;
+
+    // 1. Reactive check: did opponent send a rematch challenge?
+    final incomingChallenges = online && oppUid.isNotEmpty
+        ? (ref.watch(incomingMatchChallengesProvider).value ?? const <MatchInvite>[])
+        : const <MatchInvite>[];
+    final incomingRematch = incomingChallenges
+        .where((i) =>
+            i.isPending &&
+            i.hostUid == oppUid &&
+            (i.isDarts || i.game == 'darts' || i.game.isEmpty))
+        .firstOrNull;
+
+    // 2. Stream outgoing match to detect when opponent joins or declines
+    final outgoingMatch = outgoingMatchId.value != null
+        ? ref.watch(singleMatchProvider(outgoingMatchId.value!)).value
+        : null;
+
+    // Auto-enter arena as soon as opponent joins Player 1's created room
+    useEffect(() {
+      final m = outgoingMatch;
+      if (m != null && m.player2 != null && !isStartingArena.value) {
+        isStartingArena.value = true;
+        HapticFeedback.heavyImpact();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            GoRouter.maybeOf(context)?.go('/match/${m.id}');
+          }
+        });
+      } else if (m != null && m.status == MatchStatus.declined) {
+        HapticFeedback.mediumImpact();
+        rematchDeclined.value = true;
+        outgoingMatchId.value = null;
+      }
+      return null;
+    }, [outgoingMatch?.player2?.uid, outgoingMatch?.status]);
 
     final int winner = match.winner ?? 0; // 1 you, -1 opponent, 0 draw
     final bool youWon = winner == 1;
@@ -169,13 +234,311 @@ class DartsResultCard extends ConsumerWidget {
                       ),
                       const SizedBox(height: 22.0),
 
-                      // ── Buttons ───────────────────────────────────────
-                      _CardButton(
-                        label: 'REMATCH',
-                        icon: Icons.replay_rounded,
-                        primary: true,
-                        onTap: onRematch,
-                      ),
+                      // ── Rematch / Actions Area ─────────────────────────
+                      if (rematchError.value != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0x28EF4444),
+                            borderRadius: BorderRadius.circular(14.0),
+                            border: Border.all(color: const Color(0x66EF4444)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, size: 18.0, color: Color(0xFFF87171)),
+                              const SizedBox(width: 8.0),
+                              Expanded(
+                                child: Text(
+                                  rematchError.value!,
+                                  style: const TextStyle(
+                                    color: Color(0xFFFCA5A5),
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 16.0, color: Color(0xFF94A3B8)),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => rematchError.value = null,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10.0),
+                      ],
+
+                      if (isStartingArena.value) ...[
+                        Container(
+                          height: 48.0,
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0x3322C55E),
+                            borderRadius: BorderRadius.circular(14.0),
+                            border: Border.all(color: const Color(0xFF22C55E)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF22C55E).withValues(alpha: 0.25),
+                                blurRadius: 16.0,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.bolt_rounded, color: Color(0xFF22C55E), size: 20.0),
+                              SizedBox(width: 8.0),
+                              Text(
+                                'STARTING REMATCH...',
+                                style: TextStyle(
+                                  color: Color(0xFF4ADE80),
+                                  fontSize: 13.0,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (incomingRematch != null) ...[
+                        // Opponent wants a rematch: show vibrant prompt right here!
+                        Container(
+                          padding: const EdgeInsets.all(14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF131D31),
+                            borderRadius: BorderRadius.circular(16.0),
+                            border: Border.all(color: const Color(0xFF00FFCC), width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00FFCC).withValues(alpha: 0.18),
+                                blurRadius: 14.0,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  AppAvatar(avatar: incomingRematch.hostAvatar, size: 28.0),
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    child: Text(
+                                      '${incomingRematch.hostName.toUpperCase()} WANTS A REMATCH!',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10.0),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: isCreatingOrJoining.value
+                                          ? null
+                                          : () async {
+                                              HapticFeedback.lightImpact();
+                                              await FirestoreMatchService.instance.declineMatchChallenge(
+                                                myUid: effectiveUid,
+                                                matchId: incomingRematch.matchId,
+                                                hostUid: incomingRematch.hostUid,
+                                              );
+                                            },
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(0xFF94A3B8),
+                                        side: const BorderSide(color: Color(0xFF334155)),
+                                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12.0),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'DECLINE',
+                                        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8.0),
+                                  Expanded(
+                                    flex: 2,
+                                    child: ElevatedButton(
+                                      onPressed: isCreatingOrJoining.value
+                                          ? null
+                                          : () async {
+                                              HapticFeedback.mediumImpact();
+                                              isCreatingOrJoining.value = true;
+                                              try {
+                                                final profile = await AuthService.instance.ensureAuthenticated();
+                                                final userProfile = AuthService.instance.currentUser ??
+                                                    UserProfile(
+                                                      uid: profile.uid,
+                                                      displayName: profile.displayName ?? 'Player',
+                                                      avatarEmoji: PlayerDescriptor.defaultAvatar,
+                                                    );
+                                                await FirestoreMatchService.instance.acceptMatchChallenge(
+                                                  invite: incomingRematch,
+                                                  recipientProfile: userProfile,
+                                                );
+                                                if (context.mounted) {
+                                                  GoRouter.maybeOf(context)?.go('/match/${incomingRematch.matchId}');
+                                                }
+                                              } catch (e) {
+                                                isCreatingOrJoining.value = false;
+                                                rematchError.value = 'Failed to join rematch';
+                                              }
+                                            },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF00FFCC),
+                                        foregroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12.0),
+                                        ),
+                                      ),
+                                      child: isCreatingOrJoining.value
+                                          ? const SizedBox(
+                                              width: 14.0,
+                                              height: 14.0,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.0,
+                                                color: Colors.black,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'ACCEPT REMATCH',
+                                              style: TextStyle(
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w900,
+                                                letterSpacing: 0.8,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (outgoingMatchId.value != null) ...[
+                        // Player 1 waiting for opponent to accept
+                        Container(
+                          height: 48.0,
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0x2800FFCC),
+                            borderRadius: BorderRadius.circular(14.0),
+                            border: Border.all(color: const Color(0x6600FFCC)),
+                          ),
+                          child: Row(
+                            children: [
+                              const SizedBox(
+                                width: 16.0,
+                                height: 16.0,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.0,
+                                  color: Color(0xFF00FFCC),
+                                ),
+                              ),
+                              const SizedBox(width: 10.0),
+                              Expanded(
+                                child: Text(
+                                  'WAITING FOR ${oppName.toUpperCase()}...',
+                                  style: const TextStyle(
+                                    color: Color(0xFF00FFCC),
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.8,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFF94A3B8)),
+                                tooltip: 'Cancel Rematch',
+                                onPressed: () async {
+                                  final id = outgoingMatchId.value;
+                                  outgoingMatchId.value = null;
+                                  if (id != null) {
+                                    await DartsChallenge.cancelRematch(
+                                      matchId: id,
+                                      oppUid: oppUid,
+                                      myUid: effectiveUid,
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (rematchDeclined.value) ...[
+                        // Opponent declined rematch
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+                          decoration: BoxDecoration(
+                            color: const Color(0x28EF4444),
+                            borderRadius: BorderRadius.circular(14.0),
+                            border: Border.all(color: const Color(0x66EF4444)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, size: 18.0, color: Color(0xFFF87171)),
+                              const SizedBox(width: 8.0),
+                              Expanded(
+                                child: Text(
+                                  '$oppName declined the rematch.',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFCA5A5),
+                                    fontSize: 12.0,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        // Standard Rematch Button
+                        _CardButton(
+                          label: isCreatingOrJoining.value
+                              ? 'CONNECTING...'
+                              : 'REMATCH',
+                          icon: Icons.replay_rounded,
+                          primary: true,
+                          onTap: () async {
+                            if (!online || finishedMatch == null || effectiveUid.isEmpty) {
+                              onRematch();
+                              return;
+                            }
+                            isCreatingOrJoining.value = true;
+                            rematchError.value = null;
+                            rematchDeclined.value = false;
+                            try {
+                              final result = await DartsChallenge.requestRematch(
+                                finished: finishedMatch!,
+                                myUid: effectiveUid,
+                              );
+                              if (!context.mounted) return;
+                              if (result.joined) {
+                                GoRouter.maybeOf(context)?.go('/match/${result.match.id}');
+                                return;
+                              }
+                              outgoingMatchId.value = result.match.id;
+                            } catch (e) {
+                              rematchError.value = 'Could not request rematch. Check connection.';
+                            } finally {
+                              isCreatingOrJoining.value = false;
+                            }
+                          },
+                        ),
+                      ],
                       if (onPlayFriend != null) ...[
                         const SizedBox(height: 10.0),
                         _CardButton(
