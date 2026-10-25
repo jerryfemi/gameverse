@@ -23,12 +23,15 @@ import 'package:b_ball/archery/state/archery_players.dart';
 import 'package:b_ball/archery/ui/live_pill.dart';
 import 'package:b_ball/archery/ui/round_summary.dart';
 import 'package:b_ball/archery/ui/turn_banner.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
 import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flutter HUD over the Flame canvas: GamePigeon-style scoreboard, the live
 /// status pill and turn banner (online), and the set-end card. Each piece
 /// watches only the state slice it shows.
-class ArcheryHud extends ConsumerWidget {
+class ArcheryHud extends HookConsumerWidget {
   final ArcheryGame game;
 
   /// Online: where "BACK TO LOBBY" goes after the match.
@@ -38,8 +41,18 @@ class ArcheryHud extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (phase, online, setOver) = ref.watch(
-      archeryMatchProvider.select((s) => (s.phase, s.online, s.setOver)),
+    final h2hState = useState<InGameH2HState>(InGameH2HState.closed);
+    final user = ref.watch(currentUserProfileProvider).value;
+    final players = ref.watch(archeryPlayersProvider);
+    final (phase, online, setOver, liveStatus, shooter, themPts) = ref.watch(
+      archeryMatchProvider.select((s) => (
+        s.phase,
+        s.online,
+        s.setOver,
+        s.liveStatus,
+        s.shooter,
+        s.opponentPoints,
+      )),
     );
     final bool showScoreBar = online ||
         phase == ShotPhase.atLine ||
@@ -64,7 +77,15 @@ class ArcheryHud extends ConsumerWidget {
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
                 opacity: showScoreBar ? 1.0 : 0.0,
-                child: _Scoreboard(matchId: game.online?.matchId),
+                child: _Scoreboard(
+                  matchId: game.online?.matchId,
+                  onAvatarTap: () {
+                    if (!players.opponent.isBot &&
+                        (players.opponent.uid?.isNotEmpty ?? false)) {
+                      h2hState.value = InGameH2HState.peek;
+                    }
+                  },
+                ),
               ),
             ),
           ),
@@ -79,7 +100,74 @@ class ArcheryHud extends ConsumerWidget {
           const Positioned.fill(child: IgnorePointer(child: TurnBanner())),
         ],
         if (showSetEnd) _SetEnd(game: game, onExitToLobby: onExitToLobby),
+        if (h2hState.value != InGameH2HState.closed)
+          InGameH2HOverlay(
+            state: h2hState.value,
+            myUid: user?.uid ?? '',
+            myAvatar: user?.avatarEmoji,
+            opponentUid: players.opponent.uid ?? '',
+            opponentName: players.opponent.name,
+            opponentAvatar: players.opponent.avatar,
+            defaultGame: 'archery',
+            footerSummary: _buildArcheryFooter(
+              players.opponent.name,
+              themPts,
+              () => h2hState.value = InGameH2HState.closed,
+            ),
+            onExpand: () => h2hState.value = InGameH2HState.full,
+            onCollapse: () => h2hState.value = InGameH2HState.closed,
+            onClose: () => h2hState.value = InGameH2HState.closed,
+            turnCountdown: game.online != null &&
+                    liveStatus == ArcheryLiveStatus.yourShot
+                ? game.online!.shotClock.value
+                : null,
+            isOnline: game.online != null,
+            isMyTurn: shooter == ArcheryShooter.you,
+            onPauseEngine: () => game.pauseEngine(),
+            onResumeEngine: () => game.resumeEngine(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildArcheryFooter(String name, int sets, VoidCallback onTap) {
+    return Material(
+      color: const Color(0xCC0F172A),
+      borderRadius: BorderRadius.circular(16.0),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: const Color(0x22FFFFFF), width: 1.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${name.toUpperCase()} · $sets ${sets == 1 ? "SET" : "SETS"}',
+                style: UiFont.style(
+                  size: 11.5,
+                  weight: 800,
+                  color: const Color(0xFFA78BFA),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18.0,
+                color: Color(0xFFA78BFA),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -278,7 +366,8 @@ class _SetEnd extends HookConsumerWidget {
 /// Online, the archer whose set it is gets a glowing ring.
 class _Scoreboard extends ConsumerWidget {
   final String? matchId;
-  const _Scoreboard({this.matchId});
+  final VoidCallback? onAvatarTap;
+  const _Scoreboard({this.matchId, this.onAvatarTap});
 
   static const Color _youRing = Color(0xFF00FFCC);
   static const Color _themRing = Color(0xFFA78BFA);
@@ -329,6 +418,7 @@ class _Scoreboard extends ConsumerWidget {
           chips: [for (final s in them) _ChipData(s.ring, isX: s.isX)],
           isOpponent: true,
           matchId: matchId,
+          onAvatarTap: onAvatarTap,
         ),
       ],
     );
@@ -418,6 +508,7 @@ class _PlayerBadge extends StatelessWidget {
   final bool active;
   final bool isOpponent;
   final String? matchId;
+  final VoidCallback? onAvatarTap;
 
   const _PlayerBadge({
     required this.player,
@@ -427,6 +518,7 @@ class _PlayerBadge extends StatelessWidget {
     this.active = false,
     this.isOpponent = false,
     this.matchId,
+    this.onAvatarTap,
   });
 
   static const double avatarSize = 42.0;
@@ -459,6 +551,7 @@ class _PlayerBadge extends StatelessWidget {
             isLeft: false,
             badgeBorderColor: const Color(0xFF0F172A),
             forceAbove: false,
+            onAvatarTap: onAvatarTap,
             child: avatarWidget,
           )
         : avatarWidget;
