@@ -18,6 +18,7 @@ import 'package:b_ball/darts/darts_game_screen.dart';
 import 'package:b_ball/darts/state/darts_match_notifier.dart';
 import 'package:b_ball/darts/state/darts_match_state.dart';
 import 'package:b_ball/darts/state/darts_players.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// End-of-match card for Darts 301 (solo vs the bot, or a live 1v1).
 ///
@@ -536,6 +537,17 @@ class DartsResultCard extends HookConsumerWidget {
                             } finally {
                               isCreatingOrJoining.value = false;
                             }
+                          },
+                        ),
+                      ],
+                      if (online && finishedMatch != null) ...[
+                        const SizedBox(height: 10.0),
+                        _CardButton(
+                          label: 'VIEW MATCH RECAP',
+                          icon: Icons.analytics_outlined,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            ResultsSheet.show(context, finishedMatch!);
                           },
                         ),
                       ],
