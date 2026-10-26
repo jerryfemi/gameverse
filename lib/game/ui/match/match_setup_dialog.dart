@@ -12,20 +12,21 @@ import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/services/update/update_platform.dart';
 import 'package:b_ball/game/match/match_config.dart';
-import 'package:b_ball/game/physics/shot_difficulty.dart';
 import 'package:b_ball/game/ui/common/app_colors.dart';
-import 'package:b_ball/game/ui/common/clean_ui.dart';
-import 'package:b_ball/game/ui/common/difficulty_stepped_slider.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
 import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
 import 'package:b_ball/game/ui/match/components/friend_selector_ribbon.dart';
+import 'package:b_ball/game/ui/match/components/match_code_reveal_card.dart';
+import 'package:b_ball/game/ui/match/components/match_game_cards.dart';
+import 'package:b_ball/game/ui/match/components/match_hoops_settings_card.dart';
+import 'package:b_ball/game/ui/match/components/match_rules_card.dart';
 
 /// "Play a friend" modal dialog matching Design Templates 16 and 17:
 /// - 3 game selection cards (HOOPS, ARCHERY, DARTS)
 /// - Mode switcher (Share a code / A friend)
 /// - Hoops match settings (Rounds, Shot clock, Difficulty)
 /// - Friend radio-picker list
-/// - FittedBox responsive scaling
+/// - FittedBox responsive scaling (< 250 lines)
 class MatchSetupDialog extends HookWidget {
   final MatchConfig initialConfig;
   final bool showGamePicker;
@@ -58,9 +59,6 @@ class MatchSetupDialog extends HookWidget {
   static const Color _hoops = Color(0xFFF59E0B);
   static const Color _archery = Color(0xFF00FFCC);
   static const Color _darts = Color(0xFF38BDF8);
-
-  static const List<int> _roundOptions = [2, 3, 4];
-  static const List<int> _durationOptions = [30, 60];
 
   @override
   Widget build(BuildContext context) {
@@ -233,8 +231,7 @@ class MatchSetupDialog extends HookWidget {
             ? '301 down to zero, checkout on a double'
             : 'Take turns, highest total wins');
 
-    final media = MediaQuery.of(context);
-    final maxH = media.size.height * 0.90;
+    final maxH = MediaQuery.sizeOf(context).height * 0.90;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -244,21 +241,14 @@ class MatchSetupDialog extends HookWidget {
         fit: BoxFit.scaleDown,
         alignment: Alignment.center,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 360.0,
-            maxHeight: maxH,
-          ),
+          constraints: BoxConstraints(maxWidth: 360.0, maxHeight: maxH),
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF0D1424),
               borderRadius: BorderRadius.circular(24.0),
               border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
               boxShadow: const [
-                BoxShadow(
-                  color: Color(0xCC000000),
-                  blurRadius: 36.0,
-                  offset: Offset(0, 14),
-                ),
+                BoxShadow(color: Color(0xCC000000), blurRadius: 36.0, offset: Offset(0, 14)),
               ],
             ),
             child: ClipRRect(
@@ -313,11 +303,7 @@ class MatchSetupDialog extends HookWidget {
                               color: const Color(0xFF1E293B).withValues(alpha: 0.8),
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 18.0,
-                              color: Color(0xFF94A3B8),
-                            ),
+                            child: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFF94A3B8)),
                           ),
                         ),
                       ],
@@ -326,35 +312,10 @@ class MatchSetupDialog extends HookWidget {
 
                     // 3 Game Selection Cards (Hoops, Archery, Darts)
                     if (showGamePicker) ...[
-                      Row(
-                        children: [
-                          _buildGameCard(
-                            key: 'basketball',
-                            label: 'HOOPS',
-                            icon: Icons.sports_basketball_rounded,
-                            accent: _hoops,
-                            isSelected: selectedGame.value == 'basketball',
-                            onTap: hasCode ? null : () => selectedGame.value = 'basketball',
-                          ),
-                          const SizedBox(width: 8.0),
-                          _buildGameCard(
-                            key: 'archery',
-                            label: 'ARCHERY',
-                            icon: Icons.track_changes_rounded,
-                            accent: _archery,
-                            isSelected: selectedGame.value == 'archery',
-                            onTap: hasCode ? null : () => selectedGame.value = 'archery',
-                          ),
-                          const SizedBox(width: 8.0),
-                          _buildGameCard(
-                            key: 'darts',
-                            label: 'DARTS',
-                            icon: Icons.gps_fixed_rounded,
-                            accent: _darts,
-                            isSelected: selectedGame.value == 'darts',
-                            onTap: hasCode ? null : () => selectedGame.value = 'darts',
-                          ),
-                        ],
+                      MatchGameCards(
+                        selectedGame: selectedGame.value,
+                        enabled: !hasCode,
+                        onGameSelected: (game) => selectedGame.value = game,
                       ),
                       const SizedBox(height: 12.0),
                     ],
@@ -401,20 +362,23 @@ class MatchSetupDialog extends HookWidget {
                           children: [
                             if (codeMode) ...[
                               if (hasCode)
-                                _CodeReveal(
+                                MatchCodeRevealCard(
                                   code: precreatedMatch.value!.joinCode,
                                   copied: codeCopied.value,
                                   onCopy: copyCode,
                                   onShare: shareCode,
                                 )
                               else if (!fixedRules)
-                                _buildHoopsSettingsCard(
-                                  selectedRounds,
-                                  selectedDuration,
-                                  selectedDifficulty,
+                                MatchHoopsSettingsCard(
+                                  rounds: selectedRounds.value,
+                                  duration: selectedDuration.value,
+                                  difficulty: selectedDifficulty.value,
+                                  onRoundsChanged: (r) => selectedRounds.value = r,
+                                  onDurationChanged: (d) => selectedDuration.value = d,
+                                  onDifficultyChanged: (diff) => selectedDifficulty.value = diff,
                                 )
                               else
-                                _buildFixedRulesCard(isArchery),
+                                MatchRulesCard(isArchery: isArchery),
                             ] else ...[
                               FriendSelectorRibbon(
                                 profile: profile,
@@ -534,66 +498,6 @@ class MatchSetupDialog extends HookWidget {
     );
   }
 
-  Widget _buildGameCard({
-    required String key,
-    required String label,
-    required IconData icon,
-    required Color accent,
-    required bool isSelected,
-    required VoidCallback? onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          if (onTap != null && !isSelected) {
-            HapticFeedback.selectionClick();
-            onTap();
-          }
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
-          decoration: BoxDecoration(
-            color: const Color(0xFF111827),
-            borderRadius: BorderRadius.circular(16.0),
-            border: Border.all(
-              color: isSelected ? accent : const Color(0xFF1E2638),
-              width: isSelected ? 1.8 : 1.0,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.15),
-                      blurRadius: 10.0,
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? accent : const Color(0xFF64748B),
-                size: 20.0,
-              ),
-              const SizedBox(height: 5.0),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? accent : const Color(0xFF64748B),
-                  fontSize: 11.0,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildModeTab({
     required String title,
     required IconData icon,
@@ -630,299 +534,6 @@ class MatchSetupDialog extends HookWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHoopsSettingsCard(
-    ValueNotifier<int> rounds,
-    ValueNotifier<int> duration,
-    ValueNotifier<ShotDifficulty> difficulty,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: const Color(0xFF1E2638)),
-      ),
-      child: Column(
-        children: [
-          // Rounds Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-            child: Row(
-              children: [
-                const Text(
-                  'Rounds',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  children: _roundOptions.map((r) {
-                    final isSel = rounds.value == r;
-                    return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        rounds.value = r;
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 6.0),
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
-                        decoration: BoxDecoration(
-                          color: isSel ? _hoops : const Color(0xFF1E2638),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Text(
-                          '$r',
-                          style: TextStyle(
-                            color: isSel ? const Color(0xFF0A0E1A) : Colors.white,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFF1E2638), height: 1.0),
-
-          // Shot Clock Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-            child: Row(
-              children: [
-                const Text(
-                  'Shot clock',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13.0,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  children: _durationOptions.map((d) {
-                    final isSel = duration.value == d;
-                    return GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        duration.value = d;
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(left: 6.0),
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                        decoration: BoxDecoration(
-                          color: isSel ? _hoops : const Color(0xFF1E2638),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Text(
-                          '${d}s',
-                          style: TextStyle(
-                            color: isSel ? const Color(0xFF0A0E1A) : Colors.white,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFF1E2638), height: 1.0),
-
-          // Difficulty Row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14.0, 10.0, 14.0, 12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Difficulty',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13.0,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      difficulty.value.label,
-                      style: const TextStyle(
-                        color: Color(0xFF00FFCC),
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8.0),
-                DifficultySteppedSlider(
-                  value: difficulty.value,
-                  onChanged: (newDiff) => difficulty.value = newDiff,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFixedRulesCard(bool isArchery) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: const Color(0xFF1E2638)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            isArchery ? 'OFFICIAL SET RULES' : 'OFFICIAL 301 RULES',
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.0,
-            ),
-          ),
-          const SizedBox(height: 6.0),
-          Text(
-            isArchery
-                ? '• Sets of 3 arrows each (first to 6 set points)\n• 2 set points for winning a set, 1 each on a tie\n• 45s shot clock per set'
-                : '• 301 points countdown to exactly zero\n• 3 darts per turn · 20 rounds maximum\n• Must finish with a double or bullseye',
-            style: const TextStyle(
-              color: Color(0xFFCBD5E1),
-              fontSize: 12.0,
-              height: 1.45,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CodeReveal extends StatelessWidget {
-  final String code;
-  final bool copied;
-  final VoidCallback onCopy;
-  final VoidCallback onShare;
-
-  const _CodeReveal({
-    required this.code,
-    required this.copied,
-    required this.onCopy,
-    required this.onShare,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: const Color(0xFF1E2638)),
-      ),
-      child: Column(
-        children: [
-          SelectableText(
-            code,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF00FFCC),
-              fontSize: 34.0,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 8.0,
-            ),
-          ),
-          const SizedBox(height: 4.0),
-          Text(
-            copied ? '✓ CODE COPIED' : 'Send this code to your opponent',
-            style: TextStyle(
-              color: copied ? const Color(0xFF00FFCC) : const Color(0xFF94A3B8),
-              fontSize: 11.5,
-              fontWeight: copied ? FontWeight.w900 : FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 12.0),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: onCopy,
-                  borderRadius: BorderRadius.circular(12.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 9.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2638),
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.copy_rounded, color: Colors.white, size: 14.0),
-                        SizedBox(width: 5.0),
-                        Text(
-                          'COPY',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8.0),
-              Expanded(
-                child: InkWell(
-                  onTap: onShare,
-                  borderRadius: BorderRadius.circular(12.0),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 9.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2638),
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.ios_share_rounded, color: Colors.white, size: 14.0),
-                        SizedBox(width: 5.0),
-                        Text(
-                          'SHARE',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
