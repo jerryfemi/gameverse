@@ -45,6 +45,8 @@ class ArcheryGameScreen extends HookConsumerWidget {
     final online = useRef<ArcheryOnlineController?>(null);
     // The game owns archery's music; kept here so dispose can release it.
     final audioOwner = useRef<Object?>(null);
+    final archeryState = ref.watch(archeryMatchProvider);
+    final archeryPlayers = ref.watch(archeryPlayersProvider);
 
     // Set the match up after the first frame: Riverpod state must not change
     // while widgets are building.
@@ -371,7 +373,17 @@ class ArcheryGameScreen extends HookConsumerWidget {
                   if (paused.value)
                     ArcheryPauseMenu(
                       online: isOnline,
+                      subtitle: isOnline
+                          ? '1v1 vs ${archeryPlayers.opponent.name} · set ${archeryState.setIndex + 1}'
+                          : 'Solo · set ${archeryState.setIndex + 1}',
+                      stat1Label: 'SET POINTS',
+                      stat1Value: '${archeryState.userPoints} – ${archeryState.opponentPoints}',
+                      stat2Label: 'THIS SET',
+                      stat2Value: '${archeryState.userSetScore}',
+                      stat3Label: 'ARROWS',
+                      stat3Value: '${ArcheryRules.arrowsPerSet - archeryState.setShots.length} left',
                       onResume: resume,
+                      onForfeit: isOnline ? goToLobbyAsync : null,
                       onRestart: isOnline
                           ? null
                           : () {
@@ -381,7 +393,11 @@ class ArcheryGameScreen extends HookConsumerWidget {
                             },
                       onLobby: () {
                         paused.value = false;
-                        goToLobby();
+                        if (isOnline) {
+                          goToLobbyAsync();
+                        } else {
+                          goToLobby();
+                        }
                       },
                     ),
                 ],
