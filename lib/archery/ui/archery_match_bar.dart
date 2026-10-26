@@ -114,7 +114,7 @@ class ArcheryMatchesButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myUid = ref.watch(currentUserProfileProvider.select((p) => p.value?.uid ?? ''));
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final matches = ref.watch(activeMatchesProvider).value ?? const <CloudMatch>[];
     final int yourTurn = myUid.isEmpty ? 0 : matches.where((m) => m.isMyTurn(myUid)).length;
     // Opens your profile drawer, so the badge counts everything in it:
     // matches waiting on you plus invites and friend requests.
