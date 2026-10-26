@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:b_ball/game/match/match_session.dart';
 
-/// Top section of the Winner Podium showing the Trophy icon, winner banner, and subtitle.
+/// Top section of the Winner Podium matching Design Templates 15, 18, and 19:
+/// - Floating circular trophy badge with neon accent glow
+/// - Glowing "YOU WIN" / "YOU LOSE" / "MATCH TIED" headline
+/// - Dynamic subtitle (forfeit reason, score margin, or set count)
 class PodiumTrophyHeader extends StatelessWidget {
   final MatchSession session;
   final Color bannerColor;
@@ -21,70 +24,83 @@ class PodiumTrophyHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final winner = session.overallWinner;
+    final isP1Winner = winner == session.player1;
+
+    String subtitle() {
+      if (session.isForfeit) {
+        final oppName = session.player2.name;
+        return isP1Winner
+            ? '$oppName left the match · you win by forfeit'
+            : 'You left the match · $oppName wins by forfeit';
+      }
+      if (isTie) {
+        return 'Tied score over ${session.totalRounds} rounds';
+      }
+      final margin = (session.player1.totalScore - session.player2.totalScore).abs();
+      return isP1Winner
+          ? 'You won by $margin points over ${session.totalRounds} rounds'
+          : '${session.player2.name} won by $margin points';
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Center(
-              child: Container(
-                width: 58.0,
-                height: 58.0,
-                decoration: BoxDecoration(
-                  color: bannerColor.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: bannerColor.withValues(alpha: 0.50),
-                    width: 1.5,
-                  ),
+        // Floating Trophy Circle Badge
+        Center(
+          child: Container(
+            width: 54.0,
+            height: 54.0,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1424),
+              shape: BoxShape.circle,
+              border: Border.all(color: bannerColor, width: 2.0),
+              boxShadow: [
+                BoxShadow(
+                  color: bannerColor.withValues(alpha: 0.35),
+                  blurRadius: 16.0,
+                  spreadRadius: 1.0,
                 ),
-                child: Center(
-                  child: Text(
-                    isTie ? '🤝' : '🏆',
-                    style: const TextStyle(fontSize: 28.0),
-                  ),
-                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                isTie ? Icons.handshake_rounded : Icons.emoji_events_rounded,
+                size: 26.0,
+                color: bannerColor,
               ),
             ),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: IconButton(
-                icon: const Icon(
-                  Icons.close_rounded,
-                  color: Colors.white60,
-                  size: 22,
-                ),
-                tooltip: 'Close Match',
-                onPressed: onClose,
-              ),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: 12.0),
+
+        // Headline: YOU WIN
         Text(
           winnerDeclaration,
           textAlign: TextAlign.center,
           style: TextStyle(
             color: bannerColor,
-            fontSize: 23.0,
+            fontSize: 26.0,
             fontWeight: FontWeight.w900,
-            letterSpacing: 1.4,
+            letterSpacing: 0.5,
+            shadows: [
+              Shadow(
+                color: bannerColor.withValues(alpha: 0.4),
+                blurRadius: 14.0,
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 3.0),
+
+        // Subtitle
         Text(
-          session.isForfeit
-              ? (session.forfeitWinner == session.player1
-                  ? 'VICTORY BY OPPONENT FORFEIT'
-                  : 'MATCH CONCEDED BY FORFEIT')
-              : '${session.totalRounds}-ROUND 1V1 MATCH FINAL',
+          subtitle(),
+          textAlign: TextAlign.center,
           style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.0,
+            color: Color(0xFFCBD5E1),
+            fontSize: 12.0,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
