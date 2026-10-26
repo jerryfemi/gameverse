@@ -254,6 +254,51 @@ service cloud.firestore {
           request.resource.data.status == 'declined';
       }
 
+      function isMatchParticipantOrPlayer() {
+        return isAuthenticated() && (
+          (request.auth.uid in resource.data.get('playerIds', [])) ||
+          (resource.data.get('player1', null) != null && resource.data.player1.get('uid', '') == request.auth.uid) ||
+          (resource.data.get('player2', null) != null && resource.data.player2.get('uid', '') == request.auth.uid) ||
+          (resource.data.get('forfeitedBy', '') == request.auth.uid) ||
+          (resource.data.get('winnerUid', '') == request.auth.uid)
+        );
+      }
+
+      // A player of the match clears ephemeral live telemetry and live ticker fields
+      // once the match is terminal.
+      function isClearingTelemetry() {
+        return isMatchParticipantOrPlayer() &&
+          resource.data.status in ['completed', 'forfeited', 'abandoned', 'declined'] &&
+          changedKeys().hasOnly([
+            'latestTelemetry',
+            'latestTelemetryRound',
+            'latestTelemetryShooterUid',
+            'liveShooterScore',
+            'liveShooterUid',
+            'turnStartedAt'
+          ]) &&
+          !('latestTelemetry' in request.resource.data) &&
+          !('latestTelemetryRound' in request.resource.data) &&
+          !('latestTelemetryShooterUid' in request.resource.data) &&
+          !('liveShooterScore' in request.resource.data) &&
+          !('liveShooterUid' in request.resource.data) &&
+          !('turnStartedAt' in request.resource.data);
+      }
+
+      // Can purge live subcollections (live_shots and live_reactions) once the match is terminal.
+      function canPurgeTelemetry() {
+        let m = get(/databases/$(database)/documents/matches/$(matchId)).data;
+        return isAuthenticated() &&
+          (
+            (request.auth.uid in m.get('playerIds', [])) ||
+            (m.get('player1', null) != null && m.player1.get('uid', '') == request.auth.uid) ||
+            (m.get('player2', null) != null && m.player2.get('uid', '') == request.auth.uid) ||
+            (m.get('forfeitedBy', '') == request.auth.uid) ||
+            (m.get('winnerUid', '') == request.auth.uid)
+          ) &&
+          m.status in ['completed', 'forfeited', 'abandoned', 'declined'];
+      }
+
       // Read allowed if player is authenticated (non-existent codes return cleanly)
       allow read: if isAuthenticated();
 
@@ -274,7 +319,8 @@ service cloud.firestore {
         isClaimingAbandonedWin() ||
         isAbandoningRoom() ||
         isDismissingFinished() ||
-        isDecliningChallenge();
+        isDecliningChallenge() ||
+        isClearingTelemetry();
 
       // Matches are never hard-deleted by clients: finished matches are permanent
       // trophy history. Orphaned docs (no playerIds left) are cleaned by the expireAt TTL.
@@ -334,7 +380,8 @@ service cloud.firestore {
             isValidArcheryEvent()) &&
           (request.resource.data.get('game', 'basketball') != 'darts' ||
             isValidDartsEvent());
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if canPurgeTelemetry();
       }
 
       // Real-time live floating reactions & banter subcollection
@@ -342,7 +389,9 @@ service cloud.firestore {
         allow read: if isAuthenticated();
         allow create: if isAuthenticated() &&
           request.resource.data.senderUid == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if (isAuthenticated() && resource.data.senderUid == request.auth.uid) ||
+          canPurgeTelemetry();
       }
     }
   }
