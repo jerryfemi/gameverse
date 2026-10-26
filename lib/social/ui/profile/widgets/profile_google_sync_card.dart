@@ -12,15 +12,13 @@ import 'package:b_ball/services/auth_service.dart';
 class ProfileGoogleSyncCard extends HookWidget {
   final UserProfile? profile;
 
-  const ProfileGoogleSyncCard({
-    super.key,
-    required this.profile,
-  });
+  const ProfileGoogleSyncCard({super.key, required this.profile});
 
   @override
   Widget build(BuildContext context) {
     final isLoading = useState(false);
-    final isLinked = profile != null &&
+    final isLinked =
+        profile != null &&
         !profile!.isAnonymous &&
         profile!.email != null &&
         profile!.email!.isNotEmpty;
@@ -248,11 +246,7 @@ class ProfileGoogleSyncCard extends HookWidget {
         ),
         title: Text(
           'Sign Out?',
-          style: UiFont.style(
-            size: 16.0,
-            weight: 900,
-            color: Colors.white,
-          ),
+          style: UiFont.style(size: 16.0, weight: 900, color: Colors.white),
         ),
         content: Text(
           'You can sign back in with this Google account anytime. Your match history and trophies are saved.',
@@ -294,11 +288,7 @@ class ProfileGoogleSyncCard extends HookWidget {
             ),
             child: Text(
               'SIGN OUT',
-              style: UiFont.style(
-                size: 12.0,
-                weight: 800,
-                color: Colors.white,
-              ),
+              style: UiFont.style(size: 12.0, weight: 800, color: Colors.white),
             ),
           ),
         ],
@@ -310,14 +300,13 @@ class ProfileGoogleSyncCard extends HookWidget {
     return Container(
       width: size,
       height: size,
+      padding: const EdgeInsets.all(6.0),
       decoration: BoxDecoration(
         color: const Color(0xFF1E2638),
         borderRadius: BorderRadius.circular(10.0),
         border: Border.all(color: const Color(0xFF334155), width: 1.0),
       ),
-      child: Center(
-        child: _buildGoogleColorG(size: size * 0.52),
-      ),
+      child: Center(child: _buildGoogleColorG(size: size - 12.0)),
     );
   }
 
@@ -327,7 +316,7 @@ class ProfileGoogleSyncCard extends HookWidget {
       width: size,
       height: size,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) => Container(
+      errorBuilder: (_, _, _) => Container(
         width: size,
         height: size,
         decoration: const BoxDecoration(
