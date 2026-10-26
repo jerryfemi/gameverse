@@ -80,7 +80,12 @@ void main() {
       // Reference speed: 2.4 screen heights/s = 1920 px/s on an 800 px screen.
       const double ms = 100.0;
       const double dist = DartsK.flickRefSpeed * 800 * ms / 1000;
-      swipe(x: projection.boardCenterX, y0: 700, y1: 700 - dist, ms: ms);
+      swipe(
+        x: projection.boardCenterX,
+        y0: projection.handY + dist * 0.5,
+        y1: projection.handY - dist * 0.5,
+        ms: ms,
+      );
       expect(launch, isNotNull);
       final physics = DartPhysics()..launch(launchVel: launch!);
       physics.simulateToEnd();

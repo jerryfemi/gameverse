@@ -59,7 +59,8 @@ class GameHudOverlay extends HookConsumerWidget {
     onOpenMatch: (m) =>
         game.startCloudMatch(m, AuthService.instance.currentUser?.uid ?? ''),
     onOpenMatches: () => _handleInboxTapped(context),
-    onPlayFriend: () => MatchInboxSheet.playAFriend(context, game: game),
+    onPlayFriend: () =>
+        MatchInboxSheet.playAFriend(context, game: game, showGamePicker: true),
     onHowToPlay: () => _handleHelpTapped(context),
   );
 

@@ -304,7 +304,8 @@ class ArcheryGameScreen extends HookConsumerWidget {
                                 showGamePicker: true,
                               ),
                             ),
-                            onPlayFriend: () => ArcheryChallenge.start(context),
+                            onPlayFriend: () =>
+                                ArcheryChallenge.start(context, showGamePicker: true),
                           );
                         },
                       ),

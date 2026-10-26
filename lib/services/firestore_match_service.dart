@@ -1037,10 +1037,30 @@ class FirestoreMatchService {
     return (matches: matches, lastDoc: newLastDoc, hasMore: hasMore);
   }
 
-  /// Legacy wrapper: streams active matches to keep older callers functioning
-  /// without triggering duplicate listener billing on completed games.
-  Stream<List<CloudMatch>> streamUserMatches(String userUid) {
-    return streamActiveMatches(userUid);
+  /// Streams user matches (both active and recent completed) for computing stats,
+  /// head-to-head records, and populated profile lists, capped to [limit] for efficiency.
+  Stream<List<CloudMatch>> streamUserMatches(
+    String userUid, {
+    int limit = 60,
+  }) {
+    if (userUid.isEmpty) {
+      return Stream.value(const <CloudMatch>[]);
+    }
+    return _matchesRef
+        .where('playerIds', arrayContains: userUid)
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) {
+          final matches =
+              snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+          _cachedUserMatches[userUid] = matches;
+          return matches;
+        })
+        .handleError((Object e) {
+          debugPrint('[FirestoreMatchService] User matches stream error: $e');
+          return const <CloudMatch>[];
+        });
   }
 
   /// Broadcasts a live shot impulse micro-packet to the `live_shots` subcollection.

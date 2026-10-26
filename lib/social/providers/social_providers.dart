@@ -76,6 +76,11 @@ final friendshipStatusProvider =
     return FriendshipStatus.friend;
   }
 
+  final incoming = ref.watch(incomingInvitesProvider).value ?? const [];
+  if (incoming.any((i) => i.senderUid == opponentUid && i.status == 'pending')) {
+    return FriendshipStatus.pending;
+  }
+
   final sent = ref.watch(sentFriendRequestsProvider);
   if (sent.contains(opponentUid)) {
     return FriendshipStatus.pending;

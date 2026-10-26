@@ -59,6 +59,38 @@ class FriendsService {
     }
   }
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _invitesSub;
+  String? _listeningInvitesUid;
+
+  /// Ensures a background listener processes reciprocal friend acceptances
+  /// so friendships sync in real time regardless of current active UI.
+  void ensureInvitesListener(String myUid) {
+    if (myUid.isEmpty || _listeningInvitesUid == myUid) return;
+    _listeningInvitesUid = myUid;
+    _invitesSub?.cancel();
+    _invitesSub = _usersRef
+        .doc(myUid)
+        .collection('invites')
+        .snapshots()
+        .listen((snap) {
+          for (final doc in snap.docs) {
+            final inv = FriendInvite.fromMap(doc.data(), doc.id);
+            if (inv.status == 'accepted') {
+              final friend = FriendProfile(
+                uid: inv.senderUid,
+                displayName: inv.senderName,
+                avatarEmoji: inv.senderAvatar,
+                addedAt: DateTime.now().millisecondsSinceEpoch,
+              );
+              unawaited(addFriend(myUid, friend));
+              unawaited(doc.reference.delete().catchError((_) {}));
+            }
+          }
+        }, onError: (Object e) {
+          debugPrint('[FriendsService] Invites background listener notice: $e');
+        });
+  }
+
   /// Streams real-time list of friends, backed by Firestore user doc and local reactive notifier.
   Stream<List<FriendProfile>> streamFriends(String myUid) {
     if (myUid.isEmpty) {
@@ -66,6 +98,8 @@ class FriendsService {
           ? Stream.value(friendsNotifier.value)
           : Stream.value(const []);
     }
+
+    ensureInvitesListener(myUid);
 
     return _usersRef
         .doc(myUid)

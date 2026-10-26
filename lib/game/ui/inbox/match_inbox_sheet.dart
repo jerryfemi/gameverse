@@ -4,6 +4,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_config.dart';
 import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
 import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
 import 'package:b_ball/game/ui/inbox/widgets/inbox_active_list.dart';
@@ -54,11 +55,12 @@ class MatchInboxSheet extends HookConsumerWidget {
   static Future<void> playAFriend(
     BuildContext context, {
     required BasketballGame game,
+    bool showGamePicker = false,
   }) async {
     final config = await MatchSetupDialog.show(
       context,
-      initialConfig: game.currentMatchConfig,
-      showGamePicker: true,
+      initialConfig: const MatchConfig(),
+      showGamePicker: showGamePicker,
     );
     final joined = config?.joinedMatch;
     if (joined != null) {
