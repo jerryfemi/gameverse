@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
 
-/// Header section of the Game Over card showing accolades, final score, and labels.
+/// Header section of the Game Over card matching Design Template 20:
+/// - "TIME'S UP" uppercase title
+/// - Giant score numerals
+/// - "points · best [best], [diff] to beat it" subtitle
 class GameOverHeader extends StatelessWidget {
   final GameRoundStats stats;
 
@@ -13,81 +16,62 @@ class GameOverHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final int best = stats.bestScore;
+    final int score = stats.score;
+    final bool isBest = stats.isNewRecord || score >= best;
+    final int diff = best - score;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (stats.isNewRecord) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14.0,
-              vertical: 5.0,
-            ),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFF59E0B),
-                  Color(0xFFD97706),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(20.0),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x66F59E0B),
-                  blurRadius: 10.0,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('🏆', style: TextStyle(fontSize: 14.0)),
-                SizedBox(width: 6.0),
-                Text(
-                  'NEW HIGH SCORE!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.0,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ],
-            ),
+        // TIME'S UP or NEW RECORD title
+        Text(
+          isBest ? "NEW PERSONAL BEST!" : "TIME'S UP",
+          style: TextStyle(
+            color: isBest ? const Color(0xFF00FFCC) : const Color(0xFF94A3B8),
+            fontSize: 12.0,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
           ),
-          const SizedBox(height: 12.0),
-        ] else ...[
-          const Text(
-            "TIME'S UP!",
-            style: TextStyle(
-              color: Color(0xFF94A3B8),
-              fontSize: 13.0,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 2.5,
-            ),
-          ),
-          const SizedBox(height: 6.0),
-        ],
+        ),
+        const SizedBox(height: 6.0),
 
         // Giant Final Score Numerals
         Text(
-          '${stats.score}',
-          style: TextStyle(
-            color: stats.isNewRecord ? const Color(0xFFFFD700) : Colors.white,
-            fontSize: 64.0,
+          '$score',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 72.0,
             fontWeight: FontWeight.w900,
             height: 1.0,
             letterSpacing: -1.5,
           ),
         ),
-        const SizedBox(height: 4.0),
-        const Text(
-          'POINTS',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 11.0,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 2.0,
+        const SizedBox(height: 6.0),
+
+        // Subtitle: points · best 116, 34 to beat it
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 13.0,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Inter',
+            ),
+            children: [
+              const TextSpan(text: 'points · best '),
+              TextSpan(
+                text: '$best',
+                style: const TextStyle(
+                  color: Color(0xFFF59E0B),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              TextSpan(
+                text: isBest ? ' (new high score!)' : ', $diff to beat it',
+              ),
+            ],
           ),
         ),
       ],
