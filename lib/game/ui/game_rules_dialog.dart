@@ -1,315 +1,508 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
-import 'package:b_ball/game/ui/common/app_button.dart';
-import 'package:b_ball/game/ui/common/app_colors.dart';
-import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
 
-/// Displays the collegiate "HOW TO PLAY" rules dialog.
-Future<void> showGameRulesDialog(BuildContext context, {BasketballGame? game}) {
-  return AppModalDialog.show<void>(
+/// Displays the obsidian "How to play" rules dialog matching Design Template 12.
+Future<void> showGameRulesDialog(
+  BuildContext context, {
+  BasketballGame? game,
+  String initialGame = 'hoops',
+}) {
+  return showDialog<void>(
     context: context,
-    builder: (context) => GameRulesDialog(game: game),
+    barrierColor: Colors.black.withValues(alpha: 0.8),
+    builder: (context) => HowToPlayDialog(game: game, initialGame: initialGame),
   );
 }
 
-/// Collegiate rules modal explaining HUD controls, flicks, clock, and scoring bonuses.
-class GameRulesDialog extends StatelessWidget {
+/// Dynamic multi-game rules modal matching Template 12.
+/// Includes HOOPS, ARCHERY, and DARTS tabs with responsive FittedBox scaling.
+class HowToPlayDialog extends StatefulWidget {
   final BasketballGame? game;
+  final String initialGame;
 
-  const GameRulesDialog({super.key, this.game});
+  const HowToPlayDialog({
+    super.key,
+    this.game,
+    this.initialGame = 'hoops',
+  });
+
+  @override
+  State<HowToPlayDialog> createState() => _HowToPlayDialogState();
+}
+
+class _HowToPlayDialogState extends State<HowToPlayDialog> {
+  late String _activeGame;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeGame = widget.initialGame.toLowerCase();
+    if (_activeGame != 'archery' && _activeGame != 'darts') {
+      _activeGame = 'hoops';
+    }
+  }
+
+  Color get _accentColor {
+    switch (_activeGame) {
+      case 'archery':
+        return const Color(0xFF00FFCC);
+      case 'darts':
+        return const Color(0xFF38BDF8);
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
+
+  Color get _primaryBtnTextColor {
+    return _activeGame == 'archery' ? const Color(0xFF0A0E1A) : (_activeGame == 'darts' ? const Color(0xFF0A0E1A) : const Color(0xFF0A0E1A));
+  }
+
+  String get _subtitle {
+    switch (_activeGame) {
+      case 'archery':
+        return 'Archery 1v1 · sets of 3 arrows, first to 6 set points';
+      case 'darts':
+        return 'Darts 301 · take turns, checkout on a double';
+      default:
+        return 'Hoops 1v1 · take turns, highest total wins';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AppModalDialog(
-      title: 'HOW TO PLAY',
-      showCloseButton: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * 0.46,
+    final media = MediaQuery.of(context);
+    final maxH = media.size.height * 0.88;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      elevation: 0,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 360.0,
+            maxHeight: maxH,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1424),
+              borderRadius: BorderRadius.circular(24.0),
+              border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xCC000000),
+                  blurRadius: 36.0,
+                  offset: Offset(0, 14),
+                ),
+              ],
             ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SectionHeader(
-                    title: 'HUD & GAME CONTROLS',
-                    trailing: game != null
-                        ? TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                              game!
-                              ..tourNewStepsOnly = false
-                              ..isTourActiveNotifier.value = true;
-                            },
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6.0,
-                                vertical: 2.0,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24.0),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20.0, 18.0, 20.0, 18.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header Row: Title + Close Button
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'How to play',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22.0,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.3,
+                                ),
                               ),
-                              visualDensity: VisualDensity.compact,
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.play_circle_outline_rounded,
-                                  size: 14.0,
-                                  color: Color(0xFF38BDF8),
+                              const SizedBox(height: 3.0),
+                              Text(
+                                _subtitle,
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                SizedBox(width: 4.0),
-                                Text(
-                                  'Replay',
-                                  style: TextStyle(
-                                    color: Color(0xFF38BDF8),
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(context).pop();
+                          },
+                          borderRadius: BorderRadius.circular(18.0),
+                          child: Container(
+                            width: 32.0,
+                            height: 32.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.8),
                             ),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(height: 8.0),
-                  const _RuleRow(
-                    icon: '👤',
-                    title: 'Your Avatar (Top-Left)',
-                    desc:
-                        'Tap your avatar anytime to view friend invites, check H2H stats, and host 1v1 matches.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '⚡',
-                    title: 'Bouncing Avatar (Turn Alert)',
-                    desc:
-                        'Your avatar pulses rhythmically when it is your turn to shoot, or when you receive a match invite.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '💬',
-                    title: 'Opponent Avatar & Chat',
-                    desc:
-                        'Tap the opponent avatar during 1v1 online matches to send trash-talk reactions and live banter.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '⏸️',
-                    title: 'Pause & Sound Controls',
-                    desc:
-                        'Tap pause to adjust SFX/music volume, mute, or restart your solo round.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Text('🎯', style: TextStyle(fontSize: 18.0)),
-                      const SizedBox(width: 12.0),
-                      const Expanded(
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 18.0,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Game Segmented Switcher
+                    Container(
+                      padding: const EdgeInsets.all(4.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF090E1A),
+                        borderRadius: BorderRadius.circular(14.0),
+                        border: Border.all(color: const Color(0xFF1E2638)),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildGameTab('hoops', 'HOOPS', const Color(0xFFF59E0B)),
+                          _buildGameTab('archery', 'ARCHERY', const Color(0xFF00FFCC)),
+                          _buildGameTab('darts', 'DARTS', const Color(0xFF38BDF8)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14.0),
+
+                    // Scrollable Rules Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(
-                              'Visual Court Tour',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13.0,
-                                fontWeight: FontWeight.w800,
-                              ),
+                            _buildSectionHeader(
+                              _activeGame == 'darts' ? 'THROWING' : 'SHOOTING',
                             ),
-                            SizedBox(height: 2.0),
-                            Text(
-                              'Tap "Replay" to see in-game spotlight walkthrough on court.',
-                              style: TextStyle(
-                                color: Color(0xFF94A3B8),
-                                fontSize: 11.5,
-                              ),
-                            ),
+                            const SizedBox(height: 6.0),
+                            _buildControlsCard(),
+                            const SizedBox(height: 14.0),
+                            _buildSectionHeader('ON SCREEN'),
+                            const SizedBox(height: 6.0),
+                            _buildOnScreenCard(),
                           ],
                         ),
                       ),
-                      if (game != null)
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            game!
-                              ..tourNewStepsOnly = false
-                              ..isTourActiveNotifier.value = true;
-                          },
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                              vertical: 4.0,
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Footer Action Buttons
+                    Row(
+                      children: [
+                        if (widget.game != null && _activeGame == 'hoops') ...[
+                          InkWell(
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              Navigator.of(context).pop();
+                              widget.game!
+                                ..tourNewStepsOnly = false
+                                ..isTourActiveNotifier.value = true;
+                            },
+                            borderRadius: BorderRadius.circular(14.0),
+                            child: Container(
+                              height: 46.0,
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E2638),
+                                borderRadius: BorderRadius.circular(14.0),
+                                border: Border.all(color: const Color(0xFF334155)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18.0),
+                                  SizedBox(width: 4.0),
+                                  Text(
+                                    'Tour',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            visualDensity: VisualDensity.compact,
                           ),
-                          child: const Text(
-                            'Replay',
-                            style: TextStyle(
-                              color: Color(0xFF38BDF8),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12.5,
+                          const SizedBox(width: 10.0),
+                        ],
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _accentColor,
+                              foregroundColor: _primaryBtnTextColor,
+                              elevation: 0,
+                              minimumSize: const Size.fromHeight(46.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.0),
+                              ),
+                            ),
+                            child: const Text(
+                              'GOT IT',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.6,
+                              ),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 16.0),
-                  const _SectionHeader(title: 'SHOOTING & SCORING'),
-                  const SizedBox(height: 8.0),
-                  const _RuleRow(
-                    icon: '🏀',
-                    title: 'Flick to Shoot',
-                    desc: 'Swipe up with finger speed and angle towards the hoop.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '🔥',
-                    title: 'Swish (+3 PTS)',
-                    desc: 'Clean shot through the net without hitting rim or backboard.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '🎯',
-                    title: 'Bank Shot (+3 PTS)',
-                    desc: 'Rebound the ball off the regulation tempered glass target box.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '⚡',
-                    title: 'Streak Bonus (+1)',
-                    desc: 'Sink 3+ in a row to earn +1 extra bonus point per consecutive basket!',
-                  ),
-                  const SizedBox(height: 16.0),
-                  const _SectionHeader(title: '1V1 ONLINE SHOOTOUT'),
-                  const SizedBox(height: 8.0),
-                  const _RuleRow(
-                    icon: '⚔️',
-                    title: 'Asynchronous Rounds',
-                    desc: 'Challenge friends via 6-digit room codes or direct invites across 2, 3, or 4 rounds.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '👻',
-                    title: 'Ghost Replay',
-                    desc: "Spectate your opponent's exact shots and arc trajectory flying in real-time before you shoot.",
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '🏆',
-                    title: 'Cumulative Score',
-                    desc: 'Highest total score across all rounds takes the crown and ascends the winner podium.',
-                  ),
-                  const SizedBox(height: 16.0),
-                  const _SectionHeader(title: '1V1 PASS & PLAY'),
-                  const SizedBox(height: 8.0),
-                  const _RuleRow(
-                    icon: '📱',
-                    title: 'Single Device Local Match',
-                    desc: 'Play head-to-head with a friend in person on the exact same screen.',
-                  ),
-                  const SizedBox(height: 10.0),
-                  const _RuleRow(
-                    icon: '🤝',
-                    title: 'Handoff Between Rounds',
-                    desc: 'Player 1 shoots their round, then pass the phone to Player 2 to answer back!',
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameTab(String key, String label, Color accent) {
+    final bool isSelected = _activeGame == key;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          if (!isSelected) {
+            HapticFeedback.selectionClick();
+            setState(() => _activeGame = key);
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(vertical: 8.5),
+          decoration: BoxDecoration(
+            color: isSelected ? accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFF0A0E1A) : const Color(0xFF94A3B8),
+              fontSize: 12.0,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 11.0,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.0,
+      ),
+    );
+  }
+
+  Widget _buildControlsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: const Color(0xFF1E2638)),
+      ),
+      child: Column(
+        children: [
+          if (_activeGame == 'hoops') ...[
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.arrow_upward_rounded, color: Color(0xFFF59E0B), size: 16.0),
+              title: 'Flick up to shoot',
+              desc: 'Drag from the ball towards the hoop and let go. A longer, faster flick throws further.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.north_east_rounded, color: Color(0xFFF59E0B), size: 16.0),
+              title: 'Angle it to aim',
+              desc: 'Flick slightly left or right to curve the shot; bank it off the backboard.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.alarm_rounded, color: Color(0xFFF59E0B), size: 16.0),
+              title: 'Beat the clock',
+              desc: "Each round is timed. Score as many as you can, then it's their turn.",
+            ),
+          ] else if (_activeGame == 'archery') ...[
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.track_changes_rounded, color: Color(0xFF00FFCC), size: 16.0),
+              title: 'Draw & release',
+              desc: 'Drag back to draw the bow, hold steady to line up your aim, then release to shoot.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.air_rounded, color: Color(0xFF00FFCC), size: 16.0),
+              title: 'Watch the wind',
+              desc: 'Check the wind flag for speed and drift direction before every single shot.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.stars_rounded, color: Color(0xFF00FFCC), size: 16.0),
+              title: 'Hit the gold',
+              desc: 'Target rings score 1–10. Inner 10 is an X used to break head-to-head ties.',
+            ),
+          ] else ...[
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.gps_fixed_rounded, color: Color(0xFF38BDF8), size: 16.0),
+              title: 'Flick to throw',
+              desc: 'Flick towards your target on the dartboard. Faster, straighter flicks fly truer.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.numbers_rounded, color: Color(0xFF38BDF8), size: 16.0),
+              title: 'Count down from 301',
+              desc: 'Score points across 3 darts per turn to reduce your remaining score to exactly zero.',
+            ),
+            const Divider(color: Color(0xFF1E2638), height: 1.0),
+            _buildGuideRow(
+              iconWidget: const Icon(Icons.emoji_events_rounded, color: Color(0xFF38BDF8), size: 16.0),
+              title: 'Finish on a double',
+              desc: 'Your final dart must land in an outer ring double or the bullseye to checkout.',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOnScreenCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: const Color(0xFF1E2638)),
+      ),
+      child: Column(
+        children: [
+          _buildGuideRow(
+            iconWidget: Container(
+              width: 22.0,
+              height: 22.0,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFF38BDF8),
+              ),
+              alignment: Alignment.center,
+              child: const Text(
+                'BL',
+                style: TextStyle(
+                  color: Color(0xFF0A0E1A),
+                  fontSize: 10.0,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            title: 'Tap a player for their record and head to head',
+            desc: null,
+          ),
+          const Divider(color: Color(0xFF1E2638), height: 1.0),
+          _buildGuideRow(
+            iconWidget: Container(
+              width: 20.0,
+              height: 20.0,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _accentColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: _accentColor.withValues(alpha: 0.6),
+                    blurRadius: 8.0,
                   ),
                 ],
               ),
             ),
+            title: "A glowing ring means it's your turn",
+            desc: null,
           ),
-          const SizedBox(height: 16.0),
-          AppPrimaryButton(
-            label: 'GOT IT',
-            backgroundColor: AppColors.accentEmerald,
-            foregroundColor: Colors.white,
-            onPressed: () => Navigator.of(context).pop(),
+          const Divider(color: Color(0xFF1E2638), height: 1.0),
+          _buildGuideRow(
+            iconWidget: const Icon(Icons.pause_rounded, color: Color(0xFF94A3B8), size: 18.0),
+            title: 'Pause for sound, restart and leaving',
+            desc: null,
           ),
         ],
       ),
     );
   }
-}
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final Widget? trailing;
-
-  const _SectionHeader({required this.title, this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-          decoration: BoxDecoration(
-            color: const Color(0x2238BDF8),
-            borderRadius: BorderRadius.circular(6.0),
-            border: Border.all(color: const Color(0x4438BDF8), width: 1.0),
+  Widget _buildGuideRow({
+    required Widget iconWidget,
+    required String title,
+    String? desc,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 32.0,
+            height: 32.0,
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A2234),
+              borderRadius: BorderRadius.circular(9.0),
+            ),
+            alignment: Alignment.center,
+            child: iconWidget,
           ),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Color(0xFF38BDF8),
-              fontSize: 10.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.0,
+          const SizedBox(width: 12.0),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (desc != null) ...[
+                  const SizedBox(height: 2.0),
+                  Text(
+                    desc,
+                    style: const TextStyle(
+                      color: Color(0xFF94A3B8),
+                      fontSize: 11.0,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-        ),
-        if (trailing != null) ...[
-          const Spacer(),
-          trailing!,
         ],
-      ],
-    );
-  }
-}
-
-class _RuleRow extends StatelessWidget {
-  final String icon;
-  final String title;
-  final String desc;
-
-  const _RuleRow({required this.icon, required this.title, required this.desc});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(icon, style: const TextStyle(fontSize: 18.0)),
-        const SizedBox(width: 12.0),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2.0),
-              Text(
-                desc,
-                style: const TextStyle(
-                  color: Color(0xFF94A3B8),
-                  fontSize: 11.5,
-                  height: 1.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
