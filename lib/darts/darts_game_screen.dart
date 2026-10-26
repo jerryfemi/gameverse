@@ -52,6 +52,8 @@ class DartsGameScreen extends HookConsumerWidget {
     final showTour = useState(false);
     final audioOwner = useRef<Object?>(null);
     final online = useRef<DartsOnlineController?>(null);
+    final dartsState = ref.watch(dartsMatchProvider);
+    final dartsPlayers = ref.watch(dartsPlayersProvider);
 
     final bool isOnline = match != null;
 
@@ -380,11 +382,21 @@ class DartsGameScreen extends HookConsumerWidget {
                     Positioned.fill(
                       child: DartsPauseMenu(
                         online: isOnline,
+                        subtitle: isOnline
+                            ? '1v1 vs ${dartsPlayers.opponent.name} · round ${dartsState.round}'
+                            : 'Solo · 301 countdown',
+                        stat1Label: 'REMAINING',
+                        stat1Value: '${dartsState.yourRemaining}',
+                        stat2Label: 'ROUND',
+                        stat2Value: '${dartsState.round} of 20',
+                        stat3Label: 'DARTS',
+                        stat3Value: '${3 - dartsState.turnDarts.length} left',
                         onResume: resume,
                         onHowToPlay: () {
                           paused.value = false;
                           showTour.value = true;
                         },
+                        onForfeit: isOnline ? goToLobbyAsync : null,
                         onRestart: isOnline
                             ? null
                             : () {
