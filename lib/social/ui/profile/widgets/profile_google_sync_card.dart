@@ -322,22 +322,28 @@ class ProfileGoogleSyncCard extends HookWidget {
   }
 
   Widget _buildGoogleColorG({required double size}) {
-    return Container(
+    return Image.asset(
+      'assets/images/google_logo.webp',
       width: size,
       height: size,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          'G',
-          style: TextStyle(
-            color: const Color(0xFF4285F4),
-            fontSize: size * 0.76,
-            fontWeight: FontWeight.w900,
-            fontFamily: 'sans-serif',
-            height: 1.0,
+      fit: BoxFit.contain,
+      errorBuilder: (_, __, ___) => Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            'G',
+            style: TextStyle(
+              color: const Color(0xFF4285F4),
+              fontSize: size * 0.76,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'sans-serif',
+              height: 1.0,
+            ),
           ),
         ),
       ),
