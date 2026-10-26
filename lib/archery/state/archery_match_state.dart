@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../camera/camera_rig.dart';
-import '../physics/target_scoring.dart';
-import 'archery_rules.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 
 /// Who is shooting the current set.
 enum ArcheryShooter { you, opponent }
@@ -91,29 +91,31 @@ class ArcheryMatchState {
   });
 
   factory ArcheryMatchState.initial({required int seed}) => ArcheryMatchState(
-        phase: ShotPhase.atLine,
-        setIndex: 0,
-        setShots: const [],
-        opponentShots: const [],
-        userSetTotals: const [],
-        opponentSetTotals: const [],
-        windDisplay: 0.0,
-        setOver: false,
-        matchOver: false,
-        matchSeed: seed,
-      );
+    phase: ShotPhase.atLine,
+    setIndex: 0,
+    setShots: const [],
+    opponentShots: const [],
+    userSetTotals: const [],
+    opponentSetTotals: const [],
+    windDisplay: 0.0,
+    setOver: false,
+    matchOver: false,
+    matchSeed: seed,
+  );
 
   int get userSetScore => setShots.fold(0, (sum, s) => sum + s.points);
   int get opponentSetScore => opponentShots.fold(0, (sum, s) => sum + s.points);
 
-  int get userPoints => ArcheryRules.setPoints(userSetTotals, opponentSetTotals).you;
+  int get userPoints =>
+      ArcheryRules.setPoints(userSetTotals, opponentSetTotals).you;
   int get opponentPoints =>
       ArcheryRules.setPoints(userSetTotals, opponentSetTotals).them;
 
   /// +1 you won, −1 they won, 0 draw; null while the match is running.
   int? get winner {
     if (!matchOver) return null;
-    return forfeitWinner ?? ArcheryRules.winner(userSetTotals, opponentSetTotals);
+    return forfeitWinner ??
+        ArcheryRules.winner(userSetTotals, opponentSetTotals);
   }
 
   /// Arrows already shot in the current set by whoever is shooting

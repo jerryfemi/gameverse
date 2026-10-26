@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import '../darts_constants.dart';
-import '../physics/dart_scoring.dart';
-import 'darts_rules.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
 
 /// Who is throwing the current turn.
 enum DartsThrower { you, opponent }

@@ -3,19 +3,19 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import '../archery/online/archery_live_event.dart';
-import '../archery/state/archery_rules.dart';
-import '../darts/online/darts_live_event.dart';
-import '../darts/state/darts_rules.dart';
-import '../game/match/match_config.dart';
-import '../game/telemetry/shot_telemetry.dart';
-import '../models/cloud_match.dart';
-import '../models/friend_profile.dart';
-import '../models/live_reaction_event.dart';
-import '../models/match_invite.dart';
-import 'auth_service.dart';
-import 'friends_service.dart';
-import 'update/update_platform.dart';
+import 'package:b_ball/archery/online/archery_live_event.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/online/darts_live_event.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/telemetry/shot_telemetry.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/live_reaction_event.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/services/update/update_platform.dart';
 
 /// Exception thrown when no match document exists for the requested join code.
 /// [FirestoreMatchService.createMatch] with a fixed code found the room taken.
@@ -548,6 +548,7 @@ class FirestoreMatchService {
     String? optionalChatMessage,
   }) async {
     final docRef = _matchesRef.doc(matchId);
+    bool matchConcluding = false;
 
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
@@ -634,6 +635,7 @@ class FirestoreMatchService {
         DateTime.now().add(const Duration(days: 7)),
       );
       final isConcluding = nextStatus == MatchStatus.completed;
+      matchConcluding = isConcluding;
       final updateData = <String, dynamic>{
         'currentRound': nextRound,
         'activeTurnPlayerUid': nextTurnUid,
@@ -641,9 +643,9 @@ class FirestoreMatchService {
         'updatedAt': now,
         // Finished matches are permanent trophy history: drop the TTL entirely.
         'expireAt': isConcluding ? FieldValue.delete() : ttl7Days,
-        'latestTelemetry': telemetry.toJson(),
-        'latestTelemetryRound': match.currentRound,
-        'latestTelemetryShooterUid': shooterUid,
+        'latestTelemetry': isConcluding ? FieldValue.delete() : telemetry.toJson(),
+        'latestTelemetryRound': isConcluding ? FieldValue.delete() : match.currentRound,
+        'latestTelemetryShooterUid': isConcluding ? FieldValue.delete() : shooterUid,
         // Reset the live-shooter ticker so the next spectator never inherits
         // this turn's score (it is re-armed by [markTurnStarted]).
         'liveShooterScore': FieldValue.delete(),
@@ -661,6 +663,10 @@ class FirestoreMatchService {
       transaction.update(docRef, updateData);
       debugPrint('[FirestoreMatchService] Submitted turn atomically for $shooterUid (Round $roundIndex)');
     });
+
+    if (matchConcluding) {
+      unawaited(purgeMatchTelemetry(matchId));
+    }
 
     // Write optional chat message to lightweight subcollection (outside transaction for efficiency)
     if (optionalChatMessage != null && optionalChatMessage.trim().isNotEmpty) {
@@ -719,12 +725,17 @@ class FirestoreMatchService {
   }
 
   /// Streams real-time chat messages from the match's messages subcollection.
-  Stream<List<CloudChatMessage>> streamMatchChat(String matchId) {
+  /// Limits to the last [limit] messages to avoid reading large historical chat logs.
+  Stream<List<CloudChatMessage>> streamMatchChat(
+    String matchId, {
+    int limit = 30,
+  }) {
     if (matchId.isEmpty) return Stream.value(const <CloudChatMessage>[]);
     return _matchesRef
         .doc(matchId)
         .collection('messages')
         .orderBy('timestamp', descending: false)
+        .limitToLast(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => CloudChatMessage.fromMap(doc.data()))
@@ -790,6 +801,7 @@ class FirestoreMatchService {
           'status': MatchStatus.abandoned.key,
           'updatedAt': now,
         });
+        unawaited(purgeMatchTelemetry(clean));
       } else {
         final opponentUid = match.opponentPlayer(myUid)?.uid ?? '';
         await _matchesRef.doc(clean).update({
@@ -801,6 +813,7 @@ class FirestoreMatchService {
           'updatedAt': now,
           'expireAt': FieldValue.delete(),
         });
+        unawaited(purgeMatchTelemetry(clean));
       }
       _cachedUserMatches.forEach((key, list) {
         list.removeWhere((m) => m.id == clean);
@@ -851,6 +864,7 @@ class FirestoreMatchService {
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
         'expireAt': FieldValue.delete(),
       });
+      unawaited(purgeMatchTelemetry(clean));
       debugPrint('[FirestoreMatchService] Forfeit victory claimed for $clean by $winnerUid');
     } catch (e) {
       debugPrint('[FirestoreMatchService] Error claiming forfeit victory for $clean: $e');
@@ -874,6 +888,7 @@ class FirestoreMatchService {
           'status': MatchStatus.abandoned.key,
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
         });
+        unawaited(purgeMatchTelemetry(clean));
         return;
       }
       await _matchesRef.doc(clean).update({
@@ -884,11 +899,62 @@ class FirestoreMatchService {
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
         'expireAt': FieldValue.delete(),
       });
+      unawaited(purgeMatchTelemetry(clean));
       debugPrint(
         '[FirestoreMatchService] Match $clean forfeited by $forfeiterUid; winner: $winnerUid',
       );
     } catch (e) {
       debugPrint('[FirestoreMatchService] Error forfeiting match $clean: $e');
+    }
+  }
+
+  /// Purges all ephemeral live telemetry documents (`live_shots` and `live_reactions`)
+  /// for a match, ensuring no ephemeral shot or event documents linger in Firestore
+  /// once a match has concluded or been forfeited across Basketball, Archery, and Darts.
+  Future<void> purgeMatchTelemetry(String matchId) async {
+    final cleanId = matchId.trim().toUpperCase();
+    if (cleanId.isEmpty) return;
+
+    try {
+      final docRef = _matchesRef.doc(cleanId);
+
+      // Fetch ephemeral live_shots and live_reactions subcollections
+      final liveShotsSnap = await docRef.collection('live_shots').get();
+      final liveReactionsSnap = await docRef.collection('live_reactions').get();
+
+      final allRefs = [
+        ...liveShotsSnap.docs.map((d) => d.reference),
+        ...liveReactionsSnap.docs.map((d) => d.reference),
+      ];
+
+      if (allRefs.isNotEmpty) {
+        // Chunk deletions into batches under Firestore's 500-op limit
+        for (int i = 0; i < allRefs.length; i += 400) {
+          final chunk = allRefs.sublist(i, min(i + 400, allRefs.length));
+          final batch = _firestore.batch();
+          for (final ref in chunk) {
+            batch.delete(ref);
+          }
+          await batch.commit();
+        }
+      }
+
+      // Ensure root document ephemeral telemetry and live-ticker fields are cleared
+      await docRef.update({
+        'latestTelemetry': FieldValue.delete(),
+        'latestTelemetryRound': FieldValue.delete(),
+        'latestTelemetryShooterUid': FieldValue.delete(),
+        'liveShooterScore': FieldValue.delete(),
+        'liveShooterUid': FieldValue.delete(),
+        'turnStartedAt': FieldValue.delete(),
+      });
+
+      debugPrint(
+        '[FirestoreMatchService] Telemetry wiped for match $cleanId: '
+        '${liveShotsSnap.docs.length} shots, ${liveReactionsSnap.docs.length} reactions purged.',
+      );
+    } catch (e) {
+      debugPrint('[FirestoreMatchService] Error wiping telemetry for match $cleanId: $e');
     }
   }
 
@@ -898,86 +964,83 @@ class FirestoreMatchService {
   List<CloudMatch> getCachedUserMatches(String userUid) =>
       _cachedUserMatches[userUid] ?? const [];
 
-  /// Streams the player's matches for the Match Inbox as one merged list.
+  /// Streams only active / waiting matches for the player in real time.
   ///
-  /// Two independent listeners so a growing trophy history can never crowd
-  /// live games out of the inbox:
-  /// - **Live**: every active / waiting match (naturally small).
-  /// - **History**: the 20 most recently finished (completed + forfeited),
-  ///   newest first. Needs the composite index in `firestore.indexes.json`;
-  ///   if it is missing, live matches keep working and the error (with the
-  ///   one-click index link) is printed to the console.
-  Stream<List<CloudMatch>> streamUserMatches(String userUid) {
+  /// Limits to the 20 most recent active matches. Completed/forfeited matches
+  /// are deliberately excluded so players don't pay continuous Firestore listener
+  /// read charges for static historical documents on every app open.
+  Stream<List<CloudMatch>> streamActiveMatches(
+    String userUid, {
+    int limit = 20,
+  }) {
     if (userUid.isEmpty) {
       return Stream.value(const <CloudMatch>[]);
     }
 
-    final liveQuery = _matchesRef
+    return _matchesRef
         .where('playerIds', arrayContains: userUid)
         .where('status', whereIn: [
           MatchStatus.active.key,
           MatchStatus.waitingForOpponent.key,
-        ]);
+        ])
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) {
+          final matches =
+              snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+          _cachedUserMatches[userUid] = matches;
+          return matches;
+        })
+        .handleError((Object e) {
+          debugPrint('[FirestoreMatchService] Active matches stream error: $e');
+          return const <CloudMatch>[];
+        });
+  }
 
-    final historyQuery = _matchesRef
+  /// One-time cursor-paginated query for completed / forfeited matches.
+  ///
+  /// Only invoked on-demand when the user opens the Completed tab or scrolls
+  /// through match history. Returns the batch of [CloudMatch] documents along
+  /// with the last [DocumentSnapshot] cursor to support cursor-based pagination.
+  Future<({
+    List<CloudMatch> matches,
+    DocumentSnapshot<Map<String, dynamic>>? lastDoc,
+    bool hasMore,
+  })> fetchCompletedMatches(
+    String userUid, {
+    DocumentSnapshot<Map<String, dynamic>>? lastDoc,
+    int limit = 20,
+  }) async {
+    if (userUid.isEmpty) {
+      return (matches: const <CloudMatch>[], lastDoc: null, hasMore: false);
+    }
+
+    var query = _matchesRef
         .where('playerIds', arrayContains: userUid)
         .where('status', whereIn: [
           MatchStatus.completed.key,
           MatchStatus.forfeited.key,
         ])
         .orderBy('updatedAt', descending: true)
-        .limit(20);
+        .limit(limit);
 
-    List<CloudMatch>? liveMatches;
-    List<CloudMatch>? historyMatches;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? liveSub;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? historySub;
-    late final StreamController<List<CloudMatch>> controller;
-
-    void emit() {
-      if (controller.isClosed) return;
-      if (liveMatches == null && historyMatches == null) return;
-      final merged = <CloudMatch>[...?liveMatches, ...?historyMatches]
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      _cachedUserMatches[userUid] = merged;
-      controller.add(merged);
+    if (lastDoc != null) {
+      query = query.startAfterDocument(lastDoc);
     }
 
-    controller = StreamController<List<CloudMatch>>(
-      onListen: () {
-        liveSub = liveQuery.snapshots().listen(
-          (snap) {
-            liveMatches =
-                snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-            emit();
-          },
-          onError: (Object e) {
-            debugPrint('[FirestoreMatchService] Live matches stream error: $e');
-            liveMatches ??= const [];
-            emit();
-          },
-        );
-        historySub = historyQuery.snapshots().listen(
-          (snap) {
-            historyMatches =
-                snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-            emit();
-          },
-          onError: (Object e) {
-            // Most likely a missing composite index — the message contains the creation link.
-            debugPrint('[FirestoreMatchService] Match history stream error: $e');
-            historyMatches ??= const [];
-            emit();
-          },
-        );
-      },
-      onCancel: () async {
-        await liveSub?.cancel();
-        await historySub?.cancel();
-      },
-    );
+    final snap = await query.get();
+    final matches = snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+    final newLastDoc = snap.docs.isNotEmpty ? snap.docs.last : null;
+    final hasMore = snap.docs.length >= limit;
 
-    return controller.stream;
+    return (matches: matches, lastDoc: newLastDoc, hasMore: hasMore);
+  }
+
+  /// Legacy wrapper: streams active matches to keep older callers functioning
+  /// without triggering duplicate listener billing on completed games.
+  Stream<List<CloudMatch>> streamUserMatches(String userUid) {
+    return streamActiveMatches(userUid);
   }
 
   /// Broadcasts a live shot impulse micro-packet to the `live_shots` subcollection.
@@ -1268,6 +1331,7 @@ extension ArcheryMatchService on FirestoreMatchService {
     required double distance,
   }) async {
     final docRef = _matchesRef.doc(matchId.trim().toUpperCase());
+    bool matchConcluding = false;
 
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
@@ -1344,6 +1408,7 @@ extension ArcheryMatchService on FirestoreMatchService {
       }
 
       final isConcluding = nextStatus == MatchStatus.completed;
+      matchConcluding = isConcluding;
       final key = isP1 ? 'player1' : 'player2';
       transaction.update(docRef, {
         'currentRound': nextRound,
@@ -1361,6 +1426,10 @@ extension ArcheryMatchService on FirestoreMatchService {
         '$key.roundSummaries': mySummaries.map((s) => s.toMap()).toList(),
       });
     });
+
+    if (matchConcluding) {
+      unawaited(purgeMatchTelemetry(matchId));
+    }
   }
 }
 
@@ -1469,6 +1538,7 @@ extension DartsMatchService on FirestoreMatchService {
     required List<DartsLiveEvent> darts,
   }) async {
     final docRef = _matchesRef.doc(matchId.trim().toUpperCase());
+    bool matchConcluding = false;
 
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(docRef);
@@ -1537,6 +1607,7 @@ extension DartsMatchService on FirestoreMatchService {
       }
 
       final isConcluding = nextStatus == MatchStatus.completed;
+      matchConcluding = isConcluding;
       final key = isP1 ? 'player1' : 'player2';
       transaction.update(docRef, {
         'currentRound': nextRound,
@@ -1554,6 +1625,10 @@ extension DartsMatchService on FirestoreMatchService {
         '$key.roundSummaries': mySummaries.map((s) => s.toMap()).toList(),
       });
     });
+
+    if (matchConcluding) {
+      unawaited(purgeMatchTelemetry(matchId));
+    }
   }
 }
 

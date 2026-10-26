@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../basketball_game.dart';
-import '../../match/match_session.dart';
-import '../match/match_lobby_dialog.dart';
-import '../match/match_setup_dialog.dart';
-import 'match_inbox_card.dart';
-import 'match_thread_dialog.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
-import '../common/app_modal_sheet.dart';
-import '../common/edit_profile_dialog.dart';
-import '../social/friends_hub_sheet.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
+import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
+import 'package:b_ball/game/ui/inbox/widgets/inbox_active_list.dart';
+import 'package:b_ball/game/ui/inbox/widgets/inbox_completed_list.dart';
+import 'package:b_ball/game/ui/inbox/widgets/inbox_header.dart';
+import 'package:b_ball/game/ui/match/match_lobby_dialog.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// The central 1v1 Match Hub bottom sheet modal.
 class MatchInboxSheet extends HookConsumerWidget {
@@ -46,7 +43,7 @@ class MatchInboxSheet extends HookConsumerWidget {
       builder: (ctx) => MatchInboxSheet(
         onPlayMatch: onPlayMatch,
         onCreateMatch: onCreateMatch,
-        onViewPodium: onViewPodium,
+        onViewPodium: onViewPodium ?? ((m) => ResultsSheet.show(ctx, m)),
       ),
     );
   }
@@ -61,11 +58,8 @@ class MatchInboxSheet extends HookConsumerWidget {
     final config = await MatchSetupDialog.show(
       context,
       initialConfig: game.currentMatchConfig,
-      // Basketball or archery from the same inbox; archery matches are
-      // handed to /match/:id by game.startCloudMatch.
       showGamePicker: true,
     );
-    // "Join with a code" from the dialog: open the joined match.
     final joined = config?.joinedMatch;
     if (joined != null) {
       final myUid = AuthService.instance.currentUser?.uid ?? '';
@@ -121,17 +115,7 @@ class MatchInboxSheet extends HookConsumerWidget {
       },
       onCreateMatch: () => playAFriend(context, game: game),
       onViewPodium: (match) {
-        if (!match.isBasketball) {
-          // Archery/darts show their own final card on their own screen.
-          game.onOtherGameMatch?.call(match);
-          return;
-        }
-        final myUid = AuthService.instance.currentUser?.uid ?? '';
-        final session = MatchSession.fromCloudMatch(match, myUid);
-        session.phase = MatchTurnPhase.matchComplete;
-        session.isHistoryView = true;
-        game.matchSessionNotifier.value = session;
-        game.gameStateNotifier.value = GameModeState.gameOver;
+        ResultsSheet.show(context, match);
       },
     );
     if (wasPlaying && game.isPaused) {
@@ -142,395 +126,56 @@ class MatchInboxSheet extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTab = useState(0); // 0: Live Matches, 1: Trophy History
-
-    void showEditProfileDialog(BuildContext ctx, UserProfile current) {
-      EditProfileDialog.show(ctx, profile: current);
-    }
-
     final myProfile = ref.watch(currentUserProfileProvider).value;
     final myUid = myProfile?.uid ?? '';
-    final matchesAsync = ref.watch(userMatchesProvider);
-    final allMatches = matchesAsync.value ?? const <CloudMatch>[];
 
     return AppModalSheet(
-          heightFactor: 0.85,
-          header: Padding(
+      heightFactor: 0.85,
+      header: InboxHeader(
+        profile: myProfile,
+        onEditProfile: () {
+          if (myProfile != null) {
+            EditProfileDialog.show(context, profile: myProfile);
+          }
+        },
+        onClose: () => Navigator.of(context).pop(),
+        onPlayMatch: onPlayMatch,
+        onCreateMatch: onCreateMatch,
+        onViewPodium: onViewPodium,
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 14),
+
+          // Tab Selector
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                InkWell(
-                  onTap: myProfile != null
-                      ? () => showEditProfileDialog(context, myProfile)
-                      : null,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Row(
-                    children: [
-                      AppAvatar(
-                        avatar: myProfile?.avatarEmoji ??
-                            AppAvatar.defaultAvatar,
-                        size: 38,
-                        borderColor: const Color(0xFF38BDF8),
-                        borderWidth: 1.8,
-                        showGlow: true,
-                        glowColor: const Color(0xFF38BDF8),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                myProfile?.displayName ?? 'Baller',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.4,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.edit_rounded,
-                                size: 13,
-                                color: Color(0xFF38BDF8),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'MY PROFILE',
-                            style: TextStyle(
-                              color: Color(0xFF38BDF8),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: Colors.white54,
-                    size: 22,
-                  ),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+                _buildTabPill(0, 'ACTIVE MATCHES', selectedTab),
+                const SizedBox(width: 8),
+                _buildTabPill(1, 'COMPLETED', selectedTab),
               ],
             ),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 14),
+          const SizedBox(height: 12),
 
-                // Friends (invites and requests). Starting or joining a
-                // match lives on the people button in each game now.
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final friendsBadgeCount =
-                              ref.watch(friendsBadgeCountProvider);
-                          return Expanded(
-                            flex: 8,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      await FriendsHubSheet.show(
-                                        context,
-                                        onPlayMatch: (m) {
-                                          Navigator.of(context).pop();
-                                          onPlayMatch(m);
-                                        },
-                                        onCreateMatch: () {
-                                          Navigator.of(context).pop();
-                                          onCreateMatch();
-                                        },
-                                        onViewPodium: (m) {
-                                          Navigator.of(context).pop();
-                                          onViewPodium?.call(m);
-                                        },
-                                      );
-                                    },
-                                    icon: const Icon(Icons.people_alt_rounded, size: 14),
-                                    label: const Text(
-                                      'FRIENDS',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF818CF8),
-                                      side: const BorderSide(
-                                        color: Color(0xFF6366F1),
-                                        width: 1.2,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                if (friendsBadgeCount > 0)
-                                  Positioned(
-                                    top: -4.0,
-                                    right: -4.0,
-                                    child: Container(
-                                      constraints: const BoxConstraints(
-                                        minWidth: 18.0,
-                                        minHeight: 18.0,
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 5.0,
-                                        vertical: 1.0,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.accentRed,
-                                        borderRadius: BorderRadius.circular(10.0),
-                                        border: Border.all(
-                                          color: const Color(0xFF0F1420),
-                                          width: 1.5,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppColors.accentRed
-                                                .withValues(alpha: 0.6),
-                                            blurRadius: 6.0,
-                                            spreadRadius: 1.0,
-                                          ),
-                                        ],
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '$friendsBadgeCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w900,
-                                            height: 1.0,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        height: 40,
-                        width: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E2638),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFF334155), width: 1.2),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              context.go('/games');
-                            },
-                            borderRadius: BorderRadius.circular(12),
-                            child: const Center(
-                              child: Icon(Icons.grid_view_rounded, size: 18, color: Color(0xFF00FFCC)),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+          // Match Lists: Active streams live, Completed lazily paginated
+          Expanded(
+            child: selectedTab.value == 0
+                ? InboxActiveList(
+                    myUid: myUid,
+                    onPlayMatch: onPlayMatch,
+                    onViewPodium: onViewPodium,
+                  )
+                : InboxCompletedList(
+                    myUid: myUid,
+                    onViewPodium: onViewPodium,
                   ),
-                ),
-                const SizedBox(height: 14),
-
-                // Tab Selector
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      _buildTabPill(0, 'ACTIVE MATCHES', selectedTab),
-                      const SizedBox(width: 8),
-                      _buildTabPill(1, 'COMPLETED', selectedTab),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Matches Stream Feed
-                Expanded(
-                  child: Builder(
-                    builder: (context) {
-                      if (matchesAsync.isLoading && !matchesAsync.hasValue) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF00FFCC),
-                          ),
-                        );
-                      }
-                      final liveMatches = allMatches
-                          .where((m) => !m.isFinished)
-                          .toList();
-                      final completedMatches = allMatches
-                          .where((m) => m.isFinished)
-                          .toList();
-
-                      // Sort live matches so your turns appear at the top
-                      liveMatches.sort((a, b) {
-                        final aTurn = a.isMyTurn(myUid) ? 0 : 1;
-                        final bTurn = b.isMyTurn(myUid) ? 0 : 1;
-                        return aTurn.compareTo(bTurn);
-                      });
-
-                      final displayList = selectedTab.value == 0
-                          ? liveMatches
-                          : completedMatches;
-
-                      if (displayList.isEmpty) {
-                        return _buildEmptyState(selectedTab.value == 0);
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 4,
-                        ),
-                        itemCount: displayList.length,
-                        itemBuilder: (ctx, i) {
-                          final match = displayList[i];
-                          return MatchInboxCard(
-                            match: match,
-                            myUid: myUid,
-                            onTap: () {
-                              if (match.isFinished) {
-                                Navigator.of(context).pop();
-                                onViewPodium?.call(match);
-                              } else {
-                                MatchThreadDialog.show(
-                                  context,
-                                  match: match,
-                                  myUid: myUid,
-                                  onPlayTurn: () {
-                                    Navigator.of(context).pop();
-                                    onPlayMatch(match);
-                                  },
-                                  onViewPodium: () {
-                                    Navigator.of(context).pop();
-                                    onViewPodium?.call(match);
-                                  },
-                                );
-                              }
-                            },
-                            onPlayTurn: () {
-                              Navigator.of(context).pop();
-                              onPlayMatch(match);
-                            },
-                            onViewPodium: () {
-                              Navigator.of(context).pop();
-                              onViewPodium?.call(match);
-                            },
-                            onLeave: () {
-                              final isDone =
-                                  match.isFinished;
-                              showDialog(
-                                context: context,
-                                builder: (dialogCtx) => AlertDialog(
-                                  backgroundColor: const Color(0xFF131826),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                    side: const BorderSide(
-                                      color: Color(0xFF2E3954),
-                                      width: 1.5,
-                                    ),
-                                  ),
-                                  title: Text(
-                                    isDone ? 'REMOVE MATCH' : 'LEAVE MATCH',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
-                                    ),
-                                  ),
-                                  content: Text(
-                                    isDone
-                                        ? 'Remove this finished match from your history?'
-                                        : 'Are you sure you want to forfeit and leave this match? It will be removed from your active matches.',
-                                    style: const TextStyle(
-                                      color: Color(0xFF94A3B8),
-                                      fontSize: 13,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(dialogCtx).pop(),
-                                      child: const Text(
-                                        'CANCEL',
-                                        style: TextStyle(
-                                          color: Color(0xFF94A3B8),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () async {
-                                        Navigator.of(dialogCtx).pop();
-                                        await FirestoreMatchService.instance
-                                            .leaveOrDismissMatch(
-                                          matchId: match.id,
-                                          myUid: myUid,
-                                        );
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            const Color(0xFFEF4444),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        isDone ? 'REMOVE' : 'LEAVE',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.8,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-        );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildTabPill(
@@ -565,45 +210,6 @@ class MatchInboxSheet extends HookConsumerWidget {
             fontSize: 11.5,
             fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(bool isLiveTab) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isLiveTab
-                  ? Icons.sports_basketball_outlined
-                  : Icons.emoji_events_outlined,
-              size: 40,
-              color: const Color(0xFF475569),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              isLiveTab
-                  ? 'No live challenges right now'
-                  : 'No completed matches yet',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              isLiveTab
-                  ? 'Tap the people button in a game to play a friend.'
-                  : 'Finished games and winner podiums will appear here.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-            ),
-          ],
         ),
       ),
     );

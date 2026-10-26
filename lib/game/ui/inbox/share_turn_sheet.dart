@@ -4,8 +4,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../common/app_colors.dart';
-import '../common/app_modal_sheet.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
 
 /// Bottom modal sheet displayed immediately after completing a round in an online match.
 /// Provides one-tap link copying, native share sheet, and optional WhatsApp nudge.

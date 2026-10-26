@@ -3,16 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/chat_read_receipt_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../common/app_avatar.dart';
-import '../common/app_modal_sheet.dart';
-import '../common/chat/chat_bubble_list.dart';
-import '../common/chat/chat_input_bar.dart';
-import '../common/inline_feedback.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
+import 'package:b_ball/game/ui/common/chat/chat_bubble_list.dart';
+import 'package:b_ball/game/ui/common/chat/chat_input_bar.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
 /// Modal sheet showing the live game conversation thread, round score breakdown, and banter chat.
 class MatchThreadDialog extends HookConsumerWidget {

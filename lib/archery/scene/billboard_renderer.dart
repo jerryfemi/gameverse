@@ -5,10 +5,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../util/image_loader.dart';
-import 'venue_theme.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/util/image_loader.dart';
+import 'package:b_ball/archery/scene/venue_theme.dart';
 
 /// Internal runtime cache for a loaded billboard instance.
 class _LoadedBillboard {

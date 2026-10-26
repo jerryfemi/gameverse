@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../models/player_descriptor.dart';
-import '../../services/auth_service.dart';
-import '../basketball_game.dart';
-import '../match/match_session.dart';
-import 'scoreboard/hot_streak_pill.dart';
-import 'scoreboard/net_signal_badge.dart';
-import 'scoreboard/round_indicator_badge.dart';
-import 'scoreboard/scoreboard_bay.dart';
-import 'scoreboard/scoreboard_flank_badges.dart';
-import 'scoreboard/trapezoid_scoreboard_painter.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
+import 'package:b_ball/game/ui/scoreboard/hot_streak_pill.dart';
+import 'package:b_ball/game/ui/scoreboard/net_signal_badge.dart';
+import 'package:b_ball/game/ui/scoreboard/round_indicator_badge.dart';
+import 'package:b_ball/game/ui/scoreboard/scoreboard_bay.dart';
+import 'package:b_ball/game/ui/scoreboard/scoreboard_flank_badges.dart';
+import 'package:b_ball/game/ui/scoreboard/trapezoid_scoreboard_painter.dart';
 
-export 'scoreboard/trapezoid_scoreboard_painter.dart';
+export 'package:b_ball/game/ui/scoreboard/trapezoid_scoreboard_painter.dart';
 
 /// GamePigeon Authentic 3-Bay Electronic LED Stadium Scoreboard.
 ///
@@ -26,12 +26,14 @@ class StadiumScoreboard extends StatefulWidget {
   final BasketballGame game;
   final VoidCallback? onHelpTapped;
   final VoidCallback? onInboxTapped;
+  final VoidCallback? onOpponentAvatarTap;
 
   const StadiumScoreboard({
     super.key,
     required this.game,
     this.onHelpTapped,
     this.onInboxTapped,
+    this.onOpponentAvatarTap,
   });
 
   @override
@@ -214,6 +216,12 @@ class _StadiumScoreboardState extends State<StadiumScoreboard>
                           isWaiting: matchSession.isWaitingForOpponent,
                           joinCode: matchSession.joinCode,
                           activeMatchId: matchSession.cloudMatchId,
+                          opponentUid: matchSession.cloudMatchId == null
+                              ? null
+                              : matchSession.player2.id,
+                          isBot: matchSession.cloudMatchId == null ||
+                              matchSession.player2.id == 'cpu',
+                          onTap: widget.onOpponentAvatarTap,
                         ),
                         // Opponent's connection gauge (from their live shots).
                         if (matchSession.cloudMatchId != null)

@@ -3,18 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/friend_profile.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/auth_service.dart';
-import 'add_friend_dialog.dart';
-import 'components/friend_card_tile.dart';
-import 'components/friend_invite_tile.dart';
-import 'edit_gamer_tag_dialog.dart';
-import 'friend_conversation_sheet.dart';
-import '../common/app_avatar.dart';
-import '../common/app_modal_sheet.dart';
-import '../common/inline_feedback.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/ui/social/add_friend_dialog.dart';
+import 'package:b_ball/game/ui/social/components/friend_card_tile.dart';
+import 'package:b_ball/game/ui/social/components/friend_invite_tile.dart';
+import 'package:b_ball/game/ui/social/edit_gamer_tag_dialog.dart';
+import 'package:b_ball/game/ui/social/friend_conversation_sheet.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_modal_sheet.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
 /// Dedicated Friends Management sheet for launching 1v1 challenges and banter chat.
 class FriendsHubSheet extends ConsumerWidget {
@@ -76,7 +76,7 @@ class FriendsHubSheet extends ConsumerWidget {
     final invites = ref.watch(incomingInvitesProvider).value ?? const <FriendInvite>[];
     final friendsAsync = ref.watch(friendsListProvider);
     final friends = friendsAsync.value ?? const <FriendProfile>[];
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final activeMatches = ref.watch(activeMatchesProvider).value ?? const <CloudMatch>[];
     final friendUids = friends.map((f) => f.uid).toSet();
 
     return AppModalSheet(
@@ -292,7 +292,7 @@ class FriendsHubSheet extends ConsumerWidget {
                                         for (final friend in friends) ...[
                                           Builder(
                                             builder: (context) {
-                                              final match = matches
+                                              final match = activeMatches
                                                   .cast<CloudMatch?>()
                                                   .firstWhere(
                                                     (m) =>

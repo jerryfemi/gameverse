@@ -3,56 +3,52 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../archery/state/archery_rules.dart';
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../../../models/friend_profile.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../../services/update/update_platform.dart';
-import '../../match/match_config.dart';
-import '../../physics/shot_difficulty.dart';
-import '../common/app_colors.dart';
-import '../common/clean_ui.dart';
-import '../common/difficulty_stepped_slider.dart';
-import '../common/inline_feedback.dart';
-import '../inbox/join_match_dialog.dart';
-import 'components/friend_selector_ribbon.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/services/update/update_platform.dart';
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
+import 'package:b_ball/game/ui/inbox/join_match_dialog.dart';
+import 'package:b_ball/game/ui/match/components/friend_selector_ribbon.dart';
+import 'package:b_ball/game/ui/match/components/match_code_reveal_card.dart';
+import 'package:b_ball/game/ui/match/components/match_game_cards.dart';
+import 'package:b_ball/game/ui/match/components/match_hoops_settings_card.dart';
+import 'package:b_ball/game/ui/match/components/match_rules_card.dart';
 
-/// "Play a friend": create a 1v1 match (share a code or challenge a friend)
-/// or join one with a code. Same clean look as the archery pause menu, for
-/// both games.
-///
-/// Returns the chosen [MatchConfig]; if the player joined a match instead,
-/// [MatchConfig.joinedMatch] is set and the caller just opens it.
+/// "Play a friend" modal dialog matching Design Templates 16 and 17:
+/// - 3 game selection cards (HOOPS, ARCHERY, DARTS)
+/// - Mode switcher (Share a code / A friend)
+/// - Hoops match settings (Rounds, Shot clock, Difficulty)
+/// - Friend radio-picker list
+/// - FittedBox responsive scaling (< 250 lines)
 class MatchSetupDialog extends HookWidget {
   final MatchConfig initialConfig;
-
-  /// Shows a HOOPS / ARCHERY switch at the top (the shared match inbox).
-  /// Off when a game opens the dialog for itself.
   final bool showGamePicker;
-
-  /// Offers "Join with a code" (off where joining makes no sense, e.g. the
-  /// pass-and-play settings).
   final bool allowJoin;
 
   const MatchSetupDialog({
     super.key,
     this.initialConfig = const MatchConfig(),
-    this.showGamePicker = false,
+    this.showGamePicker = true,
     this.allowJoin = true,
   });
 
   static Future<MatchConfig?> show(
     BuildContext context, {
     MatchConfig initialConfig = const MatchConfig(),
-    bool showGamePicker = false,
+    bool showGamePicker = true,
     bool allowJoin = true,
   }) {
-    return CleanUi.show<MatchConfig>(
-      context,
-      (context) => MatchSetupDialog(
+    return showDialog<MatchConfig>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
+      builder: (context) => MatchSetupDialog(
         initialConfig: initialConfig,
         showGamePicker: showGamePicker,
         allowJoin: allowJoin,
@@ -61,22 +57,16 @@ class MatchSetupDialog extends HookWidget {
   }
 
   static const Color _hoops = Color(0xFFF59E0B);
-  static const Color _darts = Color(0xFFEF4444);
-
-  static const List<int> _roundOptions = [2, 3, 4];
-  static const List<int> _durationOptions = [30, 60];
+  static const Color _archery = Color(0xFF00FFCC);
+  static const Color _darts = Color(0xFF38BDF8);
 
   @override
   Widget build(BuildContext context) {
-    // Archery and darts have fixed rules (archery: sets to 6 points; darts:
-    // 301 over at most 20 rounds), so only the opponent part of this dialog
-    // applies to them.
     final selectedGame = useState(initialConfig.game);
     final bool isArchery = selectedGame.value == 'archery';
     final bool isDarts = selectedGame.value == 'darts';
     final bool fixedRules = isArchery || isDarts;
 
-    /// Archery and darts have fixed rules; basketball uses the chosen options.
     MatchConfig withGameRules(MatchConfig c) => switch (selectedGame.value) {
           'archery' => c.copyWith(
               game: 'archery',
@@ -90,31 +80,23 @@ class MatchSetupDialog extends HookWidget {
             ),
           _ => c.copyWith(game: selectedGame.value),
         };
+
     final selectedRounds = useState(initialConfig.totalRounds);
     final selectedDuration = useState(initialConfig.roundDurationSeconds);
     final selectedDifficulty = useState(initialConfig.difficulty);
-    final opponentMode = useState(
-      initialConfig.opponentFriend != null ? 1 : 0,
-    ); // 0: Open Code, 1: Friend Challenge
-    final selectedFriend = useState<FriendProfile?>(
-      initialConfig.opponentFriend,
-    );
+    final opponentMode = useState(initialConfig.opponentFriend != null ? 1 : 0);
+    final selectedFriend = useState<FriendProfile?>(initialConfig.opponentFriend);
     final isGeneratingCode = useState(false);
     final precreatedMatch = useState<CloudMatch?>(null);
     final codeCopied = useState(false);
-    // Inline states that replace floating SnackBars.
     final codeError = useState<String?>(null);
     final showPickFriendHint = useState(false);
 
-    /// Works even if the player taps before sign-in has finished hydrating:
-    /// shows the generating spinner immediately and waits for the profile,
-    /// instead of leaving the button silently disabled.
     Future<void> generateUpfrontCode(UserProfile? knownProfile) async {
       if (isGeneratingCode.value) return;
       codeError.value = null;
       if (!isDeviceOnline()) {
-        codeError.value =
-            'You\'re offline. Reconnect to the internet to create a 1v1 match.';
+        codeError.value = 'You\'re offline. Reconnect to the internet to create a 1v1 match.';
         return;
       }
       isGeneratingCode.value = true;
@@ -135,17 +117,12 @@ class MatchSetupDialog extends HookWidget {
           config: config,
           player1Profile: profile,
         );
-        // The room exists now: show the code no matter what happens next.
         if (context.mounted) {
           precreatedMatch.value = match;
           codeCopied.value = false;
           isGeneratingCode.value = false;
         }
         HapticFeedback.mediumImpact();
-        // Best-effort auto-copy. Safari only allows clipboard writes during
-        // the tap itself, and creating the room took a network round trip,
-        // so this often fails there. That's fine: the card offers COPY and
-        // SHARE buttons, which run inside a fresh tap.
         try {
           await Clipboard.setData(ClipboardData(text: match.joinCode));
           if (context.mounted) codeCopied.value = true;
@@ -167,12 +144,8 @@ class MatchSetupDialog extends HookWidget {
       try {
         await Clipboard.setData(ClipboardData(text: match.joinCode));
         HapticFeedback.lightImpact();
-        // MatchCodeCard renders its own copied state — no SnackBar needed.
         codeCopied.value = true;
-      } catch (_) {
-        // Clipboard blocked (rare, inside a tap): the code is selectable and
-        // SHARE still works, so stay quiet rather than show an error.
-      }
+      } catch (_) {}
     }
 
     Future<void> shareCode() async {
@@ -181,17 +154,13 @@ class MatchSetupDialog extends HookWidget {
       HapticFeedback.lightImpact();
       final code = match.joinCode;
       final text = match.isArchery
-          ? '🎯 Shoot archery with me on GameVerse! Match code: $code\n'
-              'https://dunkverse.web.app/match/$code'
+          ? '🎯 Shoot archery with me on GameVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code'
           : match.isDarts
-              ? '🎯 Play me at darts on GameVerse! 301, first to zero. Match code: $code\n'
-                  'https://dunkverse.web.app/match/$code'
-              : '🏀 Play me 1v1 on DunkVerse! Match code: $code\n'
-                  'https://dunkverse.web.app/match/$code';
+              ? '🎯 Play me at darts on GameVerse! 301, first to zero. Match code: $code\nhttps://dunkverse.web.app/match/$code'
+              : '🏀 Play me 1v1 on DunkVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code';
       try {
         await SharePlus.instance.share(ShareParams(text: text));
       } catch (_) {
-        // No share sheet on this browser: fall back to copying the message.
         try {
           await Clipboard.setData(ClipboardData(text: text));
           codeCopied.value = true;
@@ -208,11 +177,8 @@ class MatchSetupDialog extends HookWidget {
 
       final profile = AuthService.instance.currentUser;
       final myName = profile?.displayName ?? 'Player';
-      final myAvatar =
-          profile?.avatarEmoji ?? PlayerDescriptor.defaultAvatar;
-
-      final isFriendMode =
-          opponentMode.value == 1 && selectedFriend.value != null;
+      final myAvatar = profile?.avatarEmoji ?? PlayerDescriptor.defaultAvatar;
+      final isFriendMode = opponentMode.value == 1 && selectedFriend.value != null;
 
       final config = withGameRules(MatchConfig(
         totalRounds: selectedRounds.value,
@@ -220,10 +186,8 @@ class MatchSetupDialog extends HookWidget {
         difficulty: selectedDifficulty.value,
         player1Name: myName,
         player1Avatar: myAvatar,
-        player2Name:
-            isFriendMode ? selectedFriend.value!.displayName : 'Opponent',
-        player2Avatar:
-            isFriendMode ? selectedFriend.value!.avatarEmoji : '⏳',
+        player2Name: isFriendMode ? selectedFriend.value!.displayName : 'Opponent',
+        player2Avatar: isFriendMode ? selectedFriend.value!.avatarEmoji : '⏳',
         player2Uid: isFriendMode ? selectedFriend.value?.uid : null,
         opponentFriend: isFriendMode ? selectedFriend.value : null,
         precreatedMatch: isFriendMode ? null : precreatedMatch.value,
@@ -239,10 +203,9 @@ class MatchSetupDialog extends HookWidget {
       }
     }
 
-    // Share-a-code mode: the primary button first gets the code, then opens
-    // the waiting room. Friend mode: it sends the challenge.
     final bool codeMode = opponentMode.value == 0;
     final bool hasCode = precreatedMatch.value != null;
+
     String primaryLabel() {
       if (!codeMode) {
         final f = selectedFriend.value;
@@ -260,226 +223,318 @@ class MatchSetupDialog extends HookWidget {
     }
 
     final profile = AuthService.instance.currentUser;
-    final Color gameAccent =
-        isArchery ? CleanUi.accent : (isDarts ? _darts : _hoops);
+    final Color gameAccent = isArchery ? _archery : (isDarts ? _darts : _hoops);
 
-    return CleanDialog(
-      title: 'PLAY A FRIEND',
-      subtitle: isArchery
-          ? 'Archery 1v1: sets of 3 arrows, first to 6 set points'
-          : isDarts
-              ? 'Darts 1v1: 301 down to exactly zero, 3 darts a turn'
-              : 'Hoops 1v1: take turns, highest total wins',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Which game (shared inbox only). Locked once a code exists,
-          // since that room was made for one game.
-          if (showGamePicker) ...[
-            CleanSegmented<String>(
-              segments: const [
-                CleanSegment('basketball', 'HOOPS', icon: Icons.sports_basketball_rounded),
-                CleanSegment('archery', 'ARCHERY', icon: Icons.track_changes_rounded),
-                CleanSegment('darts', 'DARTS', icon: Icons.gps_fixed_rounded),
+    final String subtitleText = isArchery
+        ? 'Sets of 3 arrows, first to 6 set points'
+        : (isDarts
+            ? '301 down to zero, checkout on a double'
+            : 'Take turns, highest total wins');
+
+    final maxH = MediaQuery.sizeOf(context).height * 0.90;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      elevation: 0,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 360.0, maxHeight: maxH),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1424),
+              borderRadius: BorderRadius.circular(24.0),
+              border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
+              boxShadow: const [
+                BoxShadow(color: Color(0xCC000000), blurRadius: 36.0, offset: Offset(0, 14)),
               ],
-              selected: selectedGame.value,
-              accent: gameAccent,
-              onChanged: hasCode ? null : (g) => selectedGame.value = g,
             ),
-            const SizedBox(height: 10.0),
-          ],
-
-          CleanSegmented<int>(
-            segments: const [
-              CleanSegment(0, 'SHARE A CODE', icon: Icons.tag_rounded),
-              CleanSegment(1, 'A FRIEND', icon: Icons.people_alt_rounded),
-            ],
-            selected: opponentMode.value,
-            onChanged: (m) => opponentMode.value = m,
-          ),
-          const SizedBox(height: 14.0),
-
-          if (codeMode)
-            InlineFeedbackSwitcher(
-              child: codeError.value != null
-                  ? InlineErrorPanel(
-                      key: const ValueKey('code-error'),
-                      title: 'MATCH CODE UNAVAILABLE',
-                      message: codeError.value!,
-                      onRetry: () => generateUpfrontCode(profile),
-                      onDismiss: () => codeError.value = null,
-                    )
-                  : hasCode
-                      ? _CodeReveal(
-                          key: const ValueKey('code'),
-                          code: precreatedMatch.value!.joinCode,
-                          copied: codeCopied.value,
-                          onCopy: copyCode,
-                          onShare: shareCode,
-                        )
-                      : const Padding(
-                          key: ValueKey('code-help'),
-                          padding: EdgeInsets.only(bottom: 4.0),
-                          child: Text(
-                            'Get a 6-character code and send it to anyone. '
-                            'They enter it with "Join with a code".',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: CleanUi.muted, fontSize: 12.5, height: 1.4),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24.0),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20.0, 18.0, 20.0, 18.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header Row: Title + Close Button
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Play a friend',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22.0,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 3.0),
+                              Text(
+                                subtitleText,
+                                style: const TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-            )
-          else
-            FriendSelectorRibbon(
-              profile: profile,
-              selectedFriend: selectedFriend.value,
-              onFriendSelected: (friend) {
-                selectedFriend.value = friend;
-                showPickFriendHint.value = false;
-              },
-              onUseOpenCode: () => opponentMode.value = 0,
-            ),
-          const SizedBox(height: 16.0),
-
-          if (!fixedRules) ...[
-            CleanRow(
-              icon: Icons.repeat_rounded,
-              label: 'ROUNDS',
-              iconColor: _hoops,
-              trailing: CleanSegmented<int>(
-                segments: [for (final r in _roundOptions) CleanSegment(r, '$r')],
-                selected: selectedRounds.value,
-                accent: _hoops,
-                onChanged: (r) => selectedRounds.value = r,
-              ),
-            ),
-            CleanRow(
-              icon: Icons.timer_outlined,
-              label: 'CLOCK',
-              iconColor: _hoops,
-              trailing: CleanSegmented<int>(
-                segments: [for (final d in _durationOptions) CleanSegment(d, '${d}s')],
-                selected: selectedDuration.value,
-                accent: _hoops,
-                onChanged: (d) => selectedDuration.value = d,
-              ),
-            ),
-            ValueListenableBuilder<ShotDifficulty>(
-              valueListenable: selectedDifficulty,
-              builder: (context, diff, _) => DifficultySteppedSlider(
-                value: diff,
-                onChanged: (newDiff) => selectedDifficulty.value = newDiff,
-                title: 'DIFFICULTY',
-              ),
-            ),
-            const SizedBox(height: 14.0),
-          ],
-
-          // Inline validation hint (replaces the old floating SnackBar)
-          InlineFeedbackSwitcher(
-            child: (showPickFriendHint.value && !codeMode && selectedFriend.value == null)
-                ? Padding(
-                    key: const ValueKey('pick-friend'),
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: InlineErrorPanel(
-                      icon: Icons.people_alt_rounded,
-                      accent: AppColors.accentAmber,
-                      title: 'PICK A FRIEND',
-                      message: 'Select a friend above, or share a code instead.',
-                      onDismiss: () => showPickFriendHint.value = false,
+                        const SizedBox(width: 8.0),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(context).pop();
+                          },
+                          borderRadius: BorderRadius.circular(18.0),
+                          child: Container(
+                            width: 32.0,
+                            height: 32.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.8),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFF94A3B8)),
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('no-hint')),
-          ),
+                    const SizedBox(height: 16.0),
 
-          CleanButton(
-            label: primaryLabel(),
-            icon: codeMode
-                ? (hasCode ? Icons.arrow_forward_rounded : Icons.tag_rounded)
-                : Icons.send_rounded,
-            primary: true,
-            accent: gameAccent,
-            loading: isGeneratingCode.value,
-            onTap: onPrimary,
-          ),
-          if (allowJoin) ...[
-            const SizedBox(height: 8.0),
-            CleanButton(
-              label: 'JOIN WITH A CODE',
-              icon: Icons.login_rounded,
-              onTap: joinWithCode,
+                    // 3 Game Selection Cards (Hoops, Archery, Darts)
+                    if (showGamePicker) ...[
+                      MatchGameCards(
+                        selectedGame: selectedGame.value,
+                        enabled: !hasCode,
+                        onGameSelected: (game) => selectedGame.value = game,
+                      ),
+                      const SizedBox(height: 12.0),
+                    ],
+
+                    // Mode Switcher: Share a code vs A friend
+                    Container(
+                      padding: const EdgeInsets.all(4.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF090E1A),
+                        borderRadius: BorderRadius.circular(14.0),
+                        border: Border.all(color: const Color(0xFF1E2638)),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildModeTab(
+                            title: 'Share a code',
+                            icon: Icons.tag_rounded,
+                            isSelected: opponentMode.value == 0,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              opponentMode.value = 0;
+                            },
+                          ),
+                          _buildModeTab(
+                            title: 'A friend',
+                            icon: Icons.people_alt_rounded,
+                            isSelected: opponentMode.value == 1,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              opponentMode.value = 1;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14.0),
+
+                    // Dynamic Body
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (codeMode) ...[
+                              if (hasCode)
+                                MatchCodeRevealCard(
+                                  code: precreatedMatch.value!.joinCode,
+                                  copied: codeCopied.value,
+                                  onCopy: copyCode,
+                                  onShare: shareCode,
+                                )
+                              else if (!fixedRules)
+                                MatchHoopsSettingsCard(
+                                  rounds: selectedRounds.value,
+                                  duration: selectedDuration.value,
+                                  difficulty: selectedDifficulty.value,
+                                  onRoundsChanged: (r) => selectedRounds.value = r,
+                                  onDurationChanged: (d) => selectedDuration.value = d,
+                                  onDifficultyChanged: (diff) => selectedDifficulty.value = diff,
+                                )
+                              else
+                                MatchRulesCard(isArchery: isArchery),
+                            ] else ...[
+                              FriendSelectorRibbon(
+                                profile: profile,
+                                selectedFriend: selectedFriend.value,
+                                onFriendSelected: (friend) {
+                                  selectedFriend.value = friend;
+                                  showPickFriendHint.value = false;
+                                },
+                                onUseOpenCode: () => opponentMode.value = 0,
+                              ),
+                            ],
+
+                            // Inline Error / Hint
+                            if (codeError.value != null && codeMode) ...[
+                              const SizedBox(height: 10.0),
+                              InlineErrorPanel(
+                                title: 'MATCH CODE UNAVAILABLE',
+                                message: codeError.value!,
+                                onRetry: () => generateUpfrontCode(profile),
+                                onDismiss: () => codeError.value = null,
+                              ),
+                            ],
+                            if (showPickFriendHint.value && !codeMode && selectedFriend.value == null) ...[
+                              const SizedBox(height: 10.0),
+                              InlineErrorPanel(
+                                icon: Icons.people_alt_rounded,
+                                accent: AppColors.accentAmber,
+                                title: 'PICK A FRIEND',
+                                message: 'Select a friend from the list above, or share a code instead.',
+                                onDismiss: () => showPickFriendHint.value = false,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Primary Action Button
+                    ElevatedButton(
+                      onPressed: isGeneratingCode.value ? null : onPrimary,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: gameAccent,
+                        foregroundColor: const Color(0xFF0A0E1A),
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(48.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14.0),
+                        ),
+                      ),
+                      child: isGeneratingCode.value
+                          ? const SizedBox(
+                              width: 20.0,
+                              height: 20.0,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: Color(0xFF0A0E1A),
+                              ),
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  codeMode
+                                      ? (hasCode ? Icons.arrow_forward_rounded : Icons.tag_rounded)
+                                      : Icons.send_rounded,
+                                  size: 18.0,
+                                ),
+                                const SizedBox(width: 6.0),
+                                Text(
+                                  primaryLabel(),
+                                  style: const TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+
+                    // Bottom Link: Got a code? Join with a code
+                    if (allowJoin) ...[
+                      const SizedBox(height: 10.0),
+                      Center(
+                        child: GestureDetector(
+                          onTap: joinWithCode,
+                          child: RichText(
+                            text: const TextSpan(
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 12.0,
+                                fontFamily: 'Inter',
+                              ),
+                              children: [
+                                TextSpan(text: 'Got a code? '),
+                                TextSpan(
+                                  text: 'Join with a code',
+                                  style: TextStyle(
+                                    color: Color(0xFF38BDF8),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ),
-          ],
-        ],
+          ),
+        ),
       ),
     );
   }
-}
 
-/// The match code, big, with COPY and SHARE (copy confirms in place with
-/// "✓ CODE COPIED").
-class _CodeReveal extends StatelessWidget {
-  final String code;
-  final bool copied;
-  final VoidCallback onCopy;
-  final VoidCallback onShare;
-
-  const _CodeReveal({
-    super.key,
-    required this.code,
-    required this.copied,
-    required this.onCopy,
-    required this.onShare,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SelectableText(
-          code,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: CleanUi.accent,
-            fontSize: 34.0,
-            fontWeight: FontWeight.w900,
-            fontFamily: 'Inter',
-            fontVariations: [FontVariation('wght', 900)],
-            letterSpacing: 8.0,
+  Widget _buildModeTab({
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 8.5),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF1E2638) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 14.0,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 5.0),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF64748B),
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 4.0),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: Text(
-            copied ? '✓ CODE COPIED' : 'Send this code to your opponent',
-            key: ValueKey(copied),
-            style: TextStyle(
-              color: copied ? CleanUi.accent : CleanUi.muted,
-              fontSize: 11.5,
-              fontWeight: copied ? FontWeight.w900 : FontWeight.w500,
-              fontFamily: 'Inter',
-              fontVariations: [FontVariation('wght', copied ? 900 : 500)],
-              letterSpacing: copied ? 0.8 : 0.0,
-              shadows: copied
-                  ? const [Shadow(color: Color(0x8800FFCC), blurRadius: 10.0)]
-                  : null,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10.0),
-        Row(
-          children: [
-            Expanded(
-              child: CleanButton(label: 'COPY', icon: Icons.copy_rounded, onTap: onCopy),
-            ),
-            const SizedBox(width: 8.0),
-            Expanded(
-              child: CleanButton(label: 'SHARE', icon: Icons.ios_share_rounded, onTap: onShare),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
 }

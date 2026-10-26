@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/common/clean_ui.dart';
-import '../physics/target_scoring.dart';
-import '../state/archery_players.dart';
-import '../state/archery_rules.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/state/archery_players.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 
 /// Set result card (and, on the last set, the match result).
 ///
@@ -32,6 +32,7 @@ class SetEndCard extends StatefulWidget {
   /// Optional second button under the main one (e.g. EXIT after a match).
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+  final VoidCallback? onViewRecap;
 
   const SetEndCard({
     super.key,
@@ -49,6 +50,7 @@ class SetEndCard extends StatefulWidget {
     this.autoContinueSeconds,
     this.secondaryLabel,
     this.onSecondary,
+    this.onViewRecap,
   });
 
   @override
@@ -96,13 +98,18 @@ class _SetEndCardState extends State<SetEndCard> {
     final String setLine = setTie
         ? 'TIE · +${ArcheryRules.pointsForSetTie} EACH'
         : (setWon
-            ? 'YOU +${ArcheryRules.pointsForSetWin} SET POINTS'
-            : '${w.opponent.name.toUpperCase()} +${ArcheryRules.pointsForSetWin} SET POINTS');
+              ? 'YOU +${ArcheryRules.pointsForSetWin} SET POINTS'
+              : '${w.opponent.name.toUpperCase()} +${ArcheryRules.pointsForSetWin} SET POINTS');
+
+    final maxH = MediaQuery.sizeOf(context).height * 0.90;
 
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400.0),
-        child: Container(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 380.0, maxHeight: maxH),
+          child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 14.0),
           padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 18.0),
           decoration: BoxDecoration(
@@ -110,14 +117,21 @@ class _SetEndCardState extends State<SetEndCard> {
             borderRadius: BorderRadius.circular(22.0),
             border: Border.all(color: const Color(0xFF1E2638), width: 1.5),
             boxShadow: const [
-              BoxShadow(color: Color(0xCC000000), blurRadius: 32.0, offset: Offset(0, 10)),
+              BoxShadow(
+                color: Color(0xCC000000),
+                blurRadius: 32.0,
+                offset: Offset(0, 10),
+              ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (w.isMatchOver) ...[
-                _MatchWinner(winner: w.winner ?? 0, opponentName: w.opponent.name),
+                _MatchWinner(
+                  winner: w.winner ?? 0,
+                  opponentName: w.opponent.name,
+                ),
                 const SizedBox(height: 12.0),
               ],
               _Badge(
@@ -128,7 +142,13 @@ class _SetEndCardState extends State<SetEndCard> {
               const SizedBox(height: 14.0),
               Row(
                 children: [
-                  Expanded(child: _Side(player: w.you, ring: _you, scores: w.userScores)),
+                  Expanded(
+                    child: _Side(
+                      player: w.you,
+                      ring: _you,
+                      scores: w.userScores,
+                    ),
+                  ),
                   Column(
                     children: [
                       Text(
@@ -155,7 +175,13 @@ class _SetEndCardState extends State<SetEndCard> {
                       ),
                     ],
                   ),
-                  Expanded(child: _Side(player: w.opponent, ring: _them, scores: w.opponentScores)),
+                  Expanded(
+                    child: _Side(
+                      player: w.opponent,
+                      ring: _them,
+                      scores: w.opponentScores,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 14.0),
@@ -182,10 +208,14 @@ class _SetEndCardState extends State<SetEndCard> {
                     backgroundColor: _you,
                     foregroundColor: const Color(0xFF0A0E1A),
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.0),
+                    ),
                   ),
                   child: Text(
-                    _timer != null && _left > 0 ? '${w.continueLabel}  ·  $_left' : w.continueLabel,
+                    _timer != null && _left > 0
+                        ? '${w.continueLabel}  ·  $_left'
+                        : w.continueLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -196,6 +226,20 @@ class _SetEndCardState extends State<SetEndCard> {
                   ),
                 ),
               ),
+              if (w.isMatchOver && w.onViewRecap != null) ...[
+                const SizedBox(height: 8.0),
+                SizedBox(
+                  width: double.infinity,
+                  child: CleanButton(
+                    label: 'VIEW MATCH RECAP',
+                    icon: Icons.analytics_outlined,
+                    onTap: () {
+                      _timer?.cancel();
+                      w.onViewRecap!();
+                    },
+                  ),
+                ),
+              ],
               if (w.secondaryLabel != null && w.onSecondary != null) ...[
                 const SizedBox(height: 8.0),
                 SizedBox(
@@ -214,7 +258,8 @@ class _SetEndCardState extends State<SetEndCard> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -255,7 +300,12 @@ class _Side extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        AppAvatar(avatar: player.avatar, size: 46.0, borderColor: ring, borderWidth: 2.5),
+        AppAvatar(
+          avatar: player.avatar,
+          size: 46.0,
+          borderColor: ring,
+          borderWidth: 2.5,
+        ),
         const SizedBox(height: 4.0),
         Text(
           player.name,
@@ -326,7 +376,8 @@ class _MatchWinner extends StatelessWidget {
       tween: Tween(begin: 0.0, end: 1.0),
       duration: const Duration(milliseconds: 700),
       curve: Curves.elasticOut,
-      builder: (context, t, child) => Transform.scale(scale: 0.6 + 0.4 * t, child: child),
+      builder: (context, t, child) =>
+          Transform.scale(scale: 0.6 + 0.4 * t, child: child),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -334,7 +385,9 @@ class _MatchWinner extends StatelessWidget {
             userWon ? Icons.emoji_events_rounded : Icons.sports_score_rounded,
             color: color,
             size: 44.0,
-            shadows: [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 18.0)],
+            shadows: [
+              Shadow(color: color.withValues(alpha: 0.6), blurRadius: 18.0),
+            ],
           ),
           const SizedBox(height: 4.0),
           Text(
@@ -345,7 +398,9 @@ class _MatchWinner extends StatelessWidget {
               fontSize: 28.0,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.0,
-              shadows: [Shadow(color: color.withValues(alpha: 0.5), blurRadius: 14.0)],
+              shadows: [
+                Shadow(color: color.withValues(alpha: 0.5), blurRadius: 14.0),
+              ],
             ),
           ),
         ],

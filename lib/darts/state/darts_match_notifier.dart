@@ -1,11 +1,11 @@
 import 'dart:math' as math;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../darts_constants.dart';
-import '../physics/dart_scoring.dart';
-import 'darts_bot.dart';
-import 'darts_match_state.dart';
-import 'darts_rules.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/state/darts_bot.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
 
 /// Events and state access required by the Flame game and UI layers.
 abstract interface class DartsGameEvents {

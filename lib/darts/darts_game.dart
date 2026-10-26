@@ -1,25 +1,26 @@
 import 'dart:async';
 import 'dart:ui';
+
 import 'package:flame/game.dart';
 
-import 'audio/darts_audio.dart';
-import 'components/board_backdrop.dart';
-import 'components/dartboard.dart';
-import 'components/dart_sprites.dart';
-import 'components/flying_dart.dart';
-import 'components/hit_popup_canvas.dart';
-import 'components/resting_dart.dart';
-import 'components/stuck_dart.dart';
-import 'darts_constants.dart';
-import 'input/flick_controller.dart';
-import 'online/darts_live_event.dart';
-import 'online/darts_online_controller.dart';
-import 'physics/dart_scoring.dart';
-import 'physics/flick_solver.dart';
-import 'scene/board_projection.dart';
-import 'state/darts_bot.dart';
-import 'state/darts_match_notifier.dart';
-import 'state/darts_rules.dart';
+import 'package:b_ball/darts/audio/darts_audio.dart';
+import 'package:b_ball/darts/components/board_backdrop.dart';
+import 'package:b_ball/darts/components/dartboard.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
+import 'package:b_ball/darts/components/flying_dart.dart';
+import 'package:b_ball/darts/components/hit_popup_canvas.dart';
+import 'package:b_ball/darts/components/resting_dart.dart';
+import 'package:b_ball/darts/components/stuck_dart.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/input/flick_controller.dart';
+import 'package:b_ball/darts/online/darts_live_event.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/physics/flick_solver.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
+import 'package:b_ball/darts/state/darts_bot.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
 
 /// Flame game engine for Darts 301.
 ///
@@ -101,7 +102,13 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
       final double sx = restingDart.startXm;
       final double sy = restingDart.startYm;
       flyingDart.launch(
-        launchVel: FlickSolver.launchFor(targetMmX, targetMmY, DartsK.idealSpeed, sx, sy),
+        launchVel: FlickSolver.launchFor(
+          targetMmX,
+          targetMmY,
+          DartsK.idealSpeed,
+          sx,
+          sy,
+        ),
         playerIndex: 0,
         onLanded: _onLocalDartLanded,
         startXm: sx,
@@ -137,11 +144,15 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   void _setupCurrentDart() {
     restingDart.resetToRest();
     flickController.inputEnabled =
-        events.isMyTurn && !flyingDart.isFlying && !_turnTransitioning && !_isBotTurnActive;
+        events.isMyTurn &&
+        !flyingDart.isFlying &&
+        !_turnTransitioning &&
+        !_isBotTurnActive;
   }
 
   void _updateCheckoutGlow() {
-    final bool canThrow = events.isMyTurn &&
+    final bool canThrow =
+        events.isMyTurn &&
         !events.isMatchOver &&
         !_turnTransitioning &&
         !_isBotTurnActive &&
@@ -397,12 +408,15 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     );
 
     // Clamp frame dt to avoid spiral of death on lag spikes (50 ms max)
-    final double clampedDt =
-        dt > DartsK.dtClamp ? DartsK.dtClamp : (dt < 0.0 ? 0.0 : dt);
+    final double clampedDt = dt > DartsK.dtClamp
+        ? DartsK.dtClamp
+        : (dt < 0.0 ? 0.0 : dt);
 
     // Online: shot clocks, then the opponent's next dart once the board is free.
     online?.update(clampedDt);
-    if (_remoteQueue.isNotEmpty && !flyingDart.isFlying && !_turnTransitioning) {
+    if (_remoteQueue.isNotEmpty &&
+        !flyingDart.isFlying &&
+        !_turnTransitioning) {
       _launchRemoteDart(_remoteQueue.removeAt(0));
     }
 
@@ -422,8 +436,11 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     restingDart.visible = false;
     flickController.inputEnabled = false;
 
-    final launchVel =
-        FlickSolver.launchFor(targetMmX, targetMmY, DartsK.idealSpeed);
+    final launchVel = FlickSolver.launchFor(
+      targetMmX,
+      targetMmY,
+      DartsK.idealSpeed,
+    );
 
     DartsAudio.playThrow();
     flyingDart.launch(

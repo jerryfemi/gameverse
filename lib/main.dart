@@ -6,13 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'firebase_options.dart';
-import 'game/audio/audio_engine.dart';
-import 'router.dart';
-import 'services/auth_service.dart';
-import 'services/chat_read_receipt_service.dart';
-import 'services/update/update_service.dart';
-import 'services/vatar/vatar_bridge.dart';
+import 'package:b_ball/firebase_options.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/router.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/services/update/update_service.dart';
+import 'package:b_ball/services/vatar/vatar_bridge.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

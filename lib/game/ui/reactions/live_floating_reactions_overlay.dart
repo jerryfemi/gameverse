@@ -3,13 +3,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../models/live_reaction_event.dart';
-import '../../../services/auth_service.dart';
-import '../../../services/firestore_match_service.dart';
-import '../../basketball_game.dart';
-import '../../match/match_session.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
+import 'package:b_ball/models/live_reaction_event.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Data class representing an active floating item in the courtside track.
 class _ActiveFloatingReaction {

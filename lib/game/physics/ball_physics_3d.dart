@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import 'perspective_camera.dart';
-import 'launch_solver.dart';
+import 'package:b_ball/game/physics/perspective_camera.dart';
+import 'package:b_ball/game/physics/launch_solver.dart';
 
 /// 3D point-mass basketball physics simulator featuring:
 /// - Fixed 1/120s timestep accumulator for deterministic simulation

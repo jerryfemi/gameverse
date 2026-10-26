@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../archery_constants.dart';
-import '../state/archery_match_notifier.dart';
-import '../state/archery_match_state.dart';
-import '../state/archery_players.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
+import 'package:b_ball/archery/state/archery_players.dart';
 
 /// "SET 2 · 100ft — YOUR TURN" / "WATCHING NAME", shown for a moment
 /// whenever a new turn starts online.

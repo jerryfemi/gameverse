@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../basketball_game.dart';
-import '../match/match_session.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
 
 /// Floating HUD controls displayed while spectator replay mode is active.
 ///

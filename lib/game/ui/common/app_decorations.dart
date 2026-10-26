@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Central design tokens for corner radii, borders, shadows, and recurring UI decorations.
 abstract final class AppDecorations {

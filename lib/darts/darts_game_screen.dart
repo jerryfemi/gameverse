@@ -5,32 +5,32 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../game/match/match_config.dart';
-import '../game/ui/common/clean_ui.dart';
-import '../game/ui/common/lobby_pill.dart';
-import '../game/ui/match/match_lobby_dialog.dart';
-import '../game/ui/match/match_setup_dialog.dart';
-import '../archery/ui/archery_match_bar.dart'
+import 'package:b_ball/game/match/match_config.dart';
+import 'package:b_ball/game/ui/common/clean_ui.dart';
+import 'package:b_ball/game/ui/common/lobby_pill.dart';
+import 'package:b_ball/game/ui/match/match_lobby_dialog.dart';
+import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
+import 'package:b_ball/archery/ui/archery_match_bar.dart'
     show ArcheryInbox, ArcheryMatchesButton, ArcheryRoundButton;
-import '../notifications/notice_stack.dart';
-import '../notifications/profile_drawer.dart';
-import '../models/cloud_match.dart';
-import '../models/friend_profile.dart';
-import '../models/player_descriptor.dart';
-import '../services/auth_service.dart';
-import '../services/firestore_match_service.dart';
-import 'audio/darts_audio.dart';
-import 'darts_constants.dart';
-import 'darts_game.dart';
-import 'online/darts_online_controller.dart';
-import 'state/darts_match_notifier.dart';
-import 'state/darts_players.dart';
-import 'state/darts_rules.dart';
-import 'ui/darts_hud.dart';
-import 'ui/darts_pause_menu.dart';
-import 'ui/darts_result_card.dart';
-import 'ui/darts_tour.dart';
-import 'ui/darts_turn_banner.dart';
+import 'package:b_ball/notifications/notice_stack.dart';
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/darts/audio/darts_audio.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/darts_game.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/darts/ui/darts_hud.dart';
+import 'package:b_ball/darts/ui/darts_pause_menu.dart';
+import 'package:b_ball/darts/ui/darts_result_card.dart';
+import 'package:b_ball/darts/ui/darts_tour.dart';
+import 'package:b_ball/darts/ui/darts_turn_banner.dart';
 
 /// Full-screen Darts 301: solo vs bot (`/darts`), or live online 1v1 (`/match/:id`).
 ///
@@ -52,6 +52,8 @@ class DartsGameScreen extends HookConsumerWidget {
     final showTour = useState(false);
     final audioOwner = useRef<Object?>(null);
     final online = useRef<DartsOnlineController?>(null);
+    final dartsState = ref.watch(dartsMatchProvider);
+    final dartsPlayers = ref.watch(dartsPlayersProvider);
 
     final bool isOnline = match != null;
 
@@ -95,12 +97,15 @@ class DartsGameScreen extends HookConsumerWidget {
               you: DartsPlayer(
                 name: mine?.displayName ?? self.displayName,
                 avatar: mine?.avatarEmoji ?? self.avatarEmoji,
+                uid: self.uid,
               ),
               opponent: theirs == null
                   ? const DartsPlayer(name: 'Opponent', avatar: '⏳')
                   : DartsPlayer(
                       name: theirs.displayName,
                       avatar: theirs.avatarEmoji,
+                      uid: theirs.uid,
+                      isBot: false,
                     ),
             ));
           }
@@ -214,7 +219,7 @@ class DartsGameScreen extends HookConsumerWidget {
 
     void openProfile() {
       openPauseSilently();
-      ProfileDrawer.show(
+      ProfileSheet.show(
         context,
         onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
         onOpenMatches: () => ArcheryInbox.open(
@@ -288,6 +293,8 @@ class DartsGameScreen extends HookConsumerWidget {
                   DartsHud(
                     onOpenPause: openPause,
                     online: online.value,
+                    onPauseEngine: () => g.pauseEngine(),
+                    onResumeEngine: () => g.resumeEngine(),
                   ),
 
                   // 3. Quick Lobby Navigation Pill under Top Bar (hidden during modals)
@@ -375,11 +382,21 @@ class DartsGameScreen extends HookConsumerWidget {
                     Positioned.fill(
                       child: DartsPauseMenu(
                         online: isOnline,
+                        subtitle: isOnline
+                            ? '1v1 vs ${dartsPlayers.opponent.name} · round ${dartsState.round}'
+                            : 'Solo · 301 countdown',
+                        stat1Label: 'REMAINING',
+                        stat1Value: '${dartsState.yourRemaining}',
+                        stat2Label: 'ROUND',
+                        stat2Value: '${dartsState.round} of 20',
+                        stat3Label: 'DARTS',
+                        stat3Value: '${3 - dartsState.turnDarts.length} left',
                         onResume: resume,
                         onHowToPlay: () {
                           paused.value = false;
                           showTour.value = true;
                         },
+                        onForfeit: isOnline ? goToLobbyAsync : null,
                         onRestart: isOnline
                             ? null
                             : () {

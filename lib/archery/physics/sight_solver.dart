@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// Calibrates the launch pitch and yaw angles from the unprojected crosshair position.
 ///

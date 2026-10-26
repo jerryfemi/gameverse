@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import 'update_platform.dart';
+import 'package:b_ball/services/update/update_platform.dart';
 
 /// Service responsible for polling deployment versions and alerting players
 /// when a new game update is available, avoiding stale browser cache issues.

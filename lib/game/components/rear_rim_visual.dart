@@ -4,8 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-import '../basketball_game.dart';
-import 'backboard_visual.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/components/backboard_visual.dart';
 
 /// Renders the rear half of the metal rim, solid steel mounting bracket neck,
 /// and rear net mesh at priority = 3.

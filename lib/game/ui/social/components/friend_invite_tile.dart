@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../../../../models/friend_profile.dart';
-import '../../../../services/friends_service.dart';
-import '../../common/app_avatar.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 
 /// Card tile representing an incoming friend request with accept and decline actions.
 class FriendInviteTile extends HookWidget {

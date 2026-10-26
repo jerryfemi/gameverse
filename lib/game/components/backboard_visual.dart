@@ -4,10 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-import '../basketball_game.dart';
-import '../fx/net_simulation.dart';
-import '../physics/ball_physics_3d.dart';
-import 'ball.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/fx/net_simulation.dart';
+import 'package:b_ball/game/physics/ball_physics_3d.dart';
+import 'package:b_ball/game/components/ball.dart';
 
 /// Renders the GamePigeon scooped-shield backboard, 3D cylindrical pole,
 /// wall drop shadows, rear rim arc, and back net mesh.

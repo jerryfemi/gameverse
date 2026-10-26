@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
-import 'app_decorations.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_decorations.dart';
 
 /// Centralized modal bottom sheet scaffold for B-Ball.
 ///

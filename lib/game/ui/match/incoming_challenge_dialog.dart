@@ -3,16 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../models/cloud_match.dart';
-import '../../../models/match_invite.dart';
-import '../../../models/player_descriptor.dart';
-import '../../../providers/app_providers.dart';
-import '../../../services/firestore_match_service.dart';
-import '../common/app_avatar.dart';
-import '../common/app_button.dart';
-import '../common/app_colors.dart';
-import '../common/app_modal_dialog.dart';
-import '../common/inline_feedback.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_button.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
 /// Modal dialog presented to a player when receiving an incoming 1v1 match challenge.
 class IncomingChallengeDialog extends HookConsumerWidget {

@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import '../../models/cloud_match.dart';
-import '../../services/firestore_match_service.dart';
-import '../physics/dart_scoring.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_rules.dart';
-import 'darts_live_event.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/darts/online/darts_live_event.dart';
 
 /// What the online controller drives in the Flame game.
 abstract interface class DartsOnlineGame {

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../digital_led_display.dart';
+import 'package:b_ball/game/ui/digital_led_display.dart';
 
 /// Recessed 7-segment digital LED score compartment for "YOU" and "BEST".
 class ScoreboardBay extends StatelessWidget {

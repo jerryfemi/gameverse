@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// GamePigeon-style deterministic visible sway model (Build Plan v2 §4.3).
 ///

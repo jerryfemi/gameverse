@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import 'archery/archery_game_screen.dart';
-import 'game/audio/audio_engine.dart';
+import 'package:b_ball/archery/archery_game_screen.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
-export 'archery/archery_game_screen.dart';
+export 'package:b_ball/archery/archery_game_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

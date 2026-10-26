@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../camera/camera_rig.dart';
-import '../physics/wind_model.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/physics/wind_model.dart';
 
 /// GamePigeon-style wind gauge floating above the target board:
 /// a translucent black pill reading "Wind 7 mph" and a white ring

@@ -4,13 +4,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../darts_constants.dart';
-import '../online/darts_online_controller.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
-import 'darts_live_pill.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
+import 'package:b_ball/darts/ui/darts_live_pill.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
+import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flutter HUD overlay over the Darts Flame canvas.
 ///
@@ -21,14 +27,18 @@ import 'darts_live_pill.dart';
 /// - Top-right: Translucent frosted glass pause menu button.
 /// - Bottom-left: Player 1 avatar, name, glowing badge, remaining score, and active turn points.
 /// - Bottom-right: Opponent avatar, name, glowing badge, remaining score, and active turn points.
-class DartsHud extends ConsumerWidget {
+class DartsHud extends HookConsumerWidget {
   final VoidCallback onOpenPause;
   final DartsOnlineController? online;
+  final VoidCallback? onPauseEngine;
+  final VoidCallback? onResumeEngine;
 
   const DartsHud({
     super.key,
     required this.onOpenPause,
     this.online,
+    this.onPauseEngine,
+    this.onResumeEngine,
   });
 
   /// HUD scale for this screen: 1.0 on a ~420×860 phone, smaller on small
@@ -40,15 +50,16 @@ class DartsHud extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(dartsMatchProvider);
     final players = ref.watch(dartsPlayersProvider);
+    final user = ref.watch(currentUserProfileProvider).value;
+    final h2hState = useState<InGameH2HState>(InGameH2HState.closed);
     final double s = scaleFor(MediaQuery.sizeOf(context));
     final double pad = 16.0 * s;
 
-    // Only the pills and badges ignore touches (so throws pass through);
-    // the pause button stays tappable. Wrapping the whole HUD in one
-    // IgnorePointer made the pause button dead.
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: pad, vertical: 8.0 * s),
+    return Stack(
+      children: [
+        SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: pad, vertical: 8.0 * s),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -91,61 +102,136 @@ class DartsHud extends ConsumerWidget {
             ),
 
             // ── Bottom Bar: P1 and Opponent Remaining Score Badges ───────────
-            IgnorePointer(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Player 1 (You) Badge. Sizes are scaled for real (so the
-                  // layout shrinks too); FittedBox is a last guard for long
-                  // names on tiny screens.
-                  Flexible(
-                    child: Align(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Player 1 (You) Badge. Sizes are scaled for real (so the
+                // layout shrinks too); FittedBox is a last guard for long
+                // names on tiny screens.
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.bottomLeft,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomLeft,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.bottomLeft,
+                      child: IgnorePointer(
                         child: _ScoreBadge(
-                    scale: s,
-                    player: players.you,
-                    remaining: state.yourRemaining,
-                    turnScore: state.thrower == DartsThrower.you
-                        ? state.turnScore
-                        : 0,
-                    isActive: state.thrower == DartsThrower.you,
-                    glowColor: const Color(DartsK.accentP1),
-                    isLeft: true,
-                  ),
+                          scale: s,
+                          player: players.you,
+                          remaining: state.yourRemaining,
+                          turnScore: state.thrower == DartsThrower.you
+                              ? state.turnScore
+                              : 0,
+                          isActive: state.thrower == DartsThrower.you,
+                          glowColor: const Color(DartsK.accentP1),
+                          isLeft: true,
+                        ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 12.0 * s),
+                ),
+                SizedBox(width: 12.0 * s),
 
-                  // Opponent Badge
-                  Flexible(
-                    child: Align(
+                // Opponent Badge
+                Flexible(
+                  child: Align(
+                    alignment: Alignment.bottomRight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       alignment: Alignment.bottomRight,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.bottomRight,
-                        child: _ScoreBadge(
-                    scale: s,
-                    player: players.opponent,
-                    remaining: state.theirRemaining,
-                    turnScore: state.thrower == DartsThrower.opponent
-                        ? state.turnScore
-                        : 0,
-                    isActive: state.thrower == DartsThrower.opponent,
-                    glowColor: const Color(DartsK.accentP2),
-                    isLeft: false,
-                  ),
+                      child: _ScoreBadge(
+                        scale: s,
+                        player: players.opponent,
+                        remaining: state.theirRemaining,
+                        turnScore: state.thrower == DartsThrower.opponent
+                            ? state.turnScore
+                            : 0,
+                        isActive: state.thrower == DartsThrower.opponent,
+                        glowColor: const Color(DartsK.accentP2),
+                        isLeft: false,
+                        matchId: online?.matchId,
+                        onAvatarTap: () {
+                          if (!players.opponent.isBot &&
+                              (players.opponent.uid?.isNotEmpty ?? false)) {
+                            h2hState.value = InGameH2HState.peek;
+                          }
+                        },
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
+        ),
+      ),
+    ),
+    if (h2hState.value != InGameH2HState.closed)
+      InGameH2HOverlay(
+        state: h2hState.value,
+        myUid: user?.uid ?? '',
+        myAvatar: user?.avatarEmoji,
+        opponentUid: players.opponent.uid ?? '',
+        opponentName: players.opponent.name,
+        opponentAvatar: players.opponent.avatar,
+        defaultGame: 'darts',
+        footerSummary: _buildDartsFooter(
+          players.opponent.name,
+          state.theirRemaining,
+          () => h2hState.value = InGameH2HState.closed,
+        ),
+        onExpand: () => h2hState.value = InGameH2HState.full,
+        onCollapse: () => h2hState.value = InGameH2HState.closed,
+        onClose: () => h2hState.value = InGameH2HState.closed,
+        turnCountdown: online != null && state.thrower == DartsThrower.you
+            ? online!.shotClock.value
+            : null,
+        isOnline: online != null,
+        isMyTurn: state.thrower == DartsThrower.you,
+        onPauseEngine: onPauseEngine,
+        onResumeEngine: onResumeEngine,
+      ),
+  ],
+);
+  }
+
+  Widget _buildDartsFooter(String name, int remaining, VoidCallback onTap) {
+    return Material(
+      color: const Color(0xCC0F172A),
+      borderRadius: BorderRadius.circular(16.0),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: const Color(0x22FFFFFF), width: 1.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${name.toUpperCase()} · $remaining LEFT',
+                style: UiFont.style(
+                  size: 11.5,
+                  weight: 800,
+                  color: const Color(0xFFF59E0B),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18.0,
+                color: Color(0xFFF59E0B),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -466,6 +552,8 @@ class _ScoreBadge extends StatelessWidget {
   final bool isActive;
   final Color glowColor;
   final bool isLeft;
+  final String? matchId;
+  final VoidCallback? onAvatarTap;
 
   const _ScoreBadge({
     required this.scale,
@@ -475,6 +563,8 @@ class _ScoreBadge extends StatelessWidget {
     required this.isActive,
     required this.glowColor,
     required this.isLeft,
+    this.matchId,
+    this.onAvatarTap,
   });
 
   @override
@@ -505,44 +595,38 @@ class _ScoreBadge extends StatelessWidget {
                     ),
                   ],
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20.0 * scale),
-            child: SizedBox(
-              // No backdrop blur here: over the live game it re-blurs every frame.
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                padding: EdgeInsets.symmetric(
-                  horizontal: 12.0 * scale,
-                  vertical: 8.0 * scale,
-                ),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xEB0F172A)
-                      : const Color(0xCC0F172A),
-                  borderRadius: BorderRadius.circular(20.0 * scale),
-                  border: Border.all(
-                    color: isActive
-                        ? glowColor.withValues(alpha: 0.8)
-                        : const Color(0x22FFFFFF),
-                    width: isActive ? 1.8 : 1.0,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: isLeft
-                      ? [
-                          _buildAvatar(),
-                          SizedBox(width: 9.0 * scale),
-                          _buildNameAndScore(),
-                        ]
-                      : [
-                          _buildNameAndScore(),
-                          SizedBox(width: 9.0 * scale),
-                          _buildAvatar(),
-                        ],
-                ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: 12.0 * scale,
+              vertical: 8.0 * scale,
+            ),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? const Color(0xEB0F172A)
+                  : const Color(0xCC0F172A),
+              borderRadius: BorderRadius.circular(20.0 * scale),
+              border: Border.all(
+                color: isActive
+                    ? glowColor.withValues(alpha: 0.8)
+                    : const Color(0x22FFFFFF),
+                width: isActive ? 1.8 : 1.0,
               ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: isLeft
+                  ? [
+                      _buildAvatar(),
+                      SizedBox(width: 9.0 * scale),
+                      _buildNameAndScore(),
+                    ]
+                  : [
+                      _buildNameAndScore(),
+                      SizedBox(width: 9.0 * scale),
+                      _buildAvatar(),
+                    ],
             ),
           ),
         ),
@@ -583,9 +667,25 @@ class _ScoreBadge extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    return AppAvatar(
+    final avatar = AppAvatar(
       avatar: player.avatar,
       size: 36.0 * scale,
+    );
+
+    if (isLeft) {
+      return avatar;
+    }
+
+    return OpponentBadgeSocial(
+      opponentUid: player.uid,
+      opponentName: player.name,
+      matchId: matchId,
+      isBot: player.isBot,
+      isLeft: false,
+      badgeBorderColor: const Color(0xFF0F172A),
+      forceAbove: true,
+      onAvatarTap: onAvatarTap,
+      child: avatar,
     );
   }
 

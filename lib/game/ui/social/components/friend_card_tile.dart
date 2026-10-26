@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../../models/cloud_match.dart';
-import '../../../../models/friend_profile.dart';
-import '../../../../providers/app_providers.dart';
-import '../../../../services/chat_read_receipt_service.dart';
-import '../../common/app_avatar.dart';
-import '../../common/app_colors.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/friend_profile.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Card tile representing an existing friend in the Friends Hub with match status indicator,
 /// unread chat badging, and direct play/banter triggers.

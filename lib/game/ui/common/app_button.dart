@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'app_colors.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
 
 /// Centralized primary action button for the B-Ball UI.
 ///

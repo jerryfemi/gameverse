@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import '../archery_constants.dart';
+import 'package:b_ball/archery/archery_constants.dart';
 
 /// Immutable record of a single shot score.
 class ShotScore {
@@ -36,7 +36,7 @@ class ShotScore {
 
   int get points => ring;
 
-  String get displayLabel => isX ? 'X' : (ring > 0 ? '$ring' : 'M');
+  String get displayLabel => ring > 0 ? '$ring' : 'M';
 
   /// Hex color token for the ring score.
   int get colorValue {

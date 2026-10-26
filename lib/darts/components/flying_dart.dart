@@ -3,12 +3,12 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:vector_math/vector_math_64.dart' as vm64;
 
-import '../darts_constants.dart';
-import '../physics/dart_physics.dart';
-import '../physics/dart_scoring.dart';
-import '../scene/board_projection.dart';
-import 'dart_renderer.dart';
-import 'dart_sprites.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_physics.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
+import 'package:b_ball/darts/components/dart_renderer.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
 
 /// The flying dart's shadow on the board: a dart-shaped silhouette that slides
 /// in from below and meets the tip at the moment of impact.

@@ -5,29 +5,34 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:flutter/services.dart';
-import '../../models/cloud_match.dart';
-import '../../models/match_invite.dart';
-import '../../models/player_descriptor.dart';
-import '../../providers/app_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_match_service.dart';
-import '../archery_game_screen.dart' show ArcheryChallenge;
-import '../archery_constants.dart';
-import '../archery_game.dart';
-import '../camera/camera_rig.dart';
-import '../state/archery_match_notifier.dart';
-import '../state/archery_match_state.dart';
-import '../state/archery_players.dart';
-import 'live_pill.dart';
-import 'round_summary.dart';
-import 'turn_banner.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/archery_game.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
+import 'package:b_ball/archery/state/archery_players.dart';
+import 'package:b_ball/archery/ui/live_pill.dart';
+import 'package:b_ball/archery/ui/round_summary.dart';
+import 'package:b_ball/archery/ui/turn_banner.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_overlay.dart';
+import 'package:b_ball/social/ui/in_game/in_game_h2h_panel.dart';
+import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// Flutter HUD over the Flame canvas: GamePigeon-style scoreboard, the live
 /// status pill and turn banner (online), and the set-end card. Each piece
 /// watches only the state slice it shows.
-class ArcheryHud extends ConsumerWidget {
+class ArcheryHud extends HookConsumerWidget {
   final ArcheryGame game;
 
   /// Online: where "BACK TO LOBBY" goes after the match.
@@ -37,8 +42,18 @@ class ArcheryHud extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (phase, online, setOver) = ref.watch(
-      archeryMatchProvider.select((s) => (s.phase, s.online, s.setOver)),
+    final h2hState = useState<InGameH2HState>(InGameH2HState.closed);
+    final user = ref.watch(currentUserProfileProvider).value;
+    final players = ref.watch(archeryPlayersProvider);
+    final (phase, online, setOver, liveStatus, shooter, themPts) = ref.watch(
+      archeryMatchProvider.select((s) => (
+        s.phase,
+        s.online,
+        s.setOver,
+        s.liveStatus,
+        s.shooter,
+        s.opponentPoints,
+      )),
     );
     final bool showScoreBar = online ||
         phase == ShotPhase.atLine ||
@@ -55,16 +70,22 @@ class ArcheryHud extends ConsumerWidget {
           top: top,
           left: 0.0,
           right: 0.0,
-          child: IgnorePointer(
-            child: Center(
-              child: AnimatedSlide(
+          child: Center(
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: showScoreBar ? Offset.zero : const Offset(0, -0.2),
+              child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOutCubic,
-                offset: showScoreBar ? Offset.zero : const Offset(0, -0.2),
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 220),
-                  opacity: showScoreBar ? 1.0 : 0.0,
-                  child: const _Scoreboard(),
+                opacity: showScoreBar ? 1.0 : 0.0,
+                child: _Scoreboard(
+                  matchId: game.online?.matchId,
+                  onAvatarTap: () {
+                    if (!players.opponent.isBot &&
+                        (players.opponent.uid?.isNotEmpty ?? false)) {
+                      h2hState.value = InGameH2HState.peek;
+                    }
+                  },
                 ),
               ),
             ),
@@ -80,7 +101,74 @@ class ArcheryHud extends ConsumerWidget {
           const Positioned.fill(child: IgnorePointer(child: TurnBanner())),
         ],
         if (showSetEnd) _SetEnd(game: game, onExitToLobby: onExitToLobby),
+        if (h2hState.value != InGameH2HState.closed)
+          InGameH2HOverlay(
+            state: h2hState.value,
+            myUid: user?.uid ?? '',
+            myAvatar: user?.avatarEmoji,
+            opponentUid: players.opponent.uid ?? '',
+            opponentName: players.opponent.name,
+            opponentAvatar: players.opponent.avatar,
+            defaultGame: 'archery',
+            footerSummary: _buildArcheryFooter(
+              players.opponent.name,
+              themPts,
+              () => h2hState.value = InGameH2HState.closed,
+            ),
+            onExpand: () => h2hState.value = InGameH2HState.full,
+            onCollapse: () => h2hState.value = InGameH2HState.closed,
+            onClose: () => h2hState.value = InGameH2HState.closed,
+            turnCountdown: game.online != null &&
+                    liveStatus == ArcheryLiveStatus.yourShot
+                ? game.online!.shotClock.value
+                : null,
+            isOnline: game.online != null,
+            isMyTurn: shooter == ArcheryShooter.you,
+            onPauseEngine: () => game.pauseEngine(),
+            onResumeEngine: () => game.resumeEngine(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildArcheryFooter(String name, int sets, VoidCallback onTap) {
+    return Material(
+      color: const Color(0xCC0F172A),
+      borderRadius: BorderRadius.circular(16.0),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16.0),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(color: const Color(0x22FFFFFF), width: 1.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '${name.toUpperCase()} · $sets ${sets == 1 ? "SET" : "SETS"}',
+                style: UiFont.style(
+                  size: 11.5,
+                  weight: 800,
+                  color: const Color(0xFFA78BFA),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(width: 6.0),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18.0,
+                color: Color(0xFFA78BFA),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -265,6 +353,9 @@ class _SetEnd extends HookConsumerWidget {
       autoContinueSeconds: online != null ? 5 : null,
       secondaryLabel: secondaryLabel,
       onSecondary: onSecondary,
+      onViewRecap: (s.matchOver && endDoc != null)
+          ? () => ResultsSheet.show(context, endDoc)
+          : null,
     );
   }
 }
@@ -278,7 +369,9 @@ class _SetEnd extends HookConsumerWidget {
 /// The coin on each avatar is that archer's set points (first to 6).
 /// Online, the archer whose set it is gets a glowing ring.
 class _Scoreboard extends ConsumerWidget {
-  const _Scoreboard();
+  final String? matchId;
+  final VoidCallback? onAvatarTap;
+  const _Scoreboard({this.matchId, this.onAvatarTap});
 
   static const Color _youRing = Color(0xFF00FFCC);
   static const Color _themRing = Color(0xFFA78BFA);
@@ -307,15 +400,19 @@ class _Scoreboard extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _PlayerBadge(
-          player: players.you,
-          ring: _youRing,
-          sets: youPts,
-          active: online && shooter == ArcheryShooter.you,
-          chips: [for (final s in you) _ChipData(s.ring, isX: s.isX)],
+        IgnorePointer(
+          child: _PlayerBadge(
+            player: players.you,
+            ring: _youRing,
+            sets: youPts,
+            active: online && shooter == ArcheryShooter.you,
+            chips: [for (final s in you) _ChipData(s.ring, isX: s.isX)],
+          ),
         ),
         const SizedBox(width: 8.0),
-        _ScoreBox(setIndex: setIndex, you: youTotal, them: themTotal),
+        IgnorePointer(
+          child: _ScoreBox(setIndex: setIndex, you: youTotal, them: themTotal),
+        ),
         const SizedBox(width: 8.0),
         _PlayerBadge(
           player: players.opponent,
@@ -323,6 +420,9 @@ class _Scoreboard extends ConsumerWidget {
           sets: themPts,
           active: online && shooter == ArcheryShooter.opponent,
           chips: [for (final s in them) _ChipData(s.ring, isX: s.isX)],
+          isOpponent: true,
+          matchId: matchId,
+          onAvatarTap: onAvatarTap,
         ),
       ],
     );
@@ -409,8 +509,10 @@ class _PlayerBadge extends StatelessWidget {
   final int sets;
   final List<_ChipData> chips;
 
-  /// Online: this archer is shooting now (glowing ring).
   final bool active;
+  final bool isOpponent;
+  final String? matchId;
+  final VoidCallback? onAvatarTap;
 
   const _PlayerBadge({
     required this.player,
@@ -418,12 +520,46 @@ class _PlayerBadge extends StatelessWidget {
     required this.sets,
     required this.chips,
     this.active = false,
+    this.isOpponent = false,
+    this.matchId,
+    this.onAvatarTap,
   });
 
   static const double avatarSize = 42.0;
 
   @override
   Widget build(BuildContext context) {
+    final avatarWidget = DecoratedBox(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(color: Color(0x59000000), blurRadius: 8.0, offset: Offset(0, 2)),
+        ],
+      ),
+      child: AppAvatar(
+        avatar: player.avatar,
+        size: avatarSize,
+        borderColor: ring,
+        borderWidth: 2.5,
+        showGlow: active,
+        glowColor: ring,
+      ),
+    );
+
+    final effectiveAvatar = isOpponent
+        ? OpponentBadgeSocial(
+            opponentUid: player.uid,
+            opponentName: player.name,
+            matchId: matchId,
+            isBot: player.isBot,
+            isLeft: false,
+            badgeBorderColor: const Color(0xFF0F172A),
+            forceAbove: false,
+            onAvatarTap: onAvatarTap,
+            child: avatarWidget,
+          )
+        : avatarWidget;
+
     return SizedBox(
       width: 64.0,
       child: Column(
@@ -432,28 +568,12 @@ class _PlayerBadge extends StatelessWidget {
           Stack(
             clipBehavior: Clip.none,
             children: [
-              DecoratedBox(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Color(0x59000000), blurRadius: 8.0, offset: Offset(0, 2)),
-                  ],
-                ),
-                child: AppAvatar(
-                  avatar: player.avatar,
-                  size: avatarSize,
-                  borderColor: ring,
-                  borderWidth: 2.5,
-                  showGlow: active,
-                  glowColor: ring,
-                ),
+              effectiveAvatar,
+              Positioned(
+                right: -5.0,
+                bottom: -3.0,
+                child: _SetCoinTracker(count: sets),
               ),
-              if (sets > 0)
-                Positioned(
-                  right: -5.0,
-                  bottom: -3.0,
-                  child: _SetCoinTracker(count: sets),
-                ),
             ],
           ),
           const SizedBox(height: 3.0),
@@ -532,7 +652,7 @@ class _ArrowChip extends StatelessWidget {
           border: Border.all(color: const Color(0x66000000), width: 0.8),
         ),
         child: Text(
-          d.isX ? 'X' : (d.ring > 0 ? '${d.ring}' : 'M'),
+          d.ring > 0 ? '${d.ring}' : 'M',
           style: TextStyle(
             color: text,
             fontSize: 9.5,
@@ -566,12 +686,16 @@ class _SetCoinTracker extends StatefulWidget {
 }
 
 class _SetCoinTrackerState extends State<_SetCoinTracker> {
-  late int _gain = widget.count;
+  late int _gain = 0;
 
   @override
   void didUpdateWidget(_SetCoinTracker old) {
     super.didUpdateWidget(old);
-    if (widget.count > old.count) _gain = widget.count - old.count;
+    if (widget.count > old.count) {
+      _gain = widget.count - old.count;
+    } else {
+      _gain = 0;
+    }
   }
 
   @override
@@ -598,8 +722,8 @@ class _SetCoin extends StatelessWidget {
           clipBehavior: Clip.none,
           alignment: Alignment.center,
           children: [
-            Transform.scale(scale: 0.3 + 0.7 * pop, child: coin),
-            if (t < 1.0)
+            Transform.scale(scale: count > 0 ? (0.3 + 0.7 * pop) : 1.0, child: coin),
+            if (t < 1.0 && gain > 0)
               Positioned(
                 top: -14.0 - 22.0 * rise,
                 child: Opacity(
@@ -624,17 +748,26 @@ class _SetCoin extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.3, -0.4),
-            colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFB45309)],
-            stops: [0.0, 0.6, 1.0],
+          gradient: count > 0
+              ? const RadialGradient(
+                  center: Alignment(-0.3, -0.4),
+                  colors: [Color(0xFFFDE68A), Color(0xFFF59E0B), Color(0xFFB45309)],
+                  stops: [0.0, 0.6, 1.0],
+                )
+              : const RadialGradient(
+                  center: Alignment(-0.3, -0.4),
+                  colors: [Color(0xFF334155), Color(0xFF1E293B), Color(0xFF0F172A)],
+                  stops: [0.0, 0.6, 1.0],
+                ),
+          border: Border.all(
+            color: count > 0 ? const Color(0xFF0A0E1A) : const Color(0xFF475569),
+            width: 1.5,
           ),
-          border: Border.all(color: const Color(0xFF0A0E1A), width: 1.5),
         ),
         child: Text(
           '$count',
-          style: const TextStyle(
-            color: Color(0xFF3B1F04),
+          style: TextStyle(
+            color: count > 0 ? const Color(0xFF3B1F04) : const Color(0xFF94A3B8),
             fontSize: 10.5,
             fontWeight: FontWeight.w900,
           ),

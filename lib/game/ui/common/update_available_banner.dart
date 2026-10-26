@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../services/update/update_service.dart';
+import 'package:b_ball/services/update/update_service.dart';
 
 /// Floating toast/banner notifying players that a new game build is deployed.
 /// Tapping 'Reload' pulls down the latest code immediately.

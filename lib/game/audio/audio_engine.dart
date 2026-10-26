@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'audio_backend.dart';
+import 'package:b_ball/game/audio/audio_backend.dart';
 
 /// Represents a background soundtrack item with instant-start bundled asset support.
 class MusicTrack {
@@ -211,24 +211,17 @@ class AudioEngine {
   // ── Available Background Music Tracks ──
   static const List<MusicTrack> availableTracks = [
     MusicTrack(
-      title: 'Back Outside',
-      subtitle: 'BNXN, Sarz (98 BPM)',
-      assetPath: 'assets/music/short/BNXN, Sarz - Back Outside.mp3',
-      durationSeconds: 39.0,
+      title: 'Godzilla',
+      subtitle: 'Eminem ft. Juice WRLD (Instrumental)',
+      assetPath: 'assets/music/short/Eminem - Godzilla (Instrumental).mp3',
+      durationSeconds: 60.0,
     ),
     MusicTrack(
-      title: 'Back To Life',
-      subtitle: 'Soul II Soul - Instrumental (101 BPM)',
+      title: 'Big Conspiracy',
+      subtitle: 'J Hus ft. iceè tgm (Instrumental)',
       assetPath:
-          'assets/music/short/Back To Life - Soul II Soul (Instrumental).mp3',
-      durationSeconds: 30.0,
-    ),
-    MusicTrack(
-      title: 'WAIT FOR U',
-      subtitle: 'Future ft. Drake, Tems (83 BPM)',
-      assetPath:
-          'assets/music/short/Future - WAIT FOR U ft. Drake, Tems.mp3',
-      durationSeconds: 55.0,
+          'assets/music/short/J Hus - Big Conspiracy (Instrumental).mp3',
+      durationSeconds: 60.0,
     ),
   ];
 

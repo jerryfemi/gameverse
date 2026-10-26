@@ -4,10 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
-import 'background/court_floor_renderer.dart';
-import 'background/distant_wall_renderer.dart';
-import 'background/lighting_renderer.dart';
-import 'background/room_geometry.dart';
+import 'package:b_ball/game/components/background/court_floor_renderer.dart';
+import 'package:b_ball/game/components/background/distant_wall_renderer.dart';
+import 'package:b_ball/game/components/background/lighting_renderer.dart';
+import 'package:b_ball/game/components/background/room_geometry.dart';
 
 /// Authentic GamePigeon Gymnasium Court Environment:
 /// Orchestrates unified 3D perspective background with:

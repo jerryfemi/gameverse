@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../darts/state/darts_rules.dart';
-import '../../../models/cloud_match.dart';
-import '../../../services/chat_read_receipt_service.dart';
-import '../common/app_avatar.dart';
-import '../common/app_colors.dart';
-import '../common/match_status_badge.dart';
+import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/chat_read_receipt_service.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/app_colors.dart';
+import 'package:b_ball/game/ui/common/match_status_badge.dart';
+import 'package:b_ball/social/ui/tiles/completed_match_tile.dart';
 
 /// Punchy Arcade Head-to-Head Versus Match Card.
 ///
@@ -32,6 +33,15 @@ class MatchInboxCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (match.isFinished) {
+      return CompletedMatchTile(
+        match: match,
+        myUid: myUid,
+        onDelete: onLeave,
+        onViewResults: onViewPodium,
+      );
+    }
+
     final isMyTurn = match.isMyTurn(myUid);
     final opponent = match.opponentPlayer(myUid);
     final myPlayer = match.myPlayer(myUid);
@@ -383,29 +393,6 @@ class MatchInboxCard extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                ] else if (isCompleted && onViewPodium != null) ...[
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 34,
-                    child: OutlinedButton.icon(
-                      onPressed: onViewPodium,
-                      icon: const Icon(Icons.emoji_events_outlined, size: 14),
-                      label: const Text(
-                        'VIEW PODIUM',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.amber,
-                        side: const BorderSide(color: Color(0xFF475569)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
                       ),
                     ),
                   ),

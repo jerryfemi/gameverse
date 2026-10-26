@@ -3,27 +3,27 @@ import 'dart:math' as math;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
-import 'archery_constants.dart';
-import 'audio/archery_audio.dart';
-import 'camera/archery_camera.dart';
-import 'camera/camera_rig.dart';
-import 'components/bow_overlay.dart';
-import 'components/distance_tag.dart';
-import 'components/flying_arrow.dart';
-import 'components/hit_popup_canvas.dart';
-import 'components/range_background.dart';
-import 'components/stuck_arrow.dart';
-import 'components/target_board.dart';
-import 'components/wind_pill.dart';
-import 'input/draw_aim_controller.dart';
-import 'online/archery_live_event.dart';
-import 'online/archery_online_controller.dart';
-import 'physics/arrow_physics.dart';
-import 'physics/sight_solver.dart';
-import 'physics/target_scoring.dart';
-import 'physics/wind_model.dart';
-import 'state/archery_match_notifier.dart';
-import 'state/archery_match_state.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/audio/archery_audio.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/components/bow_overlay.dart';
+import 'package:b_ball/archery/components/distance_tag.dart';
+import 'package:b_ball/archery/components/flying_arrow.dart';
+import 'package:b_ball/archery/components/hit_popup_canvas.dart';
+import 'package:b_ball/archery/components/range_background.dart';
+import 'package:b_ball/archery/components/stuck_arrow.dart';
+import 'package:b_ball/archery/components/target_board.dart';
+import 'package:b_ball/archery/components/wind_pill.dart';
+import 'package:b_ball/archery/input/draw_aim_controller.dart';
+import 'package:b_ball/archery/online/archery_live_event.dart';
+import 'package:b_ball/archery/online/archery_online_controller.dart';
+import 'package:b_ball/archery/physics/arrow_physics.dart';
+import 'package:b_ball/archery/physics/sight_solver.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/physics/wind_model.dart';
+import 'package:b_ball/archery/state/archery_match_notifier.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
 
 /// Flame game for the 50 ft GamePigeon-style archery range.
 ///
@@ -145,7 +145,9 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     // Connect aim controller firing hook
     controller.onFireAt = (double crossX, double crossY) {
       if (_setOver || arrowPhysics.inFlight || !events.isMyTurn) return;
-      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) return;
+      if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
+        return;
+      }
 
       ArcheryAudio.playReleaseTwang();
 
@@ -338,12 +340,14 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     if (_introTime < 0.0 || awaitingStart) return;
     _introTime += dt;
     const int n = ArcheryMatchState.arrowsPerSet;
-    if (_introLanded < n && _introTime >= _introFirst + _introLanded * _introGap) {
+    if (_introLanded < n &&
+        _introTime >= _introFirst + _introLanded * _introGap) {
       _introLanded++;
       final ShotScore? shot = events.botArrowLanded();
       if (shot != null) _landBotArrow(shot);
     }
-    if (_introLanded >= n && _introTime >= _introFirst + (n - 1) * _introGap + _introHold) {
+    if (_introLanded >= n &&
+        _introTime >= _introFirst + (n - 1) * _introGap + _introHold) {
       _introTime = -1.0;
       cameraRig.endIntro();
     }
@@ -449,11 +453,7 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
     }
 
     // 2. Update Camera Rig with arrow follow and phase transitions
-    cameraRig.update(
-      clampedDt,
-      controller.isHolding,
-      arrow: arrowPhysics,
-    );
+    cameraRig.update(clampedDt, controller.isHolding, arrow: arrowPhysics);
 
     windPill.update(clampedDt);
 
@@ -474,7 +474,8 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
       final bool hitBoss = remote?.hitBoss ?? arrowPhysics.hitBoss;
       final double hitX = remote?.hitX ?? arrowPhysics.hitLocalX;
       final double hitY = remote?.hitY ?? arrowPhysics.hitLocalY;
-      final ShotScore score = remote?.score(targetDistance) ??
+      final ShotScore score =
+          remote?.score(targetDistance) ??
           TargetScoring.calculate(
             localX: hitX,
             localY: hitY,
@@ -493,7 +494,9 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
       // Hit Popup canvas 3D coordinates & event emission (Bug #6)
       hitPopup.trigger(
         worldX: hitBoss ? hitX : arrowPhysics.hitPoint.x,
-        worldY: hitBoss ? ArcheryK.targetCenterY + hitY : arrowPhysics.hitPoint.y,
+        worldY: hitBoss
+            ? ArcheryK.targetCenterY + hitY
+            : arrowPhysics.hitPoint.y,
         worldZ: hitBoss ? targetDistance : arrowPhysics.hitPoint.z,
         score: score,
       );
@@ -512,7 +515,8 @@ class ArcheryGame extends FlameGame implements ArcheryOnlineGame {
           score: score,
         );
         // Online: your set is done after three arrows (no fourth draw).
-        if (online != null && events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
+        if (online != null &&
+            events.arrowIndex >= ArcheryMatchState.arrowsPerSet) {
           controller.inputEnabled = false;
         }
       }

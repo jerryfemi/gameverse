@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../../../services/auth_service.dart';
-import '../common/app_button.dart';
-import '../common/app_modal_dialog.dart';
-import '../common/app_text_field.dart';
-import '../common/inline_feedback.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/game/ui/common/app_button.dart';
+import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
+import 'package:b_ball/game/ui/common/app_text_field.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
 /// Modal dialog allowing the player to customize or randomize their unique Gamer Tag.
 class EditGamerTagDialog extends HookWidget {

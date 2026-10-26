@@ -4,14 +4,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../game/ui/common/app_avatar.dart';
-import '../game/ui/common/inline_feedback.dart';
-import '../game/ui/common/ui_font.dart';
-import '../game/ui/match/incoming_challenge_dialog.dart';
-import '../models/cloud_match.dart';
-import '../providers/app_providers.dart';
-import '../services/firestore_match_service.dart';
-import 'app_notices.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/inline_feedback.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
+import 'package:b_ball/game/ui/match/incoming_challenge_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/notifications/app_notices.dart';
 
 /// Colour and icon per source, shared by chips and bubbles.
 abstract final class NoticeStyle {

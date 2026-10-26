@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../models/player_descriptor.dart';
+import 'package:b_ball/models/player_descriptor.dart';
 
 /// Representation of a single player on the darts scoreboard.
 @immutable
@@ -11,14 +11,29 @@ class DartsPlayer {
   /// Anything AppAvatar can draw: asset path, data URI, URL, or emoji.
   final String avatar;
 
-  const DartsPlayer({required this.name, required this.avatar});
+  /// Firebase Auth UID if online, or null if bot/guest.
+  final String? uid;
+
+  /// Whether this player is an automated bot.
+  final bool isBot;
+
+  const DartsPlayer({
+    required this.name,
+    required this.avatar,
+    this.uid,
+    this.isBot = false,
+  });
 
   @override
   bool operator ==(Object other) =>
-      other is DartsPlayer && other.name == name && other.avatar == avatar;
+      other is DartsPlayer &&
+      other.name == name &&
+      other.avatar == avatar &&
+      other.uid == uid &&
+      other.isBot == isBot;
 
   @override
-  int get hashCode => Object.hash(name, avatar);
+  int get hashCode => Object.hash(name, avatar, uid, isBot);
 }
 
 /// The pair of players currently participating in the darts match.
@@ -32,8 +47,11 @@ class DartsPlayers {
   static const DartsPlayer defaultYou =
       DartsPlayer(name: 'You', avatar: PlayerDescriptor.defaultAvatar);
 
-  static const DartsPlayer bot =
-      DartsPlayer(name: 'Bot', avatar: 'assets/avatars/dunk_heads (2).webp');
+  static const DartsPlayer bot = DartsPlayer(
+    name: 'Bot',
+    avatar: 'assets/avatars/dunk_heads (2).webp',
+    isBot: true,
+  );
 
   @override
   bool operator ==(Object other) =>

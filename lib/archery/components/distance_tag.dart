@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../camera/camera_rig.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
 
 /// Red distance tag ("50ft", "100ft", "150ft") on the shooting line (GamePigeon).
 /// World-anchored, so it slides away naturally as the camera moves forward.

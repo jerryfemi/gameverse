@@ -4,7 +4,7 @@ import 'dart:js_interop_unsafe';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'audio_backend.dart';
+import 'package:b_ball/game/audio/audio_backend.dart';
 
 AudioBackend createAudioBackend() => WebAudioBackend();
 

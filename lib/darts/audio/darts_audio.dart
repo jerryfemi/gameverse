@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import '../../game/audio/audio_engine.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 /// Darts sound controller, played through the app's shared [AudioEngine].
 ///

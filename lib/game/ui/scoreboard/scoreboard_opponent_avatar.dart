@@ -4,8 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../../providers/app_providers.dart';
-import '../common/app_avatar.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/social/ui/in_game/opponent_badge_social.dart';
 
 /// Flanking circular opponent avatar with illuminated badge and "Them" label.
 class ScoreboardOpponentAvatar extends HookConsumerWidget {
@@ -16,6 +17,8 @@ class ScoreboardOpponentAvatar extends HookConsumerWidget {
   final String? joinCode;
   final String? activeMatchId;
   final VoidCallback? onTap;
+  final String? opponentUid;
+  final bool isBot;
 
   const ScoreboardOpponentAvatar({
     super.key,
@@ -26,6 +29,8 @@ class ScoreboardOpponentAvatar extends HookConsumerWidget {
     this.joinCode,
     this.activeMatchId,
     this.onTap,
+    this.opponentUid,
+    this.isBot = false,
   });
 
   @override
@@ -84,19 +89,28 @@ class ScoreboardOpponentAvatar extends HookConsumerWidget {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    AppAvatar(
-                      avatar: isWaiting ? '⏳' : avatar,
-                      size: 36.0,
-                      borderColor: isWaiting
-                          ? const Color(0xFFF59E0B)
-                          : (isActive
-                              ? const Color(0xFF38BDF8)
-                              : Colors.white.withValues(alpha: 0.8)),
-                      borderWidth: isWaiting || isActive ? 2.2 : 1.5,
-                      showGlow: isActive || isWaiting,
-                      glowColor: isWaiting
-                          ? const Color(0xFFF59E0B)
-                          : const Color(0xFF38BDF8),
+                    OpponentBadgeSocial(
+                      opponentUid: opponentUid,
+                      opponentName: label,
+                      matchId: activeMatchId,
+                      isBot: isBot || isWaiting,
+                      isLeft: false,
+                      forceAbove: false,
+                      badgeBorderColor: const Color(0xFF0F172A),
+                      child: AppAvatar(
+                        avatar: isWaiting ? '⏳' : avatar,
+                        size: 36.0,
+                        borderColor: isWaiting
+                            ? const Color(0xFFF59E0B)
+                            : (isActive
+                                ? const Color(0xFF38BDF8)
+                                : Colors.white.withValues(alpha: 0.8)),
+                        borderWidth: isWaiting || isActive ? 2.2 : 1.5,
+                        showGlow: isActive || isWaiting,
+                        glowColor: isWaiting
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF38BDF8),
+                      ),
                     ),
                     if (isWaiting)
                       Positioned(

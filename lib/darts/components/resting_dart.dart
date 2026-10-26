@@ -2,10 +2,10 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 
-import '../darts_constants.dart';
-import '../scene/board_projection.dart';
-import 'dart_renderer.dart';
-import 'dart_sprites.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/scene/board_projection.dart';
+import 'package:b_ball/darts/components/dart_renderer.dart';
+import 'package:b_ball/darts/components/dart_sprites.dart';
 
 /// The dart in your hand, drawn in 3D at the release point: big, near the
 /// bottom of the screen, pointing up at the board so its body shows, with

@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../camera/archery_camera.dart';
-import '../physics/arrow_physics.dart';
-import 'arrow_renderer.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/physics/arrow_physics.dart';
+import 'package:b_ball/archery/components/arrow_renderer.dart';
 
 /// Renders the flying arrow in 3D perspective using the shared ArrowRenderer3D (Build Plan v2 §1.3).
 class FlyingArrow {

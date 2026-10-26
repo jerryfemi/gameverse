@@ -1,10 +1,10 @@
 import 'dart:math' as math;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import '../archery_constants.dart';
-import '../camera/camera_rig.dart';
-import '../physics/target_scoring.dart';
-import 'archery_match_state.dart';
-import 'archery_rules.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/physics/target_scoring.dart';
+import 'package:b_ball/archery/state/archery_match_state.dart';
+import 'package:b_ball/archery/state/archery_rules.dart';
 
 /// What the Flame game needs from the match: the seed and arrow position for
 /// deterministic wind/sway, and somewhere to report events.

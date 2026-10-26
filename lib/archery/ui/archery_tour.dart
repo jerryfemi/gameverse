@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../game/ui/common/ui_font.dart';
+import 'package:b_ball/game/ui/common/ui_font.dart';
 
 /// Archery how-to-play, shown once per device (new and existing players
 /// alike), only in solo play. The last two steps spotlight the people and

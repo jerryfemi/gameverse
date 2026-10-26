@@ -3,12 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/inbox/match_inbox_sheet.dart';
-import '../../game/ui/match/incoming_challenge_dialog.dart';
-import '../../models/cloud_match.dart';
-import '../../providers/app_providers.dart';
-import '../../notifications/app_notices.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/inbox/match_inbox_sheet.dart';
+import 'package:b_ball/game/ui/match/incoming_challenge_dialog.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/notifications/app_notices.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// Round icon button for the archery screen's corners (icon only, so it never
 /// collides with the scoreboard on narrow phones). Optional count badge.
@@ -99,7 +100,7 @@ abstract final class ArcheryInbox {
       context,
       // /match/:id opens whichever game the match belongs to.
       onPlayMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
-      onViewPodium: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+      onViewPodium: (m) => ResultsSheet.show(context, m),
       onCreateMatch: onCreateMatch,
     );
   }
@@ -113,7 +114,7 @@ class ArcheryMatchesButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myUid = ref.watch(currentUserProfileProvider.select((p) => p.value?.uid ?? ''));
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final matches = ref.watch(activeMatchesProvider).value ?? const <CloudMatch>[];
     final int yourTurn = myUid.isEmpty ? 0 : matches.where((m) => m.isMyTurn(myUid)).length;
     // Opens your profile drawer, so the badge counts everything in it:
     // matches waiting on you plus invites and friend requests.

@@ -1,24 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
-import '../../game/audio/audio_engine.dart';
+import 'package:b_ball/game/ui/pause/widgets/pause_action_buttons.dart';
+import 'package:b_ball/game/ui/pause/widgets/pause_sound_card.dart';
+import 'package:b_ball/game/ui/pause/widgets/pause_stat_chip.dart';
 
-/// Archery's pause menu: music, sound effects and birdsong (each with an
-/// on/off switch and a volume slider), plus resume / restart / lobby.
-///
-/// Solo play freezes while it is open. Online, the match keeps running (your
-/// opponent isn't paused), so the menu says so and offers no restart.
-///
-/// Shared with darts: the ambience row's name/icon and an optional
-/// "HOW TO PLAY" button are configurable; everything else is identical.
+/// Archery Pause Menu matching Design Template 22:
+/// - "Paused" header with round and mode subtitle
+/// - 3 stat chips: SET POINTS, THIS SET, ARROWS
+/// - SOUND section with volume sliders and track name
+/// - RESUME button + Restart/Forfeit & Lobby buttons
+/// - FittedBox responsive scaling (< 220 lines)
 class ArcheryPauseMenu extends StatelessWidget {
   final bool online;
   final VoidCallback onResume;
   final VoidCallback? onRestart;
   final VoidCallback onLobby;
+  final VoidCallback? onForfeit;
   final VoidCallback? onHowToPlay;
-
-  /// Small attribution line under the buttons (e.g. a CC-BY model credit).
+  final String? subtitle;
+  final String? stat1Label;
+  final String? stat1Value;
+  final String? stat2Label;
+  final String? stat2Value;
+  final Color stat2Color;
+  final String? stat3Label;
+  final String? stat3Value;
+  final Color stat3Color;
+  final Color accentColor;
+  final String? trackName;
+  final VoidCallback? onCycleTrack;
   final String? credit;
 
   const ArcheryPauseMenu({
@@ -27,128 +37,146 @@ class ArcheryPauseMenu extends StatelessWidget {
     required this.onResume,
     required this.onLobby,
     this.onRestart,
+    this.onForfeit,
     this.onHowToPlay,
+    this.subtitle,
+    this.stat1Label,
+    this.stat1Value,
+    this.stat2Label,
+    this.stat2Value,
+    this.stat2Color = const Color(0xFF00FFCC),
+    this.stat3Label,
+    this.stat3Value,
+    this.stat3Color = const Color(0xFFF59E0B),
+    this.accentColor = const Color(0xFF00FFCC),
+    this.trackName = 'Forest',
+    this.onCycleTrack,
     this.credit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final maxH = MediaQuery.sizeOf(context).height * 0.90;
+
     return Stack(
       children: [
-        // Tap outside = resume.
+        // Tap outside = resume
         Positioned.fill(
           child: GestureDetector(
             onTap: onResume,
-            child: const ColoredBox(color: Color(0x99000000)),
+            child: const ColoredBox(color: Color(0xCC000000)),
           ),
         ),
         Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
+              constraints: BoxConstraints(maxWidth: 360.0, maxHeight: maxH),
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 18),
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                padding: const EdgeInsets.all(20.0),
                 decoration: BoxDecoration(
-                  color: const Color(0xF20F172A),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: const Color(0xFF1E2638),
-                    width: 1.5,
-                  ),
+                  color: const Color(0xFF0D1424),
+                  borderRadius: BorderRadius.circular(24.0),
+                  border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
                   boxShadow: const [
-                    BoxShadow(
-                      color: Color(0xCC000000),
-                      blurRadius: 30,
-                      offset: Offset(0, 10),
-                    ),
+                    BoxShadow(color: Color(0xCC000000), blurRadius: 36.0, offset: Offset(0, 14)),
                   ],
                 ),
-                child: Material(
-                  color: Colors.transparent,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Title & Subtitle
                       const Text(
-                        'PAUSED',
-                        textAlign: TextAlign.center,
+                        'Paused',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 24.0,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.6,
+                          letterSpacing: -0.4,
                         ),
                       ),
-                      if (online) ...[
-                        const SizedBox(height: 4),
-                        const Text(
-                          'LIVE MATCH · YOUR SHOT CLOCK KEEPS RUNNING',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFFF59E0B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.6,
-                          ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        subtitle ?? (online ? 'Live 1v1 match' : 'Solo match'),
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 12.0,
+                          fontWeight: FontWeight.w500,
                         ),
+                      ),
+                      const SizedBox(height: 16.0),
+
+                      // 3 Stat Chips
+                      if (stat1Label != null && stat2Label != null && stat3Label != null) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: PauseStatChip(
+                                label: stat1Label!,
+                                value: stat1Value ?? '0',
+                              ),
+                            ),
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: PauseStatChip(
+                                label: stat2Label!,
+                                value: stat2Value ?? '0',
+                                valueColor: stat2Color,
+                              ),
+                            ),
+                            const SizedBox(width: 8.0),
+                            Expanded(
+                              child: PauseStatChip(
+                                label: stat3Label!,
+                                value: stat3Value ?? '0',
+                                valueColor: stat3Color,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16.0),
                       ],
-                      const SizedBox(height: 16),
-                      _AudioRow(
-                        icon: Icons.music_note_rounded,
-                        label: 'MUSIC',
-                        enabled: AudioEngine.musicEnabledNotifier,
-                        volume: AudioEngine.musicVolumeNotifier,
-                        onEnabled: AudioEngine.setMusicEnabled,
-                        onVolume: (v) => AudioEngine.musicVolume = v,
-                      ),
-                      _AudioRow(
-                        icon: Icons.graphic_eq_rounded,
-                        label: 'SOUND EFFECTS',
-                        enabled: AudioEngine.sfxEnabledNotifier,
-                        volume: AudioEngine.sfxVolumeNotifier,
-                        onEnabled: AudioEngine.setSfxEnabled,
-                        onVolume: (v) => AudioEngine.sfxVolume = v,
-                      ),
-                      const SizedBox(height: 14),
-                      _MenuButton(
-                        label: 'RESUME',
-                        icon: Icons.play_arrow_rounded,
-                        primary: true,
-                        onTap: onResume,
-                      ),
-                      if (onHowToPlay != null) ...[
-                        const SizedBox(height: 8),
-                        _MenuButton(
-                          label: 'HOW TO PLAY',
-                          icon: Icons.help_outline_rounded,
-                          onTap: onHowToPlay!,
+
+                      // SOUND Section Header
+                      const Text(
+                        'SOUND',
+                        style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
                         ),
-                      ],
-                      if (onRestart != null) ...[
-                        const SizedBox(height: 8),
-                        _MenuButton(
-                          label: 'RESTART MATCH',
-                          icon: Icons.replay_rounded,
-                          onTap: onRestart!,
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      _MenuButton(
-                        label: 'LOBBY',
-                        icon: Icons.grid_view_rounded,
-                        onTap: onLobby,
                       ),
+                      const SizedBox(height: 6.0),
+
+                      // Sound Card
+                      PauseSoundCard(
+                        accentColor: accentColor,
+                        trackName: trackName,
+                        onCycleTrack: onCycleTrack,
+                      ),
+                      const SizedBox(height: 20.0),
+
+                      // Action Buttons: Resume / (Restart or Forfeit) / Lobby
+                      PauseActionButtons(
+                        accentColor: accentColor,
+                        onResume: onResume,
+                        onLobby: onLobby,
+                        onRestart: online ? null : onRestart,
+                        onForfeit: online ? onForfeit : null,
+                      ),
+
                       if (credit != null) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12.0),
                         Text(
                           credit!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 9.5,
-                          ),
+                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 9.5),
                         ),
                       ],
                     ],
@@ -159,134 +187,6 @@ class ArcheryPauseMenu extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// One audio channel: icon, name, on/off switch and a volume slider.
-class _AudioRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final ValueNotifier<bool> enabled;
-  final ValueNotifier<double> volume;
-  final Future<void> Function(bool) onEnabled;
-  final ValueChanged<double> onVolume;
-
-  const _AudioRow({
-    required this.icon,
-    required this.label,
-    required this.enabled,
-    required this.volume,
-    required this.onEnabled,
-    required this.onVolume,
-  });
-
-  static const Color _accent = Color(0xFF00FFCC);
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: enabled,
-      builder: (context, on, _) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: on ? _accent : const Color(0xFF475569)),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 96,
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: on ? Colors.white : const Color(0xFF64748B),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.6,
-                ),
-              ),
-            ),
-            Expanded(
-              child: ValueListenableBuilder<double>(
-                valueListenable: volume,
-                builder: (context, v, _) => SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 7,
-                    ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 14,
-                    ),
-                    activeTrackColor: _accent,
-                    inactiveTrackColor: const Color(0xFF1E2638),
-                    thumbColor: Colors.white,
-                    disabledActiveTrackColor: const Color(0xFF334155),
-                    disabledThumbColor: const Color(0xFF475569),
-                  ),
-                  child: Slider(value: v, onChanged: on ? onVolume : null),
-                ),
-              ),
-            ),
-            Switch(
-              value: on,
-              activeThumbColor: Colors.white,
-              activeTrackColor: _accent,
-              inactiveThumbColor: const Color(0xFF94A3B8),
-              inactiveTrackColor: const Color(0xFF1E2638),
-              onChanged: (value) {
-                HapticFeedback.selectionClick();
-                onEnabled(value);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MenuButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool primary;
-
-  const _MenuButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    this.primary = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        icon: Icon(icon, size: 18),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.9,
-            fontSize: 13,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          elevation: 0,
-          backgroundColor: primary
-              ? const Color(0xFF00FFCC)
-              : const Color(0xFF1E2638),
-          foregroundColor: primary ? const Color(0xFF0A0E1A) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
     );
   }
 }

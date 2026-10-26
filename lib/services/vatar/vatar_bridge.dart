@@ -1,9 +1,9 @@
 import 'dart:ui';
-import 'vatar_bridge_stub.dart'
+import 'package:b_ball/services/vatar/vatar_bridge_stub.dart'
     if (dart.library.html) 'vatar_bridge_web.dart' as platform;
-import 'vatar_models.dart';
+import 'package:b_ball/services/vatar/vatar_models.dart';
 
-export 'vatar_models.dart';
+export 'package:b_ball/services/vatar/vatar_models.dart';
 
 /// Unified cross-platform facade for the Lagos Life / Vatar Games integration.
 ///

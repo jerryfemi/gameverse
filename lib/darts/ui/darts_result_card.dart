@@ -6,18 +6,19 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../models/cloud_match.dart';
-import '../../models/match_invite.dart';
-import '../../models/player_descriptor.dart';
-import '../../providers/app_providers.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_match_service.dart';
-import '../darts_constants.dart';
-import '../darts_game_screen.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/models/match_invite.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/darts_game_screen.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
 
 /// End-of-match card for Darts 301 (solo vs the bot, or a live 1v1).
 ///
@@ -132,9 +133,15 @@ class DartsResultCard extends HookConsumerWidget {
                 opacity: t.clamp(0.0, 1.0),
                 child: Transform.scale(scale: 0.9 + 0.1 * t, child: child),
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400.0),
-                child: Container(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 380.0,
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+                  ),
+                  child: Container(
                   padding: const EdgeInsets.fromLTRB(20.0, 0.0, 20.0, 20.0),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
@@ -539,6 +546,17 @@ class DartsResultCard extends HookConsumerWidget {
                           },
                         ),
                       ],
+                      if (online && finishedMatch != null) ...[
+                        const SizedBox(height: 10.0),
+                        _CardButton(
+                          label: 'VIEW MATCH RECAP',
+                          icon: Icons.analytics_outlined,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            ResultsSheet.show(context, finishedMatch!);
+                          },
+                        ),
+                      ],
                       if (onPlayFriend != null) ...[
                         const SizedBox(height: 10.0),
                         _CardButton(
@@ -554,6 +572,7 @@ class DartsResultCard extends HookConsumerWidget {
             ),
           ),
         ),
+      ),
       ],
     );
   }

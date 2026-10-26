@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import '../../basketball_game.dart';
-import '../../match/match_session.dart';
+import 'package:b_ball/game/basketball_game.dart';
+import 'package:b_ball/game/match/match_session.dart';
 
 /// Floating obsidian glassmorphism status pill mounted during live spectator mode.
 ///

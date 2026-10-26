@@ -4,16 +4,17 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../archery/archery_game_screen.dart' show ArcheryChallenge;
-import '../../archery/ui/archery_match_bar.dart' show ArcheryInbox;
-import '../../notifications/profile_drawer.dart';
+import 'package:b_ball/archery/archery_game_screen.dart' show ArcheryChallenge;
+import 'package:b_ball/archery/ui/archery_match_bar.dart' show ArcheryInbox;
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
 
-import '../../game/ui/common/app_avatar.dart';
-import '../../game/ui/common/edit_profile_dialog.dart';
-import '../../notifications/app_notices.dart';
-import '../../providers/app_providers.dart';
-import '../lobby_style.dart';
-import 'pressable.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
+import 'package:b_ball/game/ui/common/edit_profile_dialog.dart';
+import 'package:b_ball/notifications/app_notices.dart';
+import 'package:b_ball/providers/app_providers.dart';
+import 'package:b_ball/social/ui/results/results_sheet.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
+import 'package:b_ball/lobby/widgets/pressable.dart';
 
 /// Lobby account chip: avatar and name (avatar only when [compact]). Tapping
 /// it opens the profile editor.
@@ -120,9 +121,15 @@ class AccountChip extends HookConsumerWidget {
         // Online: the profile drawer (what's waiting, friends, matches).
         onTap: Firebase.apps.isEmpty
             ? () => EditProfileDialog.show(context, profile: profile)
-            : () => ProfileDrawer.show(
+            : () => ProfileSheet.show(
                   context,
-                  onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+                  onOpenMatch: (m) {
+                    if (m.isFinished) {
+                      ResultsSheet.show(context, m);
+                    } else {
+                      GoRouter.maybeOf(context)?.go('/match/${m.id}');
+                    }
+                  },
                   onOpenMatches: () => ArcheryInbox.open(
                     context,
                     onCreateMatch: () => ArcheryChallenge.start(context, showGamePicker: true),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../lobby_style.dart';
-import 'account_chip.dart';
+import 'package:b_ball/lobby/lobby_style.dart';
+import 'package:b_ball/lobby/widgets/account_chip.dart';
 
 /// Lobby top bar: the GAMEVERSE jersey wordmark and the account chip.
 class LobbyHeader extends StatelessWidget {

@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../archery_constants.dart';
-import '../camera/archery_camera.dart';
-import '../camera/camera_rig.dart';
-import '../physics/sway_model.dart';
+import 'package:b_ball/archery/archery_constants.dart';
+import 'package:b_ball/archery/camera/archery_camera.dart';
+import 'package:b_ball/archery/camera/camera_rig.dart';
+import 'package:b_ball/archery/physics/sway_model.dart';
 
 /// GamePigeon-style thumb-roll aim controller with steady ring and shot timer arc.
 class DrawAimController {

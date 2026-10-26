@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../audio/audio_engine.dart';
+import 'package:b_ball/game/audio/audio_engine.dart';
 
 /// Configuration payload for an active live turn transition countdown.
 class LiveTransitionData {

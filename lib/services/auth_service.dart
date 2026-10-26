@@ -1,15 +1,16 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../firebase_options.dart';
-import '../models/player_descriptor.dart';
-import 'friends_service.dart';
-import 'vatar/vatar_bridge.dart';
+import 'package:b_ball/firebase_options.dart';
+import 'package:b_ball/models/player_descriptor.dart';
+import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/services/vatar/vatar_bridge.dart';
 
 /// Exception thrown when an online feature is attempted without valid Firebase authentication.
 class AuthRequiredException implements Exception {
@@ -28,6 +29,7 @@ class UserProfile implements PlayerDescriptor {
   final String avatarEmoji;
   final bool isAnonymous;
   final bool isFirebaseVerified;
+  final String? email;
 
   @override
   String get id => uid;
@@ -41,6 +43,7 @@ class UserProfile implements PlayerDescriptor {
     required this.avatarEmoji,
     this.isAnonymous = true,
     this.isFirebaseVerified = false,
+    this.email,
   });
 
   UserProfile copyWith({
@@ -49,6 +52,7 @@ class UserProfile implements PlayerDescriptor {
     String? avatarEmoji,
     bool? isAnonymous,
     bool? isFirebaseVerified,
+    String? email,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
@@ -56,6 +60,7 @@ class UserProfile implements PlayerDescriptor {
       avatarEmoji: avatarEmoji ?? this.avatarEmoji,
       isAnonymous: isAnonymous ?? this.isAnonymous,
       isFirebaseVerified: isFirebaseVerified ?? this.isFirebaseVerified,
+      email: email ?? this.email,
     );
   }
 
@@ -65,6 +70,7 @@ class UserProfile implements PlayerDescriptor {
     'avatarEmoji': avatarEmoji,
     'isAnonymous': isAnonymous,
     'isFirebaseVerified': isFirebaseVerified,
+    if (email != null) 'email': email,
   };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -74,6 +80,7 @@ class UserProfile implements PlayerDescriptor {
         json['avatarEmoji'] as String? ?? PlayerDescriptor.defaultAvatar,
     isAnonymous: json['isAnonymous'] as bool? ?? true,
     isFirebaseVerified: json['isFirebaseVerified'] as bool? ?? false,
+    email: json['email'] as String?,
   );
 }
 
@@ -256,6 +263,7 @@ class AuthService {
       avatarEmoji: savedAvatar,
       isAnonymous: isAnon,
       isFirebaseVerified: isVerified,
+      email: FirebaseAuth.instance.currentUser?.email,
     );
 
     currentUserNotifier.value = profile;
@@ -266,13 +274,14 @@ class AuthService {
     // Listen to background auth changes
     if (firebaseReady) {
       FirebaseAuth.instance.authStateChanges().listen((user) {
-        if (user != null && currentUserNotifier.value?.uid != user.uid) {
+        if (user != null) {
           currentUserNotifier.value = currentUserNotifier.value?.copyWith(
             uid: user.uid,
             displayName:
                 user.displayName ?? currentUserNotifier.value?.displayName,
             isAnonymous: user.isAnonymous,
             isFirebaseVerified: true,
+            email: user.email,
           );
         }
       });
@@ -344,8 +353,110 @@ class AuthService {
     currentUserNotifier.value = currentUserNotifier.value?.copyWith(
       isAnonymous: cred.user?.isAnonymous ?? false,
       isFirebaseVerified: true,
+      email: cred.user?.email,
     );
     return cred;
+  }
+
+  /// Links the current anonymous account to Google, or seamlessly recovers
+  /// an existing Google profile if this device previously created a throwaway guest session.
+  Future<UserProfile> signInOrLinkWithGoogle() async {
+    final auth = FirebaseAuth.instance;
+    final provider = GoogleAuthProvider();
+    final current = auth.currentUser;
+
+    if (current != null && current.isAnonymous) {
+      try {
+        debugPrint('[AuthService] Attempting to link guest with Google popup...');
+        final cred = await current.linkWithPopup(provider);
+        return await _syncProfileFromFirebaseUser(cred.user);
+      } on FirebaseAuthException catch (e) {
+        debugPrint('[AuthService] Link result code: ${e.code}');
+        if (e.code == 'credential-already-in-use' ||
+            e.code == 'email-already-in-use') {
+          // This Google account belongs to a real profile from another device.
+          // Delete or abandon the ephemeral guest account on this device.
+          try {
+            await current.delete();
+          } catch (_) {}
+
+          // Sign in to the existing permanent account
+          final cred = await auth.signInWithPopup(provider);
+          return await _syncProfileFromFirebaseUser(cred.user);
+        }
+        rethrow;
+      }
+    } else {
+      final cred = await auth.signInWithPopup(provider);
+      return await _syncProfileFromFirebaseUser(cred.user);
+    }
+  }
+
+  /// Synchronizes local preferences and Firestore user profile with the signed-in Firebase user.
+  Future<UserProfile> _syncProfileFromFirebaseUser(User? user) async {
+    if (user == null) {
+      throw const AuthRequiredException('No user returned from Google sign-in.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyUid, user.uid);
+
+    // Check if player has an existing profile document in Firestore
+    String resolvedName;
+    String resolvedAvatar;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        resolvedName = data['displayName'] as String? ??
+            user.displayName ??
+            generateUniqueGamerTag();
+        resolvedAvatar = data['avatarEmoji'] as String? ?? getRandomAvatar();
+      } else {
+        resolvedName = currentUser?.displayName ??
+            user.displayName ??
+            generateUniqueGamerTag();
+        resolvedAvatar = currentUser?.avatarEmoji ?? getRandomAvatar();
+      }
+    } catch (_) {
+      resolvedName = currentUser?.displayName ??
+          user.displayName ??
+          generateUniqueGamerTag();
+      resolvedAvatar = currentUser?.avatarEmoji ?? getRandomAvatar();
+    }
+
+    await prefs.setString(_prefKeyName, resolvedName);
+    await prefs.setString(_prefKeyAvatar, resolvedAvatar);
+
+    final profile = UserProfile(
+      uid: user.uid,
+      displayName: resolvedName,
+      avatarEmoji: resolvedAvatar,
+      isAnonymous: user.isAnonymous,
+      isFirebaseVerified: true,
+      email: user.email,
+    );
+
+    currentUserNotifier.value = profile;
+    unawaited(_effectiveFriendsService.publishMyProfile(profile));
+    return profile;
+  }
+
+  /// Signs out of the permanent Google account and resets to a silent guest account.
+  Future<void> signOut() async {
+    final auth = FirebaseAuth.instance;
+    await auth.signOut();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefKeyUid);
+    await prefs.remove(_prefKeyName);
+    await prefs.remove(_prefKeyAvatar);
+
+    _initFuture = null;
+    await initialize();
   }
 
   String _getOrCreateFallbackUid(SharedPreferences prefs, String? existing) {

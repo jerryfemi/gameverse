@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import '../darts_constants.dart';
-import '../physics/dart_scoring.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/physics/dart_scoring.dart';
 
 /// Immutable representation of the bot's calculated aiming target on the dartboard.
 class BotAim {

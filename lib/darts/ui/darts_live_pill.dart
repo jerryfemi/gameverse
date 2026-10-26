@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../archery/ui/claim_button.dart';
-import '../../archery/ui/pulse.dart';
-import '../darts_constants.dart';
-import '../online/darts_online_controller.dart';
-import '../state/darts_match_notifier.dart';
-import '../state/darts_match_state.dart';
-import '../state/darts_players.dart';
+import 'package:b_ball/archery/ui/claim_button.dart';
+import 'package:b_ball/archery/ui/pulse.dart';
+import 'package:b_ball/darts/darts_constants.dart';
+import 'package:b_ball/darts/online/darts_online_controller.dart';
+import 'package:b_ball/darts/state/darts_match_notifier.dart';
+import 'package:b_ball/darts/state/darts_match_state.dart';
+import 'package:b_ball/darts/state/darts_players.dart';
 
 /// Online status under the top bar: your shot clock, or what the opponent is
 /// doing. Hidden in solo play.
