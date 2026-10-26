@@ -76,7 +76,7 @@ class FriendsHubSheet extends ConsumerWidget {
     final invites = ref.watch(incomingInvitesProvider).value ?? const <FriendInvite>[];
     final friendsAsync = ref.watch(friendsListProvider);
     final friends = friendsAsync.value ?? const <FriendProfile>[];
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final activeMatches = ref.watch(activeMatchesProvider).value ?? const <CloudMatch>[];
     final friendUids = friends.map((f) => f.uid).toSet();
 
     return AppModalSheet(
@@ -292,7 +292,7 @@ class FriendsHubSheet extends ConsumerWidget {
                                         for (final friend in friends) ...[
                                           Builder(
                                             builder: (context) {
-                                              final match = matches
+                                              final match = activeMatches
                                                   .cast<CloudMatch?>()
                                                   .firstWhere(
                                                     (m) =>
