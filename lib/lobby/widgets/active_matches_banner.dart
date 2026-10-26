@@ -39,7 +39,7 @@ class ActiveMatchesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final myUid = ref.watch(currentUserProfileProvider.select((p) => p.value?.uid ?? ''));
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final matches = ref.watch(activeMatchesProvider).value ?? const <CloudMatch>[];
     if (myUid.isEmpty) return const SizedBox.shrink();
 
     final active = matches.where((m) => m.status == MatchStatus.active).toList()
