@@ -12,6 +12,9 @@ import 'package:b_ball/social/ui/profile/widgets/matches_active_list.dart';
 import 'package:b_ball/social/ui/profile/widgets/matches_completed_list.dart';
 import 'package:b_ball/social/ui/profile/widgets/matches_segmented_control.dart';
 
+import 'package:b_ball/models/cloud_match.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
+
 /// Full matches overview screen adhering to Artboard 10 of GameVerse design.
 ///
 /// Built with flutter_hooks + hooks_riverpod:
@@ -42,7 +45,15 @@ class MatchesPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedTab = useState(initialTabIndex);
     final matchesAsync = ref.watch(userMatchesProvider);
-    final myUid = AuthService.instance.currentUser?.uid ?? '';
+    final user = ref.watch(currentUserProfileProvider).value;
+    final myUid = (user != null && user.uid.isNotEmpty)
+        ? user.uid
+        : (AuthService.instance.currentUser?.uid ?? '');
+
+    final cachedMatches =
+        FirestoreMatchService.instance.getCachedUserMatches(myUid);
+    final allMatches =
+        matchesAsync.value ?? (cachedMatches.isNotEmpty ? cachedMatches : null);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B1020),
@@ -88,82 +99,101 @@ class MatchesPage extends HookConsumerWidget {
               ),
             ),
 
-            // Matches Async Loaded content
+            // Matches Async Loaded content with immediate cached fallback
             Expanded(
-              child: matchesAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF00FFCC),
-                    strokeWidth: 2.5,
-                  ),
-                ),
-                error: (err, _) => Center(
-                  child: Text(
-                    'Failed to load matches',
-                    style: UiFont.style(
-                      size: 14.0,
-                      weight: 600,
-                      color: const Color(0xFFEF4444),
+              child: allMatches != null
+                  ? _buildMatchesContent(
+                      context: context,
+                      allMatches: allMatches,
+                      myUid: myUid,
+                      selectedTab: selectedTab,
+                    )
+                  : matchesAsync.when(
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF00FFCC),
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                      error: (err, _) => Center(
+                        child: Text(
+                          'Failed to load matches',
+                          style: UiFont.style(
+                            size: 14.0,
+                            weight: 600,
+                            color: const Color(0xFFEF4444),
+                          ),
+                        ),
+                      ),
+                      data: (matches) => _buildMatchesContent(
+                        context: context,
+                        allMatches: matches,
+                        myUid: myUid,
+                        selectedTab: selectedTab,
+                      ),
                     ),
-                  ),
-                ),
-                data: (allMatches) {
-                  final activeMatches =
-                      allMatches.where((m) => !m.isFinished).toList();
-                  final completedMatches =
-                      allMatches.where((m) => m.isFinished).toList()
-                        ..sort((a, b) {
-                          final aTime =
-                              a.updatedAt > 0 ? a.updatedAt : a.createdAt;
-                          final bTime =
-                              b.updatedAt > 0 ? b.updatedAt : b.createdAt;
-                          return bTime.compareTo(aTime);
-                        });
-
-                  return Column(
-                    children: [
-                      // Segmented Control
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0,
-                          vertical: 6.0,
-                        ),
-                        child: MatchesSegmentedControl(
-                          activeCount: activeMatches.length,
-                          completedCount: completedMatches.length,
-                          selectedTab: selectedTab.value,
-                          onTabChanged: (index) {
-                            if (selectedTab.value != index) {
-                              HapticFeedback.selectionClick();
-                              selectedTab.value = index;
-                            }
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 8.0),
-
-                      // Tab View List
-                      Expanded(
-                        child: selectedTab.value == 0
-                            ? MatchesActiveList(
-                                activeMatches: activeMatches,
-                                myUid: myUid,
-                                onPlayAFriend: () => _playAFriend(context),
-                              )
-                            : MatchesCompletedList(
-                                completedMatches: completedMatches,
-                                myUid: myUid,
-                                onPlayAFriend: () => _playAFriend(context),
-                              ),
-                      ),
-                    ],
-                  );
-                },
-              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMatchesContent({
+    required BuildContext context,
+    required List<CloudMatch> allMatches,
+    required String myUid,
+    required ValueNotifier<int> selectedTab,
+  }) {
+    final activeMatches =
+        allMatches.where((m) => !m.isFinished).toList();
+    final completedMatches =
+        allMatches.where((m) => m.isFinished).toList()
+          ..sort((a, b) {
+            final aTime =
+                a.updatedAt > 0 ? a.updatedAt : a.createdAt;
+            final bTime =
+                b.updatedAt > 0 ? b.updatedAt : b.createdAt;
+            return bTime.compareTo(aTime);
+          });
+
+    return Column(
+      children: [
+        // Segmented Control
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 6.0,
+          ),
+          child: MatchesSegmentedControl(
+            activeCount: activeMatches.length,
+            completedCount: completedMatches.length,
+            selectedTab: selectedTab.value,
+            onTabChanged: (index) {
+              if (selectedTab.value != index) {
+                HapticFeedback.selectionClick();
+                selectedTab.value = index;
+              }
+            },
+          ),
+        ),
+        const SizedBox(height: 8.0),
+
+        // Tab View List
+        Expanded(
+          child: selectedTab.value == 0
+              ? MatchesActiveList(
+                  activeMatches: activeMatches,
+                  myUid: myUid,
+                  onPlayAFriend: () => _playAFriend(context),
+                )
+              : MatchesCompletedList(
+                  completedMatches: completedMatches,
+                  myUid: myUid,
+                  onPlayAFriend: () => _playAFriend(context),
+                ),
+        ),
+      ],
     );
   }
 

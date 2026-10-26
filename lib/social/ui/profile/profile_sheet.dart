@@ -8,6 +8,7 @@ import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/providers/app_providers.dart';
 import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/social/ui/common/section_label.dart';
 import 'package:b_ball/social/ui/tiles/active_match_tile.dart';
 import 'package:b_ball/social/ui/profile/friends_page.dart';
@@ -154,9 +155,12 @@ class _ProfileMainView extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentUserProfileProvider).value;
-    final myUid = AuthService.instance.currentUser?.uid ?? '';
+    final myUid = (profile != null && profile.uid.isNotEmpty)
+        ? profile.uid
+        : (AuthService.instance.currentUser?.uid ?? '');
     final friends = ref.watch(friendsListProvider).value ?? const <FriendProfile>[];
-    final matches = ref.watch(userMatchesProvider).value ?? const <CloudMatch>[];
+    final matches = ref.watch(userMatchesProvider).value ??
+        FirestoreMatchService.instance.getCachedUserMatches(myUid);
 
     // Compute stats
     final completedMatches = matches.where((m) => m.isFinished).toList();

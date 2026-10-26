@@ -977,25 +977,13 @@ class FirestoreMatchService {
       return Stream.value(const <CloudMatch>[]);
     }
 
-    return _matchesRef
-        .where('playerIds', arrayContains: userUid)
-        .where('status', whereIn: [
-          MatchStatus.active.key,
-          MatchStatus.waitingForOpponent.key,
-        ])
-        .orderBy('updatedAt', descending: true)
-        .limit(limit)
-        .snapshots()
-        .map((snap) {
-          final matches =
-              snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-          _cachedUserMatches[userUid] = matches;
-          return matches;
-        })
-        .handleError((Object e) {
-          debugPrint('[FirestoreMatchService] Active matches stream error: $e');
-          return const <CloudMatch>[];
-        });
+    return streamUserMatches(userUid, limit: 60).map((matches) {
+      final active = matches.where((m) => !m.isFinished).toList();
+      if (active.length > limit) {
+        return active.sublist(0, limit);
+      }
+      return active;
+    });
   }
 
   /// One-time cursor-paginated query for completed / forfeited matches.
@@ -1016,25 +1004,52 @@ class FirestoreMatchService {
       return (matches: const <CloudMatch>[], lastDoc: null, hasMore: false);
     }
 
-    var query = _matchesRef
-        .where('playerIds', arrayContains: userUid)
-        .where('status', whereIn: [
-          MatchStatus.completed.key,
-          MatchStatus.forfeited.key,
-        ])
-        .orderBy('updatedAt', descending: true)
-        .limit(limit);
+    try {
+      var query = _matchesRef
+          .where('playerIds', arrayContains: userUid)
+          .where('status', whereIn: [
+            MatchStatus.completed.key,
+            MatchStatus.forfeited.key,
+          ])
+          .orderBy('updatedAt', descending: true)
+          .limit(limit);
 
-    if (lastDoc != null) {
-      query = query.startAfterDocument(lastDoc);
+      if (lastDoc != null) {
+        query = query.startAfterDocument(lastDoc);
+      }
+
+      final snap = await query.get();
+      final matches = snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+      final newLastDoc = snap.docs.isNotEmpty ? snap.docs.last : null;
+      final hasMore = snap.docs.length >= limit;
+
+      return (matches: matches, lastDoc: newLastDoc, hasMore: hasMore);
+    } catch (e) {
+      debugPrint(
+        '[FirestoreMatchService] fetchCompletedMatches compound query failed: $e, using in-memory filter',
+      );
+      try {
+        final snap = await _matchesRef
+            .where('playerIds', arrayContains: userUid)
+            .get();
+        final all = snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+        final completed = all.where((m) => m.isFinished).toList()
+          ..sort((a, b) {
+            final aTime = a.updatedAt > 0 ? a.updatedAt : a.createdAt;
+            final bTime = b.updatedAt > 0 ? b.updatedAt : b.createdAt;
+            return bTime.compareTo(aTime);
+          });
+        final paged = completed.take(limit).toList();
+        return (
+          matches: paged,
+          lastDoc: null,
+          hasMore: completed.length > limit,
+        );
+      } catch (fallbackErr) {
+        debugPrint('[FirestoreMatchService] Fallback completed matches error: $fallbackErr');
+        return (matches: const <CloudMatch>[], lastDoc: null, hasMore: false);
+      }
     }
-
-    final snap = await query.get();
-    final matches = snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-    final newLastDoc = snap.docs.isNotEmpty ? snap.docs.last : null;
-    final hasMore = snap.docs.length >= limit;
-
-    return (matches: matches, lastDoc: newLastDoc, hasMore: hasMore);
   }
 
   /// Streams user matches (both active and recent completed) for computing stats,
@@ -1046,21 +1061,49 @@ class FirestoreMatchService {
     if (userUid.isEmpty) {
       return Stream.value(const <CloudMatch>[]);
     }
-    return _matchesRef
+
+    final controller = StreamController<List<CloudMatch>>();
+
+    // Emit cached matches immediately so UI has zero loading latency
+    final cached = _cachedUserMatches[userUid];
+    if (cached != null && cached.isNotEmpty) {
+      controller.add(cached);
+    }
+
+    final sub = _matchesRef
         .where('playerIds', arrayContains: userUid)
-        .orderBy('updatedAt', descending: true)
-        .limit(limit)
         .snapshots()
-        .map((snap) {
-          final matches =
-              snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-          _cachedUserMatches[userUid] = matches;
-          return matches;
-        })
-        .handleError((Object e) {
-          debugPrint('[FirestoreMatchService] User matches stream error: $e');
-          return const <CloudMatch>[];
-        });
+        .listen(
+          (snap) {
+            final matches =
+                snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+            matches.sort((a, b) {
+              final aTime = a.updatedAt > 0 ? a.updatedAt : a.createdAt;
+              final bTime = b.updatedAt > 0 ? b.updatedAt : b.createdAt;
+              return bTime.compareTo(aTime);
+            });
+            if (matches.length > limit) {
+              matches.removeRange(limit, matches.length);
+            }
+            _cachedUserMatches[userUid] = matches;
+            if (!controller.isClosed) {
+              controller.add(matches);
+            }
+          },
+          onError: (Object error) {
+            debugPrint('[FirestoreMatchService] User matches stream error: $error');
+            if (!controller.isClosed) {
+              // Emit cached matches or empty list so UI never hangs in loading state
+              controller.add(_cachedUserMatches[userUid] ?? const <CloudMatch>[]);
+            }
+          },
+        );
+
+    controller.onCancel = () {
+      sub.cancel();
+    };
+
+    return controller.stream;
   }
 
   /// Broadcasts a live shot impulse micro-packet to the `live_shots` subcollection.

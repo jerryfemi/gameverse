@@ -68,22 +68,28 @@ final currentUserProfileProvider = StreamProvider.autoDispose<UserProfile?>((ref
 /// Limited to 20 to avoid paying continuous listener charges for stale/finished games.
 final activeMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
-  if (user == null || user.uid.isEmpty) {
+  final effectiveUid = (user != null && user.uid.isNotEmpty)
+      ? user.uid
+      : (AuthService.instance.currentUser?.uid ?? '');
+  if (effectiveUid.isEmpty) {
     return Stream.value(const <CloudMatch>[]);
   }
   final matchService = ref.watch(matchServiceProvider);
-  return matchService.streamActiveMatches(user.uid);
+  return matchService.streamActiveMatches(effectiveUid);
 });
 
 /// Streams all remote matches (active and recent completed) for computing profile stats,
 /// head-to-head records, and match history.
 final userMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
-  if (user == null || user.uid.isEmpty) {
+  final effectiveUid = (user != null && user.uid.isNotEmpty)
+      ? user.uid
+      : (AuthService.instance.currentUser?.uid ?? '');
+  if (effectiveUid.isEmpty) {
     return Stream.value(const <CloudMatch>[]);
   }
   final matchService = ref.watch(matchServiceProvider);
-  return matchService.streamUserMatches(user.uid);
+  return matchService.streamUserMatches(effectiveUid);
 });
 
 // ==========================================
@@ -93,31 +99,40 @@ final userMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
 /// Streams the real-time social friends list for the authenticated player.
 final friendsListProvider = StreamProvider.autoDispose<List<FriendProfile>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
-  if (user == null || user.uid.isEmpty) {
+  final effectiveUid = (user != null && user.uid.isNotEmpty)
+      ? user.uid
+      : (AuthService.instance.currentUser?.uid ?? '');
+  if (effectiveUid.isEmpty) {
     return Stream.value(const <FriendProfile>[]);
   }
   final friendsService = ref.watch(friendsServiceProvider);
-  return friendsService.streamFriends(user.uid);
+  return friendsService.streamFriends(effectiveUid);
 });
 
 /// Streams pending incoming friend invites.
 final incomingInvitesProvider = StreamProvider.autoDispose<List<FriendInvite>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
-  if (user == null || user.uid.isEmpty) {
+  final effectiveUid = (user != null && user.uid.isNotEmpty)
+      ? user.uid
+      : (AuthService.instance.currentUser?.uid ?? '');
+  if (effectiveUid.isEmpty) {
     return Stream.value(const <FriendInvite>[]);
   }
   final friendsService = ref.watch(friendsServiceProvider);
-  return friendsService.streamIncomingInvites(user.uid);
+  return friendsService.streamIncomingInvites(effectiveUid);
 });
 
 /// Streams pending incoming 1v1 match challenges dispatched by friends.
 final incomingMatchChallengesProvider = StreamProvider.autoDispose<List<MatchInvite>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
-  if (user == null || user.uid.isEmpty) {
+  final effectiveUid = (user != null && user.uid.isNotEmpty)
+      ? user.uid
+      : (AuthService.instance.currentUser?.uid ?? '');
+  if (effectiveUid.isEmpty) {
     return Stream.value(const <MatchInvite>[]);
   }
   final matchService = ref.watch(matchServiceProvider);
-  return matchService.streamIncomingMatchChallenges(user.uid);
+  return matchService.streamIncomingMatchChallenges(effectiveUid);
 });
 
 // ==========================================
