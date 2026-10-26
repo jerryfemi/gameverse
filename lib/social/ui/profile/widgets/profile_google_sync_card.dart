@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -97,14 +98,33 @@ class ProfileGoogleSyncCard extends HookWidget {
                         }
                       } catch (e) {
                         debugPrint('[ProfileGoogleSyncCard] Sign in error: $e');
-                        final msg = e.toString();
-                        if (!msg.contains('popup_closed') &&
-                            !msg.contains('canceled') &&
-                            context.mounted) {
+                        String errorMsg = 'Failed to sign in: $e';
+                        if (e is FirebaseAuthException) {
+                          switch (e.code) {
+                            case 'unauthorized-domain':
+                              errorMsg =
+                                  'This domain is not in Firebase Console -> Auth -> Settings -> Authorized domains.';
+                              break;
+                            case 'operation-not-allowed':
+                              errorMsg =
+                                  'Google Sign-In is disabled in Firebase Console -> Auth -> Sign-in method.';
+                              break;
+                            case 'popup-closed-by-user':
+                            case 'cancelled-popup-request':
+                            case 'popup-blocked':
+                              errorMsg =
+                                  'Sign-in window closed by browser. Please try again.';
+                              break;
+                            default:
+                              errorMsg = e.message ?? e.code;
+                          }
+                        }
+                        if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Sign in notice: $e'),
+                              content: Text(errorMsg),
                               backgroundColor: const Color(0xFFEF4444),
+                              duration: const Duration(seconds: 4),
                             ),
                           );
                         }

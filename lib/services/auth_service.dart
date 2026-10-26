@@ -215,6 +215,21 @@ class AuthService {
     bool isVerified = false;
 
     if (firebaseReady) {
+      // Check if returning from a Google redirect sign-in flow on web
+      if (kIsWeb) {
+        try {
+          final redirectCred = await FirebaseAuth.instance.getRedirectResult();
+          if (redirectCred.user != null) {
+            debugPrint(
+              '[AuthService] Successfully completed redirect sign-in: ${redirectCred.user?.email}',
+            );
+            return await _syncProfileFromFirebaseUser(redirectCred.user);
+          }
+        } catch (e) {
+          debugPrint('[AuthService] getRedirectResult notice: $e');
+        }
+      }
+
       try {
         final auth = FirebaseAuth.instance;
         User? user = auth.currentUser;
@@ -365,6 +380,23 @@ class AuthService {
     final provider = GoogleAuthProvider();
     final current = auth.currentUser;
 
+    // Mobile web browsers (iOS Safari, Android Chrome) block cross-domain popups
+    // because window.opener is stripped, causing handler tabs to close immediately.
+    // Use full-page redirect flow directly on mobile web for reliable authentication.
+    final isMobileWeb = kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android);
+
+    if (isMobileWeb) {
+      debugPrint('[AuthService] Mobile web detected: using redirect flow...');
+      if (current != null && current.isAnonymous) {
+        await current.linkWithRedirect(provider);
+      } else {
+        await auth.signInWithRedirect(provider);
+      }
+      return currentUserNotifier.value ?? currentUser!;
+    }
+
     if (current != null && current.isAnonymous) {
       try {
         debugPrint('[AuthService] Attempting to link guest with Google popup...');
@@ -383,12 +415,32 @@ class AuthService {
           // Sign in to the existing permanent account
           final cred = await auth.signInWithPopup(provider);
           return await _syncProfileFromFirebaseUser(cred.user);
+        } else if (e.code == 'popup-closed-by-user' ||
+            e.code == 'cancelled-popup-request' ||
+            e.code == 'popup-blocked') {
+          if (kIsWeb) {
+            debugPrint('[AuthService] Popup failed (${e.code}), falling back to linkWithRedirect...');
+            await current.linkWithRedirect(provider);
+            return currentUserNotifier.value ?? currentUser!;
+          }
         }
         rethrow;
       }
     } else {
-      final cred = await auth.signInWithPopup(provider);
-      return await _syncProfileFromFirebaseUser(cred.user);
+      try {
+        final cred = await auth.signInWithPopup(provider);
+        return await _syncProfileFromFirebaseUser(cred.user);
+      } on FirebaseAuthException catch (e) {
+        if ((e.code == 'popup-closed-by-user' ||
+                e.code == 'cancelled-popup-request' ||
+                e.code == 'popup-blocked') &&
+            kIsWeb) {
+          debugPrint('[AuthService] Popup failed (${e.code}), falling back to signInWithRedirect...');
+          await auth.signInWithRedirect(provider);
+          return currentUserNotifier.value ?? currentUser!;
+        }
+        rethrow;
+      }
     }
   }
 
