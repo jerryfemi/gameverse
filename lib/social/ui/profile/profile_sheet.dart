@@ -13,6 +13,7 @@ import 'package:b_ball/social/ui/tiles/active_match_tile.dart';
 import 'package:b_ball/social/ui/profile/friends_page.dart';
 import 'package:b_ball/social/ui/profile/matches_page.dart';
 import 'package:b_ball/social/ui/profile/widgets/profile_friends_row.dart';
+import 'package:b_ball/social/ui/profile/widgets/profile_google_sync_card.dart';
 import 'package:b_ball/social/ui/profile/widgets/profile_header.dart';
 import 'package:b_ball/social/ui/profile/widgets/profile_menu_rows.dart';
 import 'package:b_ball/social/ui/profile/widgets/profile_shortcut_tiles.dart';
@@ -203,7 +204,11 @@ class _ProfileMainView extends HookConsumerWidget {
 
               // 2. Three Stat Tiles (Wins, Win Rate, Best Streak)
               ProfileStatTiles(wins: wins, winRate: winRate, bestStreak: bestStreak),
-              const SizedBox(height: 20.0),
+              const SizedBox(height: 14.0),
+
+              // 2b. Google Account Linking & Progress Sync Card
+              ProfileGoogleSyncCard(profile: profile),
+              const SizedBox(height: 18.0),
 
               // 3. WAITING ON YOU Section (if any matches require action)
               if (waitingMatches.isNotEmpty) ...[
