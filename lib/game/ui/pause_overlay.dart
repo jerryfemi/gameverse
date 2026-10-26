@@ -44,7 +44,7 @@ class PauseOverlay extends HookWidget {
 
     final trackName = AudioEngine.availableTracks.isNotEmpty
         ? AudioEngine.availableTracks[currentTrackIdx.clamp(0, AudioEngine.availableTracks.length - 1)].title
-        : 'Back Outside';
+        : 'Godzilla';
 
     Future<void> handleForfeit() async {
       final confirmed = await PauseForfeitDialog.show(context);
