@@ -725,12 +725,17 @@ class FirestoreMatchService {
   }
 
   /// Streams real-time chat messages from the match's messages subcollection.
-  Stream<List<CloudChatMessage>> streamMatchChat(String matchId) {
+  /// Limits to the last [limit] messages to avoid reading large historical chat logs.
+  Stream<List<CloudChatMessage>> streamMatchChat(
+    String matchId, {
+    int limit = 30,
+  }) {
     if (matchId.isEmpty) return Stream.value(const <CloudChatMessage>[]);
     return _matchesRef
         .doc(matchId)
         .collection('messages')
         .orderBy('timestamp', descending: false)
+        .limitToLast(limit)
         .snapshots()
         .map((snap) => snap.docs
             .map((doc) => CloudChatMessage.fromMap(doc.data()))
@@ -959,86 +964,83 @@ class FirestoreMatchService {
   List<CloudMatch> getCachedUserMatches(String userUid) =>
       _cachedUserMatches[userUid] ?? const [];
 
-  /// Streams the player's matches for the Match Inbox as one merged list.
+  /// Streams only active / waiting matches for the player in real time.
   ///
-  /// Two independent listeners so a growing trophy history can never crowd
-  /// live games out of the inbox:
-  /// - **Live**: every active / waiting match (naturally small).
-  /// - **History**: the 20 most recently finished (completed + forfeited),
-  ///   newest first. Needs the composite index in `firestore.indexes.json`;
-  ///   if it is missing, live matches keep working and the error (with the
-  ///   one-click index link) is printed to the console.
-  Stream<List<CloudMatch>> streamUserMatches(String userUid) {
+  /// Limits to the 20 most recent active matches. Completed/forfeited matches
+  /// are deliberately excluded so players don't pay continuous Firestore listener
+  /// read charges for static historical documents on every app open.
+  Stream<List<CloudMatch>> streamActiveMatches(
+    String userUid, {
+    int limit = 20,
+  }) {
     if (userUid.isEmpty) {
       return Stream.value(const <CloudMatch>[]);
     }
 
-    final liveQuery = _matchesRef
+    return _matchesRef
         .where('playerIds', arrayContains: userUid)
         .where('status', whereIn: [
           MatchStatus.active.key,
           MatchStatus.waitingForOpponent.key,
-        ]);
+        ])
+        .orderBy('updatedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) {
+          final matches =
+              snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+          _cachedUserMatches[userUid] = matches;
+          return matches;
+        })
+        .handleError((Object e) {
+          debugPrint('[FirestoreMatchService] Active matches stream error: $e');
+          return const <CloudMatch>[];
+        });
+  }
 
-    final historyQuery = _matchesRef
+  /// One-time cursor-paginated query for completed / forfeited matches.
+  ///
+  /// Only invoked on-demand when the user opens the Completed tab or scrolls
+  /// through match history. Returns the batch of [CloudMatch] documents along
+  /// with the last [DocumentSnapshot] cursor to support cursor-based pagination.
+  Future<({
+    List<CloudMatch> matches,
+    DocumentSnapshot<Map<String, dynamic>>? lastDoc,
+    bool hasMore,
+  })> fetchCompletedMatches(
+    String userUid, {
+    DocumentSnapshot<Map<String, dynamic>>? lastDoc,
+    int limit = 20,
+  }) async {
+    if (userUid.isEmpty) {
+      return (matches: const <CloudMatch>[], lastDoc: null, hasMore: false);
+    }
+
+    var query = _matchesRef
         .where('playerIds', arrayContains: userUid)
         .where('status', whereIn: [
           MatchStatus.completed.key,
           MatchStatus.forfeited.key,
         ])
         .orderBy('updatedAt', descending: true)
-        .limit(20);
+        .limit(limit);
 
-    List<CloudMatch>? liveMatches;
-    List<CloudMatch>? historyMatches;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? liveSub;
-    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? historySub;
-    late final StreamController<List<CloudMatch>> controller;
-
-    void emit() {
-      if (controller.isClosed) return;
-      if (liveMatches == null && historyMatches == null) return;
-      final merged = <CloudMatch>[...?liveMatches, ...?historyMatches]
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      _cachedUserMatches[userUid] = merged;
-      controller.add(merged);
+    if (lastDoc != null) {
+      query = query.startAfterDocument(lastDoc);
     }
 
-    controller = StreamController<List<CloudMatch>>(
-      onListen: () {
-        liveSub = liveQuery.snapshots().listen(
-          (snap) {
-            liveMatches =
-                snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-            emit();
-          },
-          onError: (Object e) {
-            debugPrint('[FirestoreMatchService] Live matches stream error: $e');
-            liveMatches ??= const [];
-            emit();
-          },
-        );
-        historySub = historyQuery.snapshots().listen(
-          (snap) {
-            historyMatches =
-                snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
-            emit();
-          },
-          onError: (Object e) {
-            // Most likely a missing composite index — the message contains the creation link.
-            debugPrint('[FirestoreMatchService] Match history stream error: $e');
-            historyMatches ??= const [];
-            emit();
-          },
-        );
-      },
-      onCancel: () async {
-        await liveSub?.cancel();
-        await historySub?.cancel();
-      },
-    );
+    final snap = await query.get();
+    final matches = snap.docs.map((d) => CloudMatch.fromFirestore(d)).toList();
+    final newLastDoc = snap.docs.isNotEmpty ? snap.docs.last : null;
+    final hasMore = snap.docs.length >= limit;
 
-    return controller.stream;
+    return (matches: matches, lastDoc: newLastDoc, hasMore: hasMore);
+  }
+
+  /// Legacy wrapper: streams active matches to keep older callers functioning
+  /// without triggering duplicate listener billing on completed games.
+  Stream<List<CloudMatch>> streamUserMatches(String userUid) {
+    return streamActiveMatches(userUid);
   }
 
   /// Broadcasts a live shot impulse micro-packet to the `live_shots` subcollection.
