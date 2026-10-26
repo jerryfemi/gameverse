@@ -133,9 +133,15 @@ class DartsResultCard extends HookConsumerWidget {
                 opacity: t.clamp(0.0, 1.0),
                 child: Transform.scale(scale: 0.9 + 0.1 * t, child: child),
               ),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 400.0),
-                child: Container(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.center,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 380.0,
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+                  ),
+                  child: Container(
                   padding: const EdgeInsets.fromLTRB(20.0, 0.0, 20.0, 20.0),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
@@ -566,6 +572,7 @@ class DartsResultCard extends HookConsumerWidget {
             ),
           ),
         ),
+      ),
       ],
     );
   }
