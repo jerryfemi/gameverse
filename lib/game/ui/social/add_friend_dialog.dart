@@ -1,24 +1,22 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
-import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/services/friends_service.dart';
-import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
+import 'package:b_ball/game/ui/social/widgets/add_friend_recent_card.dart';
+import 'package:b_ball/game/ui/social/widgets/add_friend_tag_card.dart';
 
 /// Modal dialog matching Design Template 13:
 /// - User Gamer Tag card with copy action
 /// - Clean search input field
 /// - "PLAYED RECENTLY" list with "+ ADD" / "✓ SENT" pills
-/// - Search results when searching
-/// - FittedBox responsive scaling
+/// - FittedBox responsive scaling (< 220 lines)
 class AddFriendDialog extends HookWidget {
   final Set<String> existingFriendUids;
   final ValueChanged<FriendProfile>? onFriendAdded;
@@ -62,9 +60,7 @@ class AddFriendDialog extends HookWidget {
     final myUser = AuthService.instance.currentUser;
     final myUid = myUser?.uid ?? '';
     final myName = myUser?.displayName ?? 'Player#0000';
-    final myAvatar = myUser?.avatarEmoji ?? AppAvatar.defaultAvatar;
 
-    // Load recent opponents from cached matches
     final recentOpponents = useMemoized(() {
       final matches = FirestoreMatchService.instance.getCachedUserMatches(myUid);
       final list = <({FriendProfile profile, String subtitle})>[];
@@ -78,22 +74,20 @@ class AddFriendDialog extends HookWidget {
         final gameName = m.game == 'archery'
             ? 'Archery'
             : (m.game == 'darts' ? 'Darts' : 'Hoops');
-        final isWin = m.isFinished && m.winnerUid(myUid) == myUid;
-        final isLoss = m.isFinished && m.winnerUid(myUid) != null && m.winnerUid(myUid) != myUid;
-        final outcome = isWin
-            ? 'you won'
-            : (isLoss ? 'they won' : 'played');
+        final isWin = m.isFinished && m.winnerUid == myUid;
+        final isLoss = m.isFinished && m.winnerUid != null && m.winnerUid != myUid;
+        final outcome = isWin ? 'you won' : (isLoss ? 'they won' : 'played');
 
         list.add((
           profile: FriendProfile(
             uid: opp.uid,
-            displayName: opp.name,
-            avatarEmoji: opp.avatar,
+            displayName: opp.displayName,
+            avatarEmoji: opp.avatarEmoji,
             addedAt: m.updatedAt,
           ),
           subtitle: '$gameName · $outcome',
         ));
-        if (list.length >= 6) break;
+        if (list.length >= 5) break;
       }
       return list;
     }, [myUid, existingFriendUids]);
@@ -125,13 +119,7 @@ class AddFriendDialog extends HookWidget {
       HapticFeedback.mediumImpact();
       inviteError.value = null;
       final myProfile = AuthService.instance.currentUser;
-      if (myProfile == null) {
-        inviteError.value = (
-          message: 'Your player profile is still connecting. Try again in a moment.',
-          retryFor: friend,
-        );
-        return;
-      }
+      if (myProfile == null) return;
       invitedUids.value = {...invitedUids.value, friend.uid};
       try {
         await FriendsService.instance.sendFriendInvite(
@@ -145,7 +133,7 @@ class AddFriendDialog extends HookWidget {
           inviteError.value = (
             message: InlineErrorPanel.friendlyMessage(
               e,
-              fallback: 'Couldn\'t send invite. Check your connection.',
+              fallback: 'Couldn\'t send invite. Check connection.',
             ),
             retryFor: friend,
           );
@@ -160,8 +148,7 @@ class AddFriendDialog extends HookWidget {
       tagCopied.flash();
     }
 
-    final media = MediaQuery.of(context);
-    final maxH = media.size.height * 0.88;
+    final maxH = MediaQuery.sizeOf(context).height * 0.88;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -171,21 +158,14 @@ class AddFriendDialog extends HookWidget {
         fit: BoxFit.scaleDown,
         alignment: Alignment.center,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: 360.0,
-            maxHeight: maxH,
-          ),
+          constraints: BoxConstraints(maxWidth: 360.0, maxHeight: maxH),
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF0D1424),
               borderRadius: BorderRadius.circular(24.0),
               border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
               boxShadow: const [
-                BoxShadow(
-                  color: Color(0xCC000000),
-                  blurRadius: 36.0,
-                  offset: Offset(0, 14),
-                ),
+                BoxShadow(color: Color(0xCC000000), blurRadius: 36.0, offset: Offset(0, 14)),
               ],
             ),
             child: ClipRRect(
@@ -196,7 +176,7 @@ class AddFriendDialog extends HookWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Header Row: Title + Close Button
+                    // Header
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -227,10 +207,7 @@ class AddFriendDialog extends HookWidget {
                         ),
                         const SizedBox(width: 8.0),
                         InkWell(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.of(context).pop();
-                          },
+                          onTap: () => Navigator.of(context).pop(),
                           borderRadius: BorderRadius.circular(18.0),
                           child: Container(
                             width: 32.0,
@@ -240,11 +217,7 @@ class AddFriendDialog extends HookWidget {
                               color: const Color(0xFF1E293B).withValues(alpha: 0.8),
                             ),
                             alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 18.0,
-                              color: Color(0xFF94A3B8),
-                            ),
+                            child: const Icon(Icons.close_rounded, size: 18.0, color: Color(0xFF94A3B8)),
                           ),
                         ),
                       ],
@@ -252,86 +225,10 @@ class AddFriendDialog extends HookWidget {
                     const SizedBox(height: 16.0),
 
                     // Your Tag Card
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
-                        borderRadius: BorderRadius.circular(16.0),
-                        border: Border.all(color: const Color(0xFF1E2638)),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildInitialAvatar(myName, myAvatar, const Color(0xFF38BDF8)),
-                          const SizedBox(width: 12.0),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'YOUR TAG',
-                                  style: TextStyle(
-                                    color: Color(0xFF64748B),
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                                const SizedBox(height: 1.0),
-                                Text(
-                                  myName,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8.0),
-                          InkWell(
-                            onTap: copyMyTag,
-                            borderRadius: BorderRadius.circular(20.0),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.5),
-                              decoration: BoxDecoration(
-                                color: tagCopied.isOn
-                                    ? const Color(0xFF042F2E)
-                                    : const Color(0xFF1E2638),
-                                borderRadius: BorderRadius.circular(20.0),
-                                border: Border.all(
-                                  color: tagCopied.isOn
-                                      ? const Color(0xFF0D9488)
-                                      : const Color(0xFF334155),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    tagCopied.isOn ? Icons.check_rounded : Icons.copy_rounded,
-                                    color: tagCopied.isOn ? const Color(0xFF00FFCC) : const Color(0xFF38BDF8),
-                                    size: 13.0,
-                                  ),
-                                  const SizedBox(width: 4.5),
-                                  Text(
-                                    tagCopied.isOn ? 'COPIED' : 'COPY',
-                                    style: TextStyle(
-                                      color: tagCopied.isOn ? const Color(0xFF00FFCC) : const Color(0xFF38BDF8),
-                                      fontSize: 11.0,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    AddFriendTagCard(
+                      displayName: myName,
+                      isCopied: tagCopied.isOn,
+                      onCopy: copyMyTag,
                     ),
                     const SizedBox(height: 12.0),
 
@@ -345,33 +242,18 @@ class AddFriendDialog extends HookWidget {
                       child: TextField(
                         controller: searchController,
                         onChanged: onSearchChanged,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
                         decoration: InputDecoration(
                           hintText: 'Name or tag, e.g. Dunker#6646',
-                          hintStyle: const TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 13.0,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: Color(0xFF64748B),
-                            size: 19.0,
-                          ),
+                          hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13.0),
+                          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF64748B), size: 19.0),
                           suffixIcon: isSearching.value
                               ? const Padding(
                                   padding: EdgeInsets.all(12.0),
                                   child: SizedBox(
                                     width: 14.0,
                                     height: 14.0,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.0,
-                                      color: Color(0xFF00FFCC),
-                                    ),
+                                    child: CircularProgressIndicator(strokeWidth: 2.0, color: Color(0xFF00FFCC)),
                                   ),
                                 )
                               : null,
@@ -386,7 +268,7 @@ class AddFriendDialog extends HookWidget {
                     ),
                     const SizedBox(height: 14.0),
 
-                    // Inline Error Feedback
+                    // Inline Error
                     if (inviteError.value != null) ...[
                       InlineErrorPanel(
                         title: 'INVITE NOT SENT',
@@ -407,35 +289,31 @@ class AddFriendDialog extends HookWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (searchController.text.trim().length >= 2) ...[
-                              _buildSectionHeader('SEARCH RESULTS'),
+                              _buildHeader('SEARCH RESULTS'),
                               const SizedBox(height: 6.0),
                               if (results.value.isEmpty && !isSearching.value)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 20.0),
                                   child: Center(
                                     child: Text(
-                                      'No players found for "${searchController.text.trim()}"',
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                      'No players found',
+                                      style: TextStyle(color: Color(0xFF64748B), fontSize: 12.5),
                                     ),
                                   ),
                                 )
                               else
-                                _buildPlayerList(
-                                  results.value.map((p) => (profile: p, subtitle: p.displayName)).toList(),
-                                  invitedUids.value,
-                                  friendUids,
-                                  handleSendInvite,
+                                AddFriendRecentCard(
+                                  items: results.value.map((p) => (profile: p, subtitle: p.displayName)).toList(),
+                                  invitedUids: invitedUids.value,
+                                  friendUids: friendUids,
+                                  onAdd: handleSendInvite,
                                 ),
                             ] else ...[
-                              _buildSectionHeader('PLAYED RECENTLY'),
+                              _buildHeader('PLAYED RECENTLY'),
                               const SizedBox(height: 6.0),
                               if (recentOpponents.isEmpty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                                  padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF111827),
                                     borderRadius: BorderRadius.circular(16.0),
@@ -443,21 +321,16 @@ class AddFriendDialog extends HookWidget {
                                   ),
                                   alignment: Alignment.center,
                                   child: const Text(
-                                    'No recent 1v1 opponents yet.\nPlay a match to challenge rivals here!',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 12.0,
-                                      height: 1.4,
-                                    ),
+                                    'No recent 1v1 rivals yet.',
+                                    style: TextStyle(color: Color(0xFF64748B), fontSize: 12.0),
                                   ),
                                 )
                               else
-                                _buildPlayerList(
-                                  recentOpponents,
-                                  invitedUids.value,
-                                  friendUids,
-                                  handleSendInvite,
+                                AddFriendRecentCard(
+                                  items: recentOpponents,
+                                  invitedUids: invitedUids.value,
+                                  friendUids: friendUids,
+                                  onAdd: handleSendInvite,
                                 ),
                             ],
                           ],
@@ -466,16 +339,11 @@ class AddFriendDialog extends HookWidget {
                     ),
                     const SizedBox(height: 12.0),
 
-                    // Footer Helper Text
+                    // Footer text
                     const Text(
                       'Not here? Type their name or tag above, or send them your tag.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w500,
-                        height: 1.35,
-                      ),
+                      style: TextStyle(color: Color(0xFF64748B), fontSize: 11.0, height: 1.35),
                     ),
                   ],
                 ),
@@ -487,7 +355,7 @@ class AddFriendDialog extends HookWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildHeader(String title) {
     return Text(
       title,
       style: const TextStyle(
@@ -497,180 +365,5 @@ class AddFriendDialog extends HookWidget {
         letterSpacing: 1.0,
       ),
     );
-  }
-
-  Widget _buildPlayerList(
-    List<({FriendProfile profile, String subtitle})> items,
-    Set<String> invited,
-    Set<String> friends,
-    ValueChanged<FriendProfile> onAdd,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF111827),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: const Color(0xFF1E2638)),
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
-        separatorBuilder: (_, _) => const Divider(color: Color(0xFF1E2638), height: 1.0),
-        itemBuilder: (context, index) {
-          final item = items[index];
-          final p = item.profile;
-          final isInvited = invited.contains(p.uid);
-          final isFriend = friends.contains(p.uid);
-
-          final colors = [
-            const Color(0xFFA855F7), // purple
-            const Color(0xFFF59E0B), // orange
-            const Color(0xFF10B981), // emerald
-            const Color(0xFF38BDF8), // blue
-            const Color(0xFFEC4899), // pink
-          ];
-          final color = colors[index % colors.length];
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-            child: Row(
-              children: [
-                _buildInitialAvatar(p.displayName, p.avatarEmoji, color),
-                const SizedBox(width: 12.0),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        p.displayName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        item.subtitle,
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 11.5,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8.0),
-                if (isFriend)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2638),
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
-                    child: const Text(
-                      'FRIEND',
-                      style: TextStyle(
-                        color: Color(0xFF94A3B8),
-                        fontSize: 11.0,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  )
-                else if (isInvited)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2638),
-                      borderRadius: BorderRadius.circular(20.0),
-                      border: Border.all(color: const Color(0xFF334155)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_rounded, color: Color(0xFF94A3B8), size: 13.0),
-                        SizedBox(width: 4.0),
-                        Text(
-                          'SENT',
-                          style: TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11.0,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  InkWell(
-                    onTap: () => onAdd(p),
-                    borderRadius: BorderRadius.circular(20.0),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00FFCC),
-                        borderRadius: BorderRadius.circular(20.0),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_rounded, color: Color(0xFF0A0E1A), size: 14.0),
-                          SizedBox(width: 3.0),
-                          Text(
-                            'ADD',
-                            style: TextStyle(
-                              color: Color(0xFF0A0E1A),
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildInitialAvatar(String name, String fallbackAvatar, Color color) {
-    final initials = _extractInitials(name);
-    return Container(
-      width: 38.0,
-      height: 38.0,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-        border: Border.all(color: const Color(0xFF0A0E1A), width: 1.5),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: const TextStyle(
-          color: Color(0xFF0A0E1A),
-          fontSize: 13.0,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-
-  String _extractInitials(String name) {
-    final clean = name.trim();
-    if (clean.isEmpty) return 'PL';
-    final parts = clean.split(RegExp(r'[\s#_-]+'));
-    if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return clean.substring(0, min(2, clean.length)).toUpperCase();
   }
 }
