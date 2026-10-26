@@ -143,8 +143,9 @@ class FlickController {
     final double dt = latest.time - speedFrom.time;
     if (dt < 0.012) return false;
 
-    // Height: average upward speed over the speed window.
-    final double upwardSpeed = -(latest.y - speedFrom.y) / (screenH * dt); // screen heights / s
+    // Height: average upward speed over the speed window, normalized by fixed flickRefHeight.
+    final double upwardSpeed =
+        -(latest.y - speedFrom.y) / (DartsK.flickRefHeight * dt);
     if (upwardSpeed < DartsK.minFlick) return false;
 
     // Left/right: extend the stroke up to the board's centre row and read
@@ -159,10 +160,16 @@ class FlickController {
     }
     final double pointMmX = (crossX - projection.boardCenterX) * projection.pxToMm;
 
+    // Vertical release bias: subtle intuitive height offset if finger released higher/lower than rest
+    final double releaseDy = projection.handY - latest.y;
+    final double releaseOffsetMmY = (releaseDy * DartsK.flickReleaseBiasGain)
+        .clamp(-DartsK.flickMaxReleaseBiasMm, DartsK.flickMaxReleaseBiasMm);
+
     final target = FlickSolver.targetForFlick(
       releaseMmX: pointMmX,
       upwardSpeed: upwardSpeed,
       angleDeg: 0.0, // direction is already in pointMmX
+      releaseOffsetMmY: releaseOffsetMmY,
     );
     final assisted = FlickSolver.assist(target.x, target.y);
     lastTargetMmX = assisted.x;

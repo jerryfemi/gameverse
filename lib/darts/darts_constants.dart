@@ -57,18 +57,32 @@ abstract final class DartsK {
   static const double dtClamp = 0.05;
 
   // ─── Flick & Throw Gesture (pure flick, no aim preview) ────────────────────
-  /// Minimum upward flick speed required to trigger a throw (screen heights / s).
+  /// Reference screen height for flick velocity normalization (logical px).
+  /// Normalizing against a fixed reference instead of dynamic screen height
+  /// ensures consistent flick effort across phones, tablets, portrait, and landscape.
+  static const double flickRefHeight = 800.0;
+
+  /// Minimum upward flick speed required to trigger a throw (reference heights / s).
   /// Releasing below this speed drops the dart back into the hand with no penalty.
-  static const double minFlick = 1.20;
+  static const double minFlick = 0.90;
 
-  /// Upward flick speed (screen heights / s) that sends the dart to bull height.
-  /// Tuned to GamePigeon so a natural casual flick lands around the center.
-  static const double flickRefSpeed = 4.8;
+  /// Upward flick speed (reference heights / s) that sends the dart to bull height.
+  /// 2.4 ref heights / s ≈ 1,920 px/s (natural casual flick).
+  static const double flickRefSpeed = 2.4;
 
-  /// Board millimetres of height per 1.0 of flick speed relative to
-  /// [flickRefSpeed]. Allows a wide playable range where deliberate hard
-  /// snaps reach Treble/Double 20 without overshooting the board on normal flicks.
-  static const double flickHeightMmPerUnit = 170.0;
+  /// Board millimetres of height per 1.0 of flick speed relative to [flickRefSpeed].
+  /// At 240.0:
+  /// - Bull (0mm): speed = 2.4 (1,920 px/s)
+  /// - Treble 20 (+103mm): speed = 3.43 (2,744 px/s) -> firm flick
+  /// - Double 20 (+166mm): speed = 4.06 (3,248 px/s) -> snappy flick
+  /// - Overshoot top wire (> +200mm): speed > 4.40 (> 3,520 px/s) -> miss/bust
+  static const double flickHeightMmPerUnit = 240.0;
+
+  /// Multiplier converting vertical finger displacement from rest into board mm height bias.
+  static const double flickReleaseBiasGain = 0.12;
+
+  /// Maximum vertical height offset (mm) contributed by finger release position.
+  static const double flickMaxReleaseBiasMm = 30.0;
 
   /// Swipe direction and speed are read over this much of the end of the
   /// swipe (seconds). Long enough to ignore the thumb's curl at release.

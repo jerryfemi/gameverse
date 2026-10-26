@@ -79,6 +79,7 @@ abstract final class FlickSolver {
     required double releaseMmX,
     required double upwardSpeed,
     required double angleDeg,
+    double releaseOffsetMmY = 0.0,
   }) {
     // Sideways drift past a small dead zone (a thumb never swipes perfectly
     // straight, so tiny curves are forgiven).
@@ -91,7 +92,8 @@ abstract final class FlickSolver {
 
     // Height from speed: the reference flick lands at bull height.
     final double height =
-        (upwardSpeed / DartsK.flickRefSpeed - 1.0) * DartsK.flickHeightMmPerUnit;
+        (upwardSpeed / DartsK.flickRefSpeed - 1.0) * DartsK.flickHeightMmPerUnit +
+        releaseOffsetMmY;
 
     const double m = DartsK.flickMaxAimMm;
     return (
