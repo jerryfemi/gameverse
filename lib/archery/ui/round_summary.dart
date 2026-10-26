@@ -101,10 +101,15 @@ class _SetEndCardState extends State<SetEndCard> {
               ? 'YOU +${ArcheryRules.pointsForSetWin} SET POINTS'
               : '${w.opponent.name.toUpperCase()} +${ArcheryRules.pointsForSetWin} SET POINTS');
 
+    final maxH = MediaQuery.sizeOf(context).height * 0.90;
+
     return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 400.0),
-        child: Container(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: 380.0, maxHeight: maxH),
+          child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 14.0),
           padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 18.0),
           decoration: BoxDecoration(
@@ -253,7 +258,8 @@ class _SetEndCardState extends State<SetEndCard> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
