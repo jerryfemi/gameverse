@@ -1,19 +1,24 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
+import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/services/firestore_match_service.dart';
 import 'package:b_ball/services/friends_service.dart';
 import 'package:b_ball/game/ui/common/app_avatar.dart';
-import 'package:b_ball/game/ui/common/app_modal_dialog.dart';
-import 'package:b_ball/game/ui/common/app_text_field.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
 
-/// Modal dialog to search and add friends by display name or player tag,
-/// and share one's own tag with others.
+/// Modal dialog matching Design Template 13:
+/// - User Gamer Tag card with copy action
+/// - Clean search input field
+/// - "PLAYED RECENTLY" list with "+ ADD" / "✓ SENT" pills
+/// - Search results when searching
+/// - FittedBox responsive scaling
 class AddFriendDialog extends HookWidget {
   final Set<String> existingFriendUids;
   final ValueChanged<FriendProfile>? onFriendAdded;
@@ -29,8 +34,9 @@ class AddFriendDialog extends HookWidget {
     required Set<String> existingFriendUids,
     ValueChanged<FriendProfile>? onFriendAdded,
   }) {
-    return AppModalDialog.show<void>(
+    return showDialog<void>(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (ctx) => AddFriendDialog(
         existingFriendUids: existingFriendUids,
         onFriendAdded: onFriendAdded,
@@ -45,14 +51,52 @@ class AddFriendDialog extends HookWidget {
     final results = useState<List<FriendProfile>>([]);
     final isSearching = useState<bool>(false);
     final invitedUids = useState<Set<String>>({});
-    // Inline invite failure (+ who to retry for) and transient "tag copied" badge.
-    final inviteError =
-        useState<({String message, FriendProfile? retryFor})?>(null);
+    final inviteError = useState<({String message, FriendProfile? retryFor})?>(null);
     final tagCopied = useFlashFlag();
+
     final friendUids = useMemoized(
       () => Set<String>.from(existingFriendUids),
       [existingFriendUids],
     );
+
+    final myUser = AuthService.instance.currentUser;
+    final myUid = myUser?.uid ?? '';
+    final myName = myUser?.displayName ?? 'Player#0000';
+    final myAvatar = myUser?.avatarEmoji ?? AppAvatar.defaultAvatar;
+
+    // Load recent opponents from cached matches
+    final recentOpponents = useMemoized(() {
+      final matches = FirestoreMatchService.instance.getCachedUserMatches(myUid);
+      final list = <({FriendProfile profile, String subtitle})>[];
+      final seenUids = <String>{myUid, ...existingFriendUids};
+
+      for (final m in matches) {
+        final opp = m.opponentPlayer(myUid);
+        if (opp == null || opp.uid.isEmpty || seenUids.contains(opp.uid)) continue;
+        seenUids.add(opp.uid);
+
+        final gameName = m.game == 'archery'
+            ? 'Archery'
+            : (m.game == 'darts' ? 'Darts' : 'Hoops');
+        final isWin = m.isFinished && m.winnerUid(myUid) == myUid;
+        final isLoss = m.isFinished && m.winnerUid(myUid) != null && m.winnerUid(myUid) != myUid;
+        final outcome = isWin
+            ? 'you won'
+            : (isLoss ? 'they won' : 'played');
+
+        list.add((
+          profile: FriendProfile(
+            uid: opp.uid,
+            displayName: opp.name,
+            avatarEmoji: opp.avatar,
+            addedAt: m.updatedAt,
+          ),
+          subtitle: '$gameName · $outcome',
+        ));
+        if (list.length >= 6) break;
+      }
+      return list;
+    }, [myUid, existingFriendUids]);
 
     useEffect(() {
       return () => debounceTimer.value?.cancel();
@@ -69,7 +113,6 @@ class AddFriendDialog extends HookWidget {
 
       isSearching.value = true;
       debounceTimer.value = Timer(const Duration(milliseconds: 350), () async {
-        final myUid = AuthService.instance.currentUser?.uid ?? '';
         final res = await FriendsService.instance.searchUsers(query, myUid);
         if (context.mounted) {
           results.value = res;
@@ -89,22 +132,20 @@ class AddFriendDialog extends HookWidget {
         );
         return;
       }
-      // Optimistically mark as invited — the row's own "invited" state is the
-      // success confirmation, so no extra toast is needed.
       invitedUids.value = {...invitedUids.value, friend.uid};
       try {
         await FriendsService.instance.sendFriendInvite(
           targetUid: friend.uid,
           myProfile: myProfile,
         );
+        onFriendAdded?.call(friend);
       } catch (e) {
-        // Revert optimistic update and show the failure inline with RETRY.
         invitedUids.value = {...invitedUids.value}..remove(friend.uid);
         if (context.mounted) {
           inviteError.value = (
             message: InlineErrorPanel.friendlyMessage(
               e,
-              fallback: 'Couldn\'t send the invite. Check your connection.',
+              fallback: 'Couldn\'t send invite. Check your connection.',
             ),
             retryFor: friend,
           );
@@ -113,291 +154,523 @@ class AddFriendDialog extends HookWidget {
     }
 
     void copyMyTag() {
-      final user = AuthService.instance.currentUser;
-      if (user == null) return;
-      Clipboard.setData(ClipboardData(text: user.displayName));
+      if (myUser == null) return;
+      Clipboard.setData(ClipboardData(text: myUser.displayName));
       HapticFeedback.lightImpact();
       tagCopied.flash();
     }
-    final myUser = AuthService.instance.currentUser;
-    final myName = myUser?.displayName ?? 'Player';
-    final myAvatar =
-        myUser?.avatarEmoji ?? AppAvatar.defaultAvatar;
 
-    return AppModalDialog(
-      maxWidth: 380,
-      iconWidget: const Icon(
-        Icons.person_add_rounded,
-        color: Color(0xFF38BDF8),
-        size: 20,
-      ),
-      title: 'ADD FRIEND',
-      showCloseButton: true,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    final media = MediaQuery.of(context);
+    final maxH = media.size.height * 0.88;
 
-              // Player tag card
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+      elevation: 0,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.center,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 360.0,
+            maxHeight: maxH,
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D1424),
+              borderRadius: BorderRadius.circular(24.0),
+              border: Border.all(color: const Color(0xFF1E293B), width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0xCC000000),
+                  blurRadius: 36.0,
+                  offset: Offset(0, 14),
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E2638),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF334155)),
-                ),
-                child: Row(
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24.0),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20.0, 18.0, 20.0, 18.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    AppAvatar(avatar: myAvatar, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'YOUR PLAYER TAG',
-                            style: TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
+                    // Header Row: Title + Close Button
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Add friend',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22.0,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              SizedBox(height: 3.0),
+                              Text(
+                                'Friends can challenge you straight from the lobby',
+                                style: TextStyle(
+                                  color: Color(0xFF94A3B8),
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        InkWell(
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(context).pop();
+                          },
+                          borderRadius: BorderRadius.circular(18.0),
+                          child: Container(
+                            width: 32.0,
+                            height: 32.0,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.8),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(
+                              Icons.close_rounded,
+                              size: 18.0,
+                              color: Color(0xFF94A3B8),
                             ),
                           ),
-                          Text(
-                            myName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16.0),
+
+                    // Your Tag Card
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF111827),
+                        borderRadius: BorderRadius.circular(16.0),
+                        border: Border.all(color: const Color(0xFF1E2638)),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildInitialAvatar(myName, myAvatar, const Color(0xFF38BDF8)),
+                          const SizedBox(width: 12.0),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'YOUR TAG',
+                                  style: TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 1.0),
+                                Text(
+                                  myName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8.0),
+                          InkWell(
+                            onTap: copyMyTag,
+                            borderRadius: BorderRadius.circular(20.0),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.5),
+                              decoration: BoxDecoration(
+                                color: tagCopied.isOn
+                                    ? const Color(0xFF042F2E)
+                                    : const Color(0xFF1E2638),
+                                borderRadius: BorderRadius.circular(20.0),
+                                border: Border.all(
+                                  color: tagCopied.isOn
+                                      ? const Color(0xFF0D9488)
+                                      : const Color(0xFF334155),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    tagCopied.isOn ? Icons.check_rounded : Icons.copy_rounded,
+                                    color: tagCopied.isOn ? const Color(0xFF00FFCC) : const Color(0xFF38BDF8),
+                                    size: 13.0,
+                                  ),
+                                  const SizedBox(width: 4.5),
+                                  Text(
+                                    tagCopied.isOn ? 'COPIED' : 'COPY',
+                                    style: TextStyle(
+                                      color: tagCopied.isOn ? const Color(0xFF00FFCC) : const Color(0xFF38BDF8),
+                                      fontSize: 11.0,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    InlineFeedbackSwitcher(
-                      child: tagCopied.isOn
-                          ? const CopiedBadge(
-                              key: ValueKey('tag-copied'),
-                              visible: true,
-                              label: '✓ TAG COPIED',
-                            )
-                          : InkWell(
-                      key: const ValueKey('tag-copy'),
-                      onTap: copyMyTag,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                    const SizedBox(height: 12.0),
+
+                    // Search Input
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF090E1A),
+                        borderRadius: BorderRadius.circular(14.0),
+                        border: Border.all(color: const Color(0xFF1E2638)),
+                      ),
+                      child: TextField(
+                        controller: searchController,
+                        onChanged: onSearchChanged,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
                         ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2E3954),
-                          borderRadius: BorderRadius.circular(8),
+                        decoration: InputDecoration(
+                          hintText: 'Name or tag, e.g. Dunker#6646',
+                          hintStyle: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            color: Color(0xFF64748B),
+                            size: 19.0,
+                          ),
+                          suffixIcon: isSearching.value
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12.0),
+                                  child: SizedBox(
+                                    width: 14.0,
+                                    height: 14.0,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.0,
+                                      color: Color(0xFF00FFCC),
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                          border: InputBorder.none,
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14.0),
+                            borderSide: const BorderSide(color: Color(0xFF00FFCC), width: 1.5),
+                          ),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                      ),
+                    ),
+                    const SizedBox(height: 14.0),
+
+                    // Inline Error Feedback
+                    if (inviteError.value != null) ...[
+                      InlineErrorPanel(
+                        title: 'INVITE NOT SENT',
+                        message: inviteError.value!.message,
+                        onRetry: inviteError.value!.retryFor == null
+                            ? null
+                            : () => handleSendInvite(inviteError.value!.retryFor!),
+                        onDismiss: () => inviteError.value = null,
+                      ),
+                      const SizedBox(height: 10.0),
+                    ],
+
+                    // Search Results or Played Recently
+                    Flexible(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(
-                              Icons.copy_rounded,
-                              color: Color(0xFF38BDF8),
-                              size: 14,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'COPY',
-                              style: TextStyle(
-                                color: Color(0xFF38BDF8),
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
+                            if (searchController.text.trim().length >= 2) ...[
+                              _buildSectionHeader('SEARCH RESULTS'),
+                              const SizedBox(height: 6.0),
+                              if (results.value.isEmpty && !isSearching.value)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                                  child: Center(
+                                    child: Text(
+                                      'No players found for "${searchController.text.trim()}"',
+                                      style: const TextStyle(
+                                        color: Color(0xFF64748B),
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                _buildPlayerList(
+                                  results.value.map((p) => (profile: p, subtitle: p.displayName)).toList(),
+                                  invitedUids.value,
+                                  friendUids,
+                                  handleSendInvite,
+                                ),
+                            ] else ...[
+                              _buildSectionHeader('PLAYED RECENTLY'),
+                              const SizedBox(height: 6.0),
+                              if (recentOpponents.isEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF111827),
+                                    borderRadius: BorderRadius.circular(16.0),
+                                    border: Border.all(color: const Color(0xFF1E2638)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Text(
+                                    'No recent 1v1 opponents yet.\nPlay a match to challenge rivals here!',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFF64748B),
+                                      fontSize: 12.0,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                )
+                              else
+                                _buildPlayerList(
+                                  recentOpponents,
+                                  invitedUids.value,
+                                  friendUids,
+                                  handleSendInvite,
+                                ),
+                            ],
                           ],
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12.0),
+
+                    // Footer Helper Text
+                    const Text(
+                      'Not here? Type their name or tag above, or send them your tag.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 11.0,
+                        fontWeight: FontWeight.w500,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              // Search field
-              AppTextField(
-                controller: searchController,
-                onChanged: onSearchChanged,
-                hintText: "Enter friend's name or tag...",
-                prefixIcon: const Icon(
-                  Icons.search_rounded,
-                  color: Color(0xFF64748B),
-                  size: 20,
-                ),
-                suffixIcon: isSearching.value
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF38BDF8),
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 12),
-
-              // Inline invite failure (replaces floating SnackBars)
-              InlineFeedbackSwitcher(
-                child: inviteError.value == null
-                    ? const SizedBox.shrink(key: ValueKey('no-invite-error'))
-                    : Padding(
-                        key: const ValueKey('invite-error'),
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: InlineErrorPanel(
-                          title: 'INVITE NOT SENT',
-                          message: inviteError.value!.message,
-                          onRetry: inviteError.value!.retryFor == null
-                              ? null
-                              : () => handleSendInvite(
-                                    inviteError.value!.retryFor!,
-                                  ),
-                          onDismiss: () => inviteError.value = null,
-                        ),
-                      ),
-              ),
-
-              // Search results list
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 200),
-                child: results.value.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: Text(
-                            searchController.text.trim().isEmpty
-                                ? 'Search by username above to add friends'
-                                : isSearching.value
-                                ? 'Searching players...'
-                                : 'No players found matching "${searchController.text}"',
-                            style: const TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      )
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: results.value.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 8),
-                        itemBuilder: (context, index) {
-                          final friend = results.value[index];
-                          final isAlreadyFriend = friendUids.contains(
-                            friend.uid,
-                          );
-
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1A2234),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF2E3954),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                AppAvatar(avatar: friend.avatarEmoji, size: 22),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    friend.displayName,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13.5,
-                                    ),
-                                  ),
-                                ),
-                                if (isAlreadyFriend)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF10B981)
-                                          .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'FRIENDS ✓',
-                                      style: TextStyle(
-                                        color: Color(0xFF10B981),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  )
-                                else if (invitedUids.value.contains(friend.uid))
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF59E0B)
-                                          .withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Text(
-                                      'INVITED ⏳',
-                                      style: TextStyle(
-                                        color: Color(0xFFF59E0B),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  )
-                                else
-                                  InkWell(
-                                    onTap: () => handleSendInvite(friend),
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF38BDF8),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        'INVITE +',
-                                        style: TextStyle(
-                                          color: Color(0xFF0F172A),
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
+            ),
           ),
-        );
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Color(0xFF64748B),
+        fontSize: 10.5,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.0,
+      ),
+    );
+  }
+
+  Widget _buildPlayerList(
+    List<({FriendProfile profile, String subtitle})> items,
+    Set<String> invited,
+    Set<String> friends,
+    ValueChanged<FriendProfile> onAdd,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: const Color(0xFF1E2638)),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const Divider(color: Color(0xFF1E2638), height: 1.0),
+        itemBuilder: (context, index) {
+          final item = items[index];
+          final p = item.profile;
+          final isInvited = invited.contains(p.uid);
+          final isFriend = friends.contains(p.uid);
+
+          final colors = [
+            const Color(0xFFA855F7), // purple
+            const Color(0xFFF59E0B), // orange
+            const Color(0xFF10B981), // emerald
+            const Color(0xFF38BDF8), // blue
+            const Color(0xFFEC4899), // pink
+          ];
+          final color = colors[index % colors.length];
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+            child: Row(
+              children: [
+                _buildInitialAvatar(p.displayName, p.avatarEmoji, color),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        p.displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2.0),
+                      Text(
+                        item.subtitle,
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 11.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8.0),
+                if (isFriend)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2638),
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    child: const Text(
+                      'FRIEND',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 11.0,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  )
+                else if (isInvited)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E2638),
+                      borderRadius: BorderRadius.circular(20.0),
+                      border: Border.all(color: const Color(0xFF334155)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_rounded, color: Color(0xFF94A3B8), size: 13.0),
+                        SizedBox(width: 4.0),
+                        Text(
+                          'SENT',
+                          style: TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11.0,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  InkWell(
+                    onTap: () => onAdd(p),
+                    borderRadius: BorderRadius.circular(20.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00FFCC),
+                        borderRadius: BorderRadius.circular(20.0),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded, color: Color(0xFF0A0E1A), size: 14.0),
+                          SizedBox(width: 3.0),
+                          Text(
+                            'ADD',
+                            style: TextStyle(
+                              color: Color(0xFF0A0E1A),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildInitialAvatar(String name, String fallbackAvatar, Color color) {
+    final initials = _extractInitials(name);
+    return Container(
+      width: 38.0,
+      height: 38.0,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        border: Border.all(color: const Color(0xFF0A0E1A), width: 1.5),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: const TextStyle(
+          color: Color(0xFF0A0E1A),
+          fontSize: 13.0,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  String _extractInitials(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'PL';
+    final parts = clean.split(RegExp(r'[\s#_-]+'));
+    if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return clean.substring(0, min(2, clean.length)).toUpperCase();
   }
 }
