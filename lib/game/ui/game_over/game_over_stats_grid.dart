@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:b_ball/game/basketball_game.dart';
 
-/// 2x2 grid displaying shooting statistics at the end of a round.
+/// 2x2 grid displaying 4 distinct stat cards matching Design Template 20:
+/// - FIELD GOALS ([made]/[total], [acc]% accuracy)
+/// - BEST STREAK (x[streak], on fire at 6+)
+/// - SWISHES ([count], +3 each)
+/// - BANK SHOTS ([count], +3 each)
 class GameOverStatsGrid extends StatelessWidget {
   final GameRoundStats stats;
 
@@ -13,81 +17,59 @@ class GameOverStatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14.0),
-      decoration: BoxDecoration(
-        color: const Color(0x40020617),
-        borderRadius: BorderRadius.circular(18.0),
-        border: Border.all(
-          color: const Color(0x20FFFFFF),
-          width: 1.0,
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: GameOverStatCard(
+                label: 'FIELD GOALS',
+                value: '${stats.madeShots}/${stats.totalShots}',
+                subtitle: '${stats.accuracy.round()}% accuracy',
+              ),
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: GameOverStatCard(
+                label: 'BEST STREAK',
+                value: 'x${stats.bestStreak}',
+                subtitle: stats.bestStreak >= 6 ? 'on fire at 6+' : 'streak bonus',
+              ),
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: GameOverStatTile(
-                  label: 'FIELD GOALS',
-                  value: '${stats.madeShots}/${stats.totalShots}',
-                  subtitle: '${stats.accuracy.toStringAsFixed(0)}% ACC',
-                ),
+        const SizedBox(height: 10.0),
+        Row(
+          children: [
+            Expanded(
+              child: GameOverStatCard(
+                label: 'SWISHES',
+                value: '${stats.swishCount}',
+                subtitle: '+3 each',
               ),
-              Container(
-                width: 1.0,
-                height: 38.0,
-                color: const Color(0x20FFFFFF),
+            ),
+            const SizedBox(width: 10.0),
+            Expanded(
+              child: GameOverStatCard(
+                label: 'BANK SHOTS',
+                value: '${stats.bankCount}',
+                subtitle: '+3 each',
               ),
-              Expanded(
-                child: GameOverStatTile(
-                  label: 'BEST STREAK',
-                  value: '⚡ x${stats.bestStreak}',
-                  subtitle: stats.bestStreak >= 3 ? 'ON FIRE' : 'IN A ROW',
-                ),
-              ),
-            ],
-          ),
-          const Divider(
-            color: Color(0x20FFFFFF),
-            height: 20.0,
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: GameOverStatTile(
-                  label: 'SWISHES (+3)',
-                  value: '🔥 ${stats.swishCount}',
-                  subtitle: 'CLEAN NET',
-                ),
-              ),
-              Container(
-                width: 1.0,
-                height: 38.0,
-                color: const Color(0x20FFFFFF),
-              ),
-              Expanded(
-                child: GameOverStatTile(
-                  label: 'BANK SHOTS (+3)',
-                  value: '🎯 ${stats.bankCount}',
-                  subtitle: 'OFF GLASS',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-/// Individual statistic metric display tile.
-class GameOverStatTile extends StatelessWidget {
+/// Individual statistic card container.
+class GameOverStatCard extends StatelessWidget {
   final String label;
   final String value;
   final String subtitle;
 
-  const GameOverStatTile({
+  const GameOverStatCard({
     super.key,
     required this.label,
     required this.value,
@@ -96,37 +78,47 @@ class GameOverStatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
-            fontSize: 9.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.0,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: const Color(0xFF1E2638)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 10.0,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+            ),
           ),
-        ),
-        const SizedBox(height: 2.0),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16.0,
-            fontWeight: FontWeight.w900,
+          const SizedBox(height: 4.0),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22.0,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.3,
+            ),
           ),
-        ),
-        const SizedBox(height: 1.0),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontSize: 8.5,
-            fontWeight: FontWeight.w700,
+          const SizedBox(height: 2.0),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
