@@ -226,7 +226,7 @@ class DartsGameScreen extends HookConsumerWidget {
           context,
           onCreateMatch: () => DartsChallenge.start(context, showGamePicker: true),
         ),
-        onPlayFriend: () => DartsChallenge.start(context),
+        onPlayFriend: () => DartsChallenge.start(context, showGamePicker: true),
         onHowToPlay: isOnline ? null : () => showTour.value = true,
       );
     }

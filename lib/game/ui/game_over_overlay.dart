@@ -99,7 +99,7 @@ class GameOverOverlay extends HookWidget {
                           GameOverActions(
                             onPlayAgain: () => game.exitToSoloMode(),
                             onReplay: hasReplay ? () => game.startReplayMode() : null,
-                            onPlay1v1: () => MatchInboxSheet.openWithGame(
+                            onPlay1v1: () => MatchInboxSheet.playAFriend(
                               context,
                               game: game,
                             ),

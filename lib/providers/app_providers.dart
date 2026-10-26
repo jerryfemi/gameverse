@@ -75,8 +75,16 @@ final activeMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref)
   return matchService.streamActiveMatches(user.uid);
 });
 
-/// Backwards-compatible alias to [activeMatchesProvider].
-final userMatchesProvider = activeMatchesProvider;
+/// Streams all remote matches (active and recent completed) for computing profile stats,
+/// head-to-head records, and match history.
+final userMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
+  final user = ref.watch(currentUserProfileProvider).value;
+  if (user == null || user.uid.isEmpty) {
+    return Stream.value(const <CloudMatch>[]);
+  }
+  final matchService = ref.watch(matchServiceProvider);
+  return matchService.streamUserMatches(user.uid);
+});
 
 // ==========================================
 // 4. Social Friends & Invites Stream Providers
