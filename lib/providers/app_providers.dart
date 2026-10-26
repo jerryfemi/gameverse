@@ -64,15 +64,19 @@ final currentUserProfileProvider = StreamProvider.autoDispose<UserProfile?>((ref
 // 3. User Matches Stream Provider
 // ==========================================
 
-/// Streams all remote matches (active and completed) for the authenticated player.
-final userMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
+/// Streams active and waiting remote matches for the authenticated player in real time.
+/// Limited to 20 to avoid paying continuous listener charges for stale/finished games.
+final activeMatchesProvider = StreamProvider.autoDispose<List<CloudMatch>>((ref) {
   final user = ref.watch(currentUserProfileProvider).value;
   if (user == null || user.uid.isEmpty) {
     return Stream.value(const <CloudMatch>[]);
   }
   final matchService = ref.watch(matchServiceProvider);
-  return matchService.streamUserMatches(user.uid);
+  return matchService.streamActiveMatches(user.uid);
 });
+
+/// Backwards-compatible alias to [activeMatchesProvider].
+final userMatchesProvider = activeMatchesProvider;
 
 // ==========================================
 // 4. Social Friends & Invites Stream Providers
@@ -190,7 +194,7 @@ final scoreboardAlertStateProvider =
   final readReceipts = ref.watch(chatReadReceiptServiceProvider);
   final invites = ref.watch(incomingInvitesProvider).value ?? const [];
   final challenges = ref.watch(incomingMatchChallengesProvider).value ?? const [];
-  final matches = ref.watch(userMatchesProvider).value ?? const [];
+  final matches = ref.watch(activeMatchesProvider).value ?? const [];
   final conversations =
       ref.watch(userDirectConversationsProvider).value ?? const [];
 
