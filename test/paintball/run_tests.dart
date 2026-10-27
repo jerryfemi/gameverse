@@ -2,6 +2,8 @@
 import 'package:b_ball/paintball/paintball_constants.dart';
 import 'package:b_ball/paintball/logic/ball_trajectory.dart';
 import 'package:b_ball/paintball/logic/hit_resolver.dart';
+import 'package:b_ball/paintball/logic/match_state.dart';
+import 'package:b_ball/paintball/logic/bot_brain.dart';
 
 void expect(dynamic actual, dynamic expected, [String? message]) {
   if (actual != expected) {
@@ -214,6 +216,107 @@ void main() {
     final res = HitResolver.resolveAtTargetLane(targetLane: 2, aimY: 0.60, target: target);
     expectFalse(res.isHit);
     expect(res.outcome, PaintballHitOutcome.invulnerable);
+  });
+
+  // Group 4: PaintballPlayerState & PaintballMatchState
+  print('\n[Group: PaintballPlayerState & Match Flow]');
+  runTest('player sliding advances progress and lands on destination lane', () {
+    final player = PaintballPlayerState();
+    expect(player.lane, 2);
+    expectTrue(player.trySlide(1)); // slide right to 3
+    expectTrue(player.isSliding);
+    expectFalse(player.canFire);
+
+    // Halfway
+    player.tick(PaintballK.slideDurationSeconds * 0.5);
+    expectTrue(player.isSliding);
+    expectClose(player.slideProgress, 0.5, 0.01);
+
+    // Complete
+    player.tick(PaintballK.slideDurationSeconds * 0.5);
+    expectFalse(player.isSliding);
+    expect(player.lane, 3);
+    expectTrue(player.canFire);
+  });
+
+  runTest('firing consumes ammo and tracks shotsFired', () {
+    final player = PaintballPlayerState();
+    expectTrue(player.tryFire());
+    expect(player.ammo, 4);
+    expect(player.shotsFired, 1);
+  });
+
+  runTest('ducking automatically reloads ammo +1 every 0.4s up to 5', () {
+    final player = PaintballPlayerState()..ammo = 3;
+    player.tryChangeStance(PaintballStance.duck);
+    expectFalse(player.canFire);
+
+    player.tick(PaintballK.reloadIntervalPerBallSeconds);
+    expect(player.ammo, 4);
+
+    player.tick(PaintballK.reloadIntervalPerBallSeconds);
+    expect(player.ammo, 5);
+
+    // Caps at maxAmmo
+    player.tick(PaintballK.reloadIntervalPerBallSeconds);
+    expect(player.ammo, 5);
+  });
+
+  runTest('taking 3 hits eliminates player and declares match winner', () {
+    final match = PaintballMatchState();
+    match.startMatch();
+    match.phase = PaintballMatchPhase.live;
+
+    match.opponent.applyDamage();
+    match.opponent.tick(PaintballK.hitInvulnerabilitySeconds);
+    match.opponent.applyDamage();
+    match.opponent.tick(PaintballK.hitInvulnerabilitySeconds);
+    match.opponent.applyDamage();
+
+    expectTrue(match.opponent.isEliminated);
+    match.tick(0.016);
+    expect(match.phase, PaintballMatchPhase.gameOver);
+    expect(match.winner, PaintballWinner.you);
+  });
+
+  // Group 5: PaintballBotBrain
+  print('\n[Group: PaintballBotBrain AI]');
+  runTest('bot prioritizes ducking to reload when ammo is empty', () {
+    final brain = PaintballBotBrain(seed: 99, minDecisionInterval: 0.1, maxDecisionInterval: 0.1);
+    final bot = PaintballPlayerState()..ammo = 0;
+    final opponent = PaintballPlayerState();
+
+    final action = brain.tick(dt: 0.2, bot: bot, opponent: opponent);
+    expectTrue(action is BotStanceAction);
+    expect((action as BotStanceAction).stance, PaintballStance.duck);
+  });
+
+  runTest('bot defensively ducks incoming lethal projectile after reaction delay', () {
+    final brain = PaintballBotBrain(
+      seed: 123,
+      minReactionDelay: 0.25,
+      maxReactionDelay: 0.25,
+      failToDuckChance: 0.0,
+    );
+    final bot = PaintballPlayerState()..lane = 2..stance = PaintballStance.stand;
+    final opponent = PaintballPlayerState();
+
+    final incoming = [
+      IncomingProjectile(
+        targetLane: 2,
+        heightY: 0.65,
+        flightTimeRemaining: 0.40,
+      ),
+    ];
+
+    // During reaction delay: no action yet
+    var action = brain.tick(dt: 0.10, bot: bot, opponent: opponent, incomingProjectiles: incoming);
+    expect(action, null);
+
+    // Delay expired: bot ducks!
+    action = brain.tick(dt: 0.20, bot: bot, opponent: opponent, incomingProjectiles: incoming);
+    expectTrue(action is BotStanceAction);
+    expect((action as BotStanceAction).stance, PaintballStance.duck);
   });
 
   print('\n=== ALL $passed PAINTBALL TESTS PASSED SUCCESSFULLY! ===\n');
