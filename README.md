@@ -152,6 +152,6 @@ See `PROJECT_ROADMAP.md` for details.
 
 <div align="center">
 
-Built with Flutter by **Oyindamola Oyesiji**
+Built with Flutter by **Jeremiah Kehinde**
 
 </div>
