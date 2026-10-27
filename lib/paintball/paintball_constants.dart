@@ -164,7 +164,10 @@ abstract final class PaintballK {
   /// Sudden death round duration in seconds.
   static const int suddenDeathDurationSeconds = 30;
 
-  // ─── Ballistics & 2.5D Parallax ───────────────────────────────────────────
+  // ─── Camera & 2.5D Parallax ───────────────────────────────────────────────
+
+  /// Number of lanes visible on screen (~2.8 creates tight over-the-shoulder framing).
+  static const double visibleLanes = 2.8;
 
   /// Peak vertical arc offset (normalized screen height fraction) at mid-flight (t = 0.5).
   static const double trajectoryArcPeak = 0.08;
@@ -175,17 +178,29 @@ abstract final class PaintballK {
   /// Size multiplier for paintball at far opponent plane (t = 1).
   static const double ballEndScale = 0.28;
 
-  /// Camera look-at horizontal pan limit as a fraction of screen width (±15%).
-  static const double cameraMaxPanFraction = 0.15;
+  /// Camera look-at horizontal pan limit as a fraction of screen width (±28%).
+  static const double cameraMaxPanFraction = 0.28;
+
+  /// Vertical camera dip when player crouches (normalized screen height fraction).
+  static const double cameraCrouchDipFraction = 0.10;
+
+  /// Vertical camera dip when player ducks (normalized screen height fraction).
+  static const double cameraDuckDipFraction = 0.24;
 
   /// Camera spring dampening settling duration (seconds).
   static const double cameraSettleSeconds = 0.25;
 
-  /// Parallax shift multiplier for background layer.
-  static const double parallaxBackdrop = 0.30;
+  /// Parallax shift multiplier for background layer (horizontal).
+  static const double parallaxBackdrop = 0.20;
 
-  /// Parallax shift multiplier for far tire layer.
-  static const double parallaxFarTires = 0.80;
+  /// Parallax shift multiplier for background layer (vertical dip).
+  static const double parallaxBackdropY = 0.15;
+
+  /// Parallax shift multiplier for far tire & opponent layer (horizontal).
+  static const double parallaxFarTires = 0.85;
+
+  /// Parallax shift multiplier for far tire & opponent layer (vertical dip).
+  static const double parallaxFarTiresY = 0.65;
 
   /// Reticle snap-assist radius in logical pixels.
   static const double reticleSnapRadiusPx = 20.0;
