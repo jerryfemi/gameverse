@@ -42,7 +42,7 @@ dependencies:
   flutter_hooks: ^0.21.2
   hooks_riverpod: ^3.4.3
   flutter_soloud: ^5.2.0
-  forge2d: ^0.15.2
+  forge2d: 0.15.2
   vector_math: ^2.1.4
   firebase_core: ^4.15.0
   cloud_firestore: ^6.10.0
