@@ -11,6 +11,7 @@ import 'package:b_ball/paintball/paintball_constants.dart';
 /// - Zero heap allocations during [render].
 class PaintballBackdrop extends Component with HasGameReference {
   double cameraPanOffset = 0.0;
+  double cameraDipOffset = 0.0;
 
   // ─── Pre-allocated Paints ─────────────────────────────────────────────────
   final Paint _skyPaint = Paint();
@@ -39,11 +40,12 @@ class PaintballBackdrop extends Component with HasGameReference {
       _rebuildStaticGeometry(size.x, size.y);
     }
 
-    // Parallax horizontal shift for backdrop
+    // Parallax horizontal & vertical shift for backdrop
     final shiftX = cameraPanOffset * PaintballK.parallaxBackdrop;
+    final shiftY = -cameraDipOffset * PaintballK.parallaxBackdropY;
 
     canvas.save();
-    canvas.translate(shiftX, 0);
+    canvas.translate(shiftX, shiftY);
 
     // 1. Sky
     canvas.drawRect(_skyRect, _skyPaint);
@@ -63,11 +65,11 @@ class PaintballBackdrop extends Component with HasGameReference {
   void _rebuildStaticGeometry(double w, double h) {
     final horizonY = h * 0.38;
 
-    _skyRect = Rect.fromLTWH(-w * 0.4, 0, w * 1.8, horizonY);
-    _groundRect = Rect.fromLTWH(-w * 0.4, horizonY, w * 1.8, h - horizonY);
+    _skyRect = Rect.fromLTWH(-w * 0.8, -h * 0.3, w * 2.6, horizonY + (h * 0.3));
+    _groundRect = Rect.fromLTWH(-w * 0.8, horizonY, w * 2.6, (h - horizonY) + (h * 0.5));
 
     _skyPaint.shader = Gradient.linear(
-      Offset(w * 0.5, 0),
+      Offset(w * 0.5, -h * 0.3),
       Offset(w * 0.5, horizonY),
       const [
         Color(0xFF38BDF8), // vibrant clear sky cyan
@@ -83,7 +85,7 @@ class PaintballBackdrop extends Component with HasGameReference {
 
     // Distant soft tree domes
     final step = w * 0.22;
-    for (double x = -w * 0.3; x < w * 1.4; x += step) {
+    for (double x = -w * 0.7; x < w * 1.8; x += step) {
       // Far layer
       canvas.drawCircle(Offset(x, horizonY - 10), step * 0.60, _treePaintFar);
       // Mid layer
