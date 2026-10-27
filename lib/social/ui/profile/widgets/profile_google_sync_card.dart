@@ -18,6 +18,7 @@ class ProfileGoogleSyncCard extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final isLoading = useState(false);
+    final inlineError = useState<String?>(null);
     final isLinked =
         profile != null &&
         !profile!.isAnonymous &&
@@ -28,12 +29,13 @@ class ProfileGoogleSyncCard extends HookWidget {
       return _buildLinkedState(context, profile!.email!, isLoading);
     }
 
-    return _buildUnlinkedState(context, isLoading);
+    return _buildUnlinkedState(context, isLoading, inlineError);
   }
 
   Widget _buildUnlinkedState(
     BuildContext context,
     ValueNotifier<bool> isLoading,
+    ValueNotifier<String?> inlineError,
   ) {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -76,6 +78,40 @@ class ProfileGoogleSyncCard extends HookWidget {
               ),
             ],
           ),
+          if (inlineError.value != null) ...[
+            const SizedBox(height: 12.0),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7F1D1D).withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(10.0),
+                border: Border.all(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                  width: 1.0,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 16.0,
+                    color: Color(0xFFF87171),
+                  ),
+                  const SizedBox(width: 8.0),
+                  Expanded(
+                    child: Text(
+                      inlineError.value!,
+                      style: UiFont.style(
+                        size: 11.5,
+                        weight: 600,
+                        color: const Color(0xFFFECACA),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 14.0),
           SizedBox(
             height: 40.0,
@@ -84,6 +120,7 @@ class ProfileGoogleSyncCard extends HookWidget {
                   ? null
                   : () async {
                       HapticFeedback.lightImpact();
+                      inlineError.value = null;
                       isLoading.value = true;
                       try {
                         await AuthService.instance.signInOrLinkWithGoogle();
@@ -119,15 +156,7 @@ class ProfileGoogleSyncCard extends HookWidget {
                               errorMsg = e.message ?? e.code;
                           }
                         }
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(errorMsg),
-                              backgroundColor: const Color(0xFFEF4444),
-                              duration: const Duration(seconds: 4),
-                            ),
-                          );
-                        }
+                        inlineError.value = errorMsg;
                       } finally {
                         isLoading.value = false;
                       }

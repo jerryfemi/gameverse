@@ -26,11 +26,7 @@ class MatchesPage extends HookConsumerWidget {
   final int initialTabIndex; // 0 = Active, 1 = Completed
   final VoidCallback? onClose;
 
-  const MatchesPage({
-    super.key,
-    this.initialTabIndex = 0,
-    this.onClose,
-  });
+  const MatchesPage({super.key, this.initialTabIndex = 0, this.onClose});
 
   void _playAFriend(BuildContext context) {
     HapticFeedback.lightImpact();
@@ -50,8 +46,9 @@ class MatchesPage extends HookConsumerWidget {
         ? user.uid
         : (AuthService.instance.currentUser?.uid ?? '');
 
-    final cachedMatches =
-        FirestoreMatchService.instance.getCachedUserMatches(myUid);
+    final cachedMatches = FirestoreMatchService.instance.getCachedUserMatches(
+      myUid,
+    );
     final allMatches =
         matchesAsync.value ?? (cachedMatches.isNotEmpty ? cachedMatches : null);
 
@@ -62,8 +59,10 @@ class MatchesPage extends HookConsumerWidget {
           children: [
             // Header bar
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 12.0,
+              ),
               child: Row(
                 children: [
                   _buildCircleButton(
@@ -145,26 +144,19 @@ class MatchesPage extends HookConsumerWidget {
     required String myUid,
     required ValueNotifier<int> selectedTab,
   }) {
-    final activeMatches =
-        allMatches.where((m) => !m.isFinished).toList();
-    final completedMatches =
-        allMatches.where((m) => m.isFinished).toList()
-          ..sort((a, b) {
-            final aTime =
-                a.updatedAt > 0 ? a.updatedAt : a.createdAt;
-            final bTime =
-                b.updatedAt > 0 ? b.updatedAt : b.createdAt;
-            return bTime.compareTo(aTime);
-          });
+    final activeMatches = allMatches.where((m) => !m.isFinished).toList();
+    final completedMatches = allMatches.where((m) => m.isFinished).toList()
+      ..sort((a, b) {
+        final aTime = a.updatedAt > 0 ? a.updatedAt : a.createdAt;
+        final bTime = b.updatedAt > 0 ? b.updatedAt : b.createdAt;
+        return bTime.compareTo(aTime);
+      });
 
     return Column(
       children: [
         // Segmented Control
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16.0,
-            vertical: 6.0,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
           child: MatchesSegmentedControl(
             activeCount: activeMatches.length,
             completedCount: completedMatches.length,
