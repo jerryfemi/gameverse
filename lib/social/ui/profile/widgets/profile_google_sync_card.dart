@@ -19,14 +19,23 @@ class ProfileGoogleSyncCard extends HookWidget {
   Widget build(BuildContext context) {
     final isLoading = useState(false);
     final inlineError = useState<String?>(null);
+    final authUser = FirebaseAuth.instance.currentUser;
     final isLinked =
-        profile != null &&
-        !profile!.isAnonymous &&
-        profile!.email != null &&
-        profile!.email!.isNotEmpty;
+        (profile != null &&
+            !profile!.isAnonymous &&
+            profile!.email != null &&
+            profile!.email!.isNotEmpty) ||
+        (authUser != null &&
+            !authUser.isAnonymous &&
+            authUser.email != null &&
+            authUser.email!.isNotEmpty);
 
-    if (isLinked) {
-      return _buildLinkedState(context, profile!.email!, isLoading);
+    final displayEmail = (profile?.email != null && profile!.email!.isNotEmpty)
+        ? profile!.email!
+        : (authUser?.email ?? '');
+
+    if (isLinked && displayEmail.isNotEmpty) {
+      return _buildLinkedState(context, displayEmail, isLoading);
     }
 
     return _buildUnlinkedState(context, isLoading, inlineError);

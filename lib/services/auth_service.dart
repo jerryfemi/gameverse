@@ -215,15 +215,28 @@ class AuthService {
     bool isVerified = false;
 
     if (firebaseReady) {
+      final auth = FirebaseAuth.instance;
+
       // Check if returning from a Google redirect sign-in flow on web
       if (kIsWeb) {
         try {
-          final redirectCred = await FirebaseAuth.instance.getRedirectResult();
+          final redirectCred = await auth.getRedirectResult();
           if (redirectCred.user != null) {
             debugPrint(
               '[AuthService] Successfully completed redirect sign-in: ${redirectCred.user?.email}',
             );
             return await _syncProfileFromFirebaseUser(redirectCred.user);
+          }
+        } on FirebaseAuthException catch (e) {
+          debugPrint('[AuthService] getRedirectResult exception: ${e.code} - ${e.message}');
+          if (e.code == 'credential-already-in-use' ||
+              e.code == 'email-already-in-use') {
+            if (e.credential != null) {
+              final cred = await auth.signInWithCredential(e.credential!);
+              if (cred.user != null) {
+                return await _syncProfileFromFirebaseUser(cred.user);
+              }
+            }
           }
         } catch (e) {
           debugPrint('[AuthService] getRedirectResult notice: $e');
@@ -231,8 +244,14 @@ class AuthService {
       }
 
       try {
-        final auth = FirebaseAuth.instance;
         User? user = auth.currentUser;
+
+        // On web, IndexedDB persistence restoration is asynchronous.
+        // Wait briefly for authStateChanges before assuming no user exists.
+        user ??= await auth.authStateChanges().first.timeout(
+          const Duration(milliseconds: 1200),
+          onTimeout: () => null,
+        );
 
         if (user == null) {
           debugPrint('[AuthService] Performing silent anonymous sign-in...');
@@ -244,6 +263,12 @@ class AuthService {
           activeUid = user.uid;
           isAnon = user.isAnonymous;
           isVerified = true;
+
+          // If the user signed in with Google, use their Google display name
+          if (user.displayName != null && user.displayName!.isNotEmpty && user.displayName != 'Baller') {
+            savedName = user.displayName!;
+            await prefs.setString(_prefKeyName, savedName);
+          }
 
           if (vatar.isInsideVatar && vatar.player != null) {
             unawaited(user.updateDisplayName(savedName));
