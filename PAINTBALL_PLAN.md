@@ -185,9 +185,21 @@ Save as WebP under `assets/paintball/`.
 - Ammo: 5 balls. Reload happens automatically while **ducked** (one ball every 0.4 s) and only while ducked, so reloading forces you into cover.
 - The reticle also has vertical movement (so you aim at head height vs. low), but snap-assist pulls it gently toward the opponent's body if within ~20 px.
 
-### 5c. Camera pan
-- The camera's look-at target follows the reticle horizontally, at most **±15%** of screen width, with a damped spring (ζ ≈ 1, ~250 ms settle).
-- Pan is visual only: it shifts the backdrop and the far field by parallax (backdrop × 0.3, far tyres × 0.8, your own character × 1.0 stays put). This sells "aiming across the field" without changing lanes.
+### 5c. Camera Architecture (Tight Over-The-Shoulder Duel)
+- **Tighter FOV & Zoom**: Zoomed in by ~1.65× so that only **~2.8 lanes** fit on screen at any instant instead of all 5 cramped together. Flank lanes (0 and 4) live off-screen until you pan or slide towards them. Far tires and opponent are ~65% larger, making hits, peek shots, and splats immediately readable.
+- **Dual-Axis Damped Spring (ζ ≈ 1, ~200–250 ms settle)**:
+  - **Horizontal (X) Tracking**:
+    - **Lane Tracking (Base Anchor)**: Camera centers over the local player's current lane (smoothly interpolating as player slides across lanes 0–4).
+    - **Aim Look-Ahead Pan**: The reticle drag applies an additive look-around pan (±28% screen width), sweeping the view across the arena to acquire targets.
+  - **Vertical (Y) Stance Dip**:
+    - **Stand**: Full elevation (0.0 dip). Wide horizon view over foreground tires.
+    - **Crouch**: Camera dips downward by ~10% screen height. Foreground tires rise to chest/shoulder level, tightly framing the enemy's head peek over the tyre rim.
+    - **Duck (Squat)**: Camera plunges downward by ~24% screen height behind the near tire stack. Giant near tires rise to block ~65% of the screen, breaking direct line-of-sight to the far field while ammo reloads.
+- **Parallax Layer Distribution**:
+  - `backdrop`: X pan × 0.25, Y dip × 0.15
+  - `farTires` & `opponent`: X pan × 0.85, Y dip × 0.60
+  - `nearTires`: anchored to foreground, rises relative to screen on stance dip (Y dip × 1.0)
+  - `player`: anchored in lower-third over-the-shoulder, slides between lanes with the camera base.
 
 ### 5d. Shots and hits
 - On FIRE: send a shot event `{shooter, t0 (server-synced ms), aimX (−1..1 across the far field), aimY (0..1 height)}`.
