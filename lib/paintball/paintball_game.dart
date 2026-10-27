@@ -43,7 +43,8 @@ class PaintballGame extends FlameGame {
   double cameraPanOffset = 0.0;
   double _targetCameraPan = 0.0;
 
-  // ─── Layout Cache ─────────────────────────────────────────────────────────
+  // ─── Lifecycle & Layout Cache ─────────────────────────────────────────────
+  bool _isReady = false;
   double _cachedWidth = 0.0;
   double _cachedHeight = 0.0;
 
@@ -100,6 +101,16 @@ class PaintballGame extends FlameGame {
     await add(reticle);
 
     match.startMatch();
+
+    _isReady = true;
+
+    if (_cachedWidth > 0 && _cachedHeight > 0) {
+      _layoutScene(_cachedWidth, _cachedHeight);
+    } else if (size.x > 0 && size.y > 0) {
+      _cachedWidth = size.x;
+      _cachedHeight = size.y;
+      _layoutScene(size.x, size.y);
+    }
   }
 
   @override
@@ -108,7 +119,9 @@ class PaintballGame extends FlameGame {
     if (size.x <= 0 || size.y <= 0) return;
     _cachedWidth = size.x;
     _cachedHeight = size.y;
-    _layoutScene(size.x, size.y);
+    if (_isReady) {
+      _layoutScene(size.x, size.y);
+    }
   }
 
   void _layoutScene(double w, double h) {
@@ -195,7 +208,7 @@ class PaintballGame extends FlameGame {
 
   /// Updates reticle aim coordinates via relative drag.
   void onAimDrag(double deltaX, double deltaY) {
-    if (_cachedWidth <= 0 || _cachedHeight <= 0) return;
+    if (!_isReady || _cachedWidth <= 0 || _cachedHeight <= 0) return;
 
     // Relative sensitivity
     reticle.aimX = (reticle.aimX + (deltaX / (_cachedWidth * 0.35))).clamp(-1.0, 1.0);
@@ -208,7 +221,7 @@ class PaintballGame extends FlameGame {
   }
 
   void _updateReticlePosition() {
-    if (_cachedWidth <= 0 || _cachedHeight <= 0) return;
+    if (!_isReady || _cachedWidth <= 0 || _cachedHeight <= 0) return;
 
     final farY = _cachedHeight * 0.40;
     final targetX = (_cachedWidth * 0.5) + (reticle.aimX * (_cachedWidth * 0.42));
@@ -227,6 +240,7 @@ class PaintballGame extends FlameGame {
 
   /// Fires a paintball from the local player toward the current reticle position.
   bool firePlayerShot() {
+    if (!_isReady) return false;
     if (!match.you.tryFire()) return false;
 
     HapticFeedback.lightImpact();
@@ -255,6 +269,7 @@ class PaintballGame extends FlameGame {
 
   /// Fires a paintball from the bot toward the local player.
   void fireBotShot(double aimX, double aimY) {
+    if (!_isReady) return;
     if (!match.opponent.tryFire()) return;
 
     AudioEngine.playFloorBounce(5.5);
@@ -370,6 +385,7 @@ class PaintballGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
+    if (!_isReady) return;
 
     // 1. Advance Match Clock & State Machines
     match.tick(dt);
