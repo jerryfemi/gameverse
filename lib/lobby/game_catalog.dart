@@ -103,6 +103,19 @@ const List<LobbyGame> lobbyGames = [
     heroImageNarrow: 'assets/lobby/darts.webp',
     route: '/darts',
   ),
+  LobbyGame(
+    id: 'paintball',
+    title: 'Paintball',
+    tagline: "Slide, duck, and tag your rival.",
+    pitch: 'Five lanes, three stances, and ninety seconds. First to three hits wins the duel.',
+    heroLabel: 'New duel',
+    accent: Color(0xFF38BDF8),
+    image: 'assets/lobby/paintball.png',
+    heroImage: 'assets/lobby/paintball.png',
+    heroAlignment: Alignment.center,
+    heroImageNarrow: 'assets/lobby/paintball.png',
+    route: '/paintball',
+  ),
 ];
 
 LobbyGame get featuredGame =>
