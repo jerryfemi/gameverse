@@ -149,10 +149,14 @@ class PaintballGame extends FlameGame {
       farTires[i].position.setValues(cx - farTireW * 0.5, farY);
     }
 
-    // Position Near Tires (at y ≈ 62% - 95%)
-    final nearTireW = laneStep * 1.55;
-    final nearTireH = h * 0.38;
-    final nearY = h * 0.62;
+    // Near tyres: box top = the stack's front lip (cover line), box bottom =
+    // its ground. The stack's top surface draws a little above the box.
+    // Sized from height, not lane width, so your own cover never walls off
+    // the far field.
+    final nearGround = h * PaintballK.nearTyreGroundY;
+    final nearTireH = h * PaintballK.nearTyreCoverHeight;
+    final nearTireW = laneStep * 0.9;
+    final nearY = nearGround - nearTireH;
 
     for (int i = 0; i < nearTires.length; i++) {
       final cx = centerX + ((i - 2) * laneStep);
