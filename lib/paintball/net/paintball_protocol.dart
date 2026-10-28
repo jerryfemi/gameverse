@@ -14,20 +14,21 @@ double roundTo(double val, int decimals) {
   return (val * factor).roundToDouble() / factor;
 }
 
-/// Computes upper-body aim turn bucket (-1: left, 0: center, 1: right)
+/// Computes the upper-body aim pose bucket from aimTurn (1: towards the
+/// character's own left, 0: centre, -1: own right)
 /// with hysteresis to avoid boundary flickering over the network.
 int computeAimBucket(double aimTurn, int currentBucket) {
   const threshold = 0.30;
   const hysteresis = 0.05;
 
   if (currentBucket == 1) {
-    // Currently aiming left: stay left unless aimTurn drops below (threshold - hysteresis)
+    // In the +1 pose: stay unless aimTurn drops below (threshold - hysteresis)
     if (aimTurn < threshold - hysteresis) {
       return aimTurn < -threshold ? -1 : 0;
     }
     return 1;
   } else if (currentBucket == -1) {
-    // Currently aiming right: stay right unless aimTurn rises above (-threshold + hysteresis)
+    // In the -1 pose: stay unless aimTurn rises above (-threshold + hysteresis)
     if (aimTurn > -threshold + hysteresis) {
       return aimTurn > threshold ? 1 : 0;
     }
