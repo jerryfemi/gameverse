@@ -77,6 +77,21 @@ class PaintballSession implements PaintballNetLink {
 
   String get _hostUid => match.player1.uid;
 
+  /// Why the last connect failed (shown small in the error card).
+  String? lastError;
+
+  /// RETRY from the error card.
+  Future<void> retry() async {
+    if (_disposed) return;
+    lastError = null;
+    status.value = PaintballSessionStatus.connecting;
+    for (final s in _subs) {
+      await s.cancel();
+    }
+    _subs.clear();
+    await connect();
+  }
+
   // ─── Connect ──────────────────────────────────────────────────────────────
 
   Future<void> connect() async {
@@ -116,6 +131,7 @@ class PaintballSession implements PaintballNetLink {
       if (known != null && known.isNotEmpty) _watchOpponent(known);
     } catch (e) {
       debugPrint('[PaintballSession] connect failed: $e');
+      lastError = e.toString();
       if (!_disposed) status.value = PaintballSessionStatus.error;
     }
   }
