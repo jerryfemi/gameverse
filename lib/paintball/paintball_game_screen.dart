@@ -4,7 +4,15 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:b_ball/archery/ui/archery_match_bar.dart' show ArcheryInbox;
+import 'package:b_ball/archery/ui/archery_pause_menu.dart';
+import 'package:b_ball/darts/darts_game_screen.dart' show DartsChallenge;
 import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/paintball/paintball_constants.dart';
+import 'package:b_ball/paintball/logic/paintball_players.dart';
+import 'package:b_ball/services/auth_service.dart';
+import 'package:b_ball/social/ui/profile/profile_sheet.dart';
 import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:b_ball/paintball/paintball_game.dart';
 import 'package:b_ball/paintball/logic/match_state.dart';
@@ -26,12 +34,23 @@ class PaintballGameScreen extends StatefulWidget {
   /// Looping theme (loop points are trimmed to the first/last real sample).
   static const String themeTrack = 'assets/paintball/pb_theme.mp3';
 
+  /// CC BY credits shown in the pause menu (full list in assets/paintball/CREDITS.md).
+  static const String credits =
+      'Player: "Realistic Paintball Player" by Jungle Jim · Tyre: "Dirty Tyre" by amanda_98 · '
+      'Net, barrels, sandbags: Alex Martire, _Alexandr, Garbage Raccoon (CC BY 4.0) · Animations: Mixamo';
+
   @override
   State<PaintballGameScreen> createState() => _PaintballGameScreenState();
 }
 
 class _PaintballGameScreenState extends State<PaintballGameScreen> {
   late final PaintballGame _game;
+
+  /// Firebase is only initialised in the full app, not the standalone harness.
+  static bool get _firebaseReady => Firebase.apps.isNotEmpty;
+
+  PaintballPlayers _players = PaintballPlayers.solo;
+  bool _paused = false;
 
   @override
   void initState() {
@@ -40,6 +59,18 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
     // Paintball's own sounds (decoded only now) and its theme while open.
     unawaited(AudioEngine.loadPaintballSfx());
     AudioEngine.claimSoundtrack(this, track: PaintballGameScreen.themeTrack);
+    _loadYou();
+  }
+
+  /// Your name and avatar from your profile (solo: you vs the bot).
+  void _loadYou() {
+    if (!_firebaseReady) return;
+    final me = AuthService.instance.currentUser;
+    if (me == null) return;
+    _players = PaintballPlayers(
+      you: PaintballPlayer(name: me.displayName, avatar: me.avatarEmoji, uid: me.uid),
+      opponent: PaintballPlayers.bot,
+    );
   }
 
   @override
@@ -47,6 +78,48 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
     AudioEngine.releaseSoundtrack(this);
     super.dispose();
   }
+
+  void _pause() {
+    if (_paused) return;
+    _game.pauseEngine();
+    setState(() => _paused = true);
+  }
+
+  void _resume() {
+    _game.resumeEngine();
+    setState(() => _paused = false);
+  }
+
+  void _goToLobby() {
+    _game.resumeEngine();
+    final router = GoRouter.maybeOf(context);
+    if (router != null) router.go('/');
+  }
+
+  /// Profile / friend sheets freeze the game quietly (no pause menu) and
+  /// resume it when they close.
+  Future<void> _overGame(Future<void> Function() open) async {
+    _game.pauseEngine();
+    try {
+      await open();
+    } finally {
+      if (mounted && !_paused) _game.resumeEngine();
+    }
+  }
+
+  void _openProfile() => _overGame(() => ProfileSheet.show(
+      context,
+      onOpenMatch: (m) => GoRouter.maybeOf(context)?.go('/match/${m.id}'),
+      onOpenMatches: () => ArcheryInbox.open(
+        context,
+        onCreateMatch: () => DartsChallenge.start(context, showGamePicker: true),
+      ),
+      onPlayFriend: () => DartsChallenge.start(context, showGamePicker: true),
+    ));
+
+  /// Until paintball online lands, PLAY A FRIEND opens the shared match setup
+  /// with the game picker, like the profile drawer does.
+  void _playFriend() => _overGame(() => DartsChallenge.start(context, showGamePicker: true));
 
   @override
   Widget build(BuildContext context) {
@@ -56,59 +129,103 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
       _game.skipIntro();
     }
 
+    final m = _game.match;
     return Scaffold(
       backgroundColor: const Color(0xFF060913),
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () {
-          // A tap anywhere during arena intro skips it.
-          if (_game.match.phase == PaintballMatchPhase.intro) {
-            _game.skipIntro();
-          }
-        },
-        child: GameWidget<PaintballGame>(
-          game: _game,
-          overlayBuilderMap: {
-            'HUD': (context, game) => StreamBuilder<void>(
-                  stream: Stream.periodic(const Duration(milliseconds: 100)),
-                  builder: (context, _) {
-                    if (game.match.phase == PaintballMatchPhase.intro) {
-                      return _IntroOverlay(game: game);
-                    }
-                    return PaintballHudOverlay(match: game.match);
-                  },
-                ),
-            'Controls': (context, game) => StreamBuilder<void>(
-                  stream: Stream.periodic(const Duration(milliseconds: 50)),
-                  builder: (context, _) {
-                    if (game.match.phase == PaintballMatchPhase.intro) {
-                      return const SizedBox.shrink();
-                    }
-                    if (game.match.phase == PaintballMatchPhase.gameOver) {
-                      // Let the death / win animations play before the card.
-                      if (!game.showResults) return const SizedBox.shrink();
-                      return _ResultReveal(
-                        child: PaintballResultCard(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              // A tap anywhere during arena intro skips it.
+              if (_game.match.phase == PaintballMatchPhase.intro) {
+                _game.skipIntro();
+              }
+            },
+            child: GameWidget<PaintballGame>(
+              game: _game,
+              overlayBuilderMap: {
+                'HUD': (context, game) => StreamBuilder<void>(
+                      stream: Stream.periodic(const Duration(milliseconds: 100)),
+                      builder: (context, _) {
+                        if (game.match.phase == PaintballMatchPhase.intro) {
+                          return _IntroOverlay(game: game);
+                        }
+                        if (game.showResults) return const SizedBox.shrink();
+                        return PaintballHudOverlay(
                           match: game.match,
-                          onRematch: game.resetMatch,
-                          onLobby: () {
-                            if (context.mounted) context.go('/');
-                          },
-                        ),
-                      );
-                    }
-                    return Stack(
-                      children: [
-                        PaintballControlsOverlay(game: game),
-                        if (game.match.phase == PaintballMatchPhase.countdown)
-                          _buildCountdownBanner(game),
-                      ],
-                    );
-                  },
-                ),
-          },
-          initialActiveOverlays: const ['HUD', 'Controls'],
-        ),
+                          players: _players,
+                          socialReady: _firebaseReady,
+                          onPause: _pause,
+                          onLobby: _goToLobby,
+                          onOpenProfile: _openProfile,
+                          onPlayFriend: _playFriend,
+                          onPauseEngine: game.pauseEngine,
+                          onResumeEngine: game.resumeEngine,
+                        );
+                      },
+                    ),
+                'Controls': (context, game) => StreamBuilder<void>(
+                      stream: Stream.periodic(const Duration(milliseconds: 50)),
+                      builder: (context, _) {
+                        if (game.match.phase == PaintballMatchPhase.intro) {
+                          return const SizedBox.shrink();
+                        }
+                        if (game.match.phase == PaintballMatchPhase.gameOver) {
+                          // Let the death / win animations play before the card.
+                          if (!game.showResults) return const SizedBox.shrink();
+                          return _ResultReveal(
+                            child: PaintballResultCard(
+                              match: game.match,
+                              players: _players,
+                              onRematch: game.resetMatch,
+                              onPlayFriend: _firebaseReady ? _playFriend : null,
+                              onLobby: GoRouter.maybeOf(context) != null ? _goToLobby : null,
+                            ),
+                          );
+                        }
+                        return Stack(
+                          children: [
+                            PaintballControlsOverlay(game: game),
+                            if (game.match.phase == PaintballMatchPhase.countdown)
+                              _buildCountdownBanner(game),
+                          ],
+                        );
+                      },
+                    ),
+              },
+              initialActiveOverlays: const ['HUD', 'Controls'],
+            ),
+          ),
+          if (_paused)
+            Positioned.fill(
+              child: ArcheryPauseMenu(
+                online: false,
+                subtitle: 'Solo vs ${_players.opponent.name} · first to ${PaintballK.hitsToWin} hits',
+                stat1Label: 'HITS',
+                stat1Value: '${m.opponent.hitsTaken} of ${PaintballK.hitsToWin}',
+                stat2Label: 'AMMO',
+                stat2Value: '${m.you.ammo} of ${PaintballK.maxAmmo}',
+                stat2Color: const Color(0xFF38BDF8),
+                stat3Label: 'TIME',
+                stat3Value: '${m.timeRemaining.ceil() ~/ 60}:${(m.timeRemaining.ceil() % 60).toString().padLeft(2, '0')}',
+                stat3Color: const Color(0xFFF59E0B),
+                accentColor: const Color(0xFF38BDF8),
+                trackName: 'Paintball Theme',
+                credit: PaintballGameScreen.credits,
+                onResume: _resume,
+                onRestart: () {
+                  _resume();
+                  _game.resetMatch();
+                },
+                onLobby: () {
+                  setState(() => _paused = false);
+                  _goToLobby();
+                },
+              ),
+            ),
+        ],
       ),
     );
   }

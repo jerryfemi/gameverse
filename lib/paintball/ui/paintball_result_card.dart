@@ -1,449 +1,330 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:b_ball/game/ui/common/ui_font.dart';
+
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:b_ball/paintball/paintball_constants.dart';
 import 'package:b_ball/paintball/logic/match_state.dart';
+import 'package:b_ball/paintball/logic/paintball_players.dart';
 
-/// End-of-match recap card for Paintball 1v1 duels.
-///
-/// Follows GameVerse design standards:
-/// - Obsidian dark card with vibrant neon outcome border & glow halo.
-/// - Winner crowned with golden medallion and verdict explanation.
-/// - Two player columns side-by-side with avatars, surviving hit pips, and big hit scores.
-/// - Head-to-head performance comparison matrix (Hits, Shots, Accuracy, Dodges, Survival).
-/// - Instant rematch button with haptic feedback.
+/// End-of-match card in the GameVerse result style (same as darts):
+/// a glowing medallion half above the card, YOU WIN / BOT WINS, how it ended,
+/// two player columns (crowned winner, hits landed, stats) and actions.
+/// The screen fades it in after the death / win animations.
 class PaintballResultCard extends StatelessWidget {
   final PaintballMatchState match;
+  final PaintballPlayers players;
   final VoidCallback onRematch;
+  final VoidCallback? onPlayFriend;
   final VoidCallback? onLobby;
 
   const PaintballResultCard({
     super.key,
     required this.match,
+    required this.players,
     required this.onRematch,
+    this.onPlayFriend,
     this.onLobby,
+  });
+
+  static const Color _you = Color(0xFF38BDF8);
+  static const Color _them = Color(0xFFF59E0B);
+  static const Color _mint = Color(0xFF00FFCC);
+  static const Color _red = Color(0xFFEF4444);
+  static const Color _muted = Color(0xFF94A3B8);
+  static const Color _subtle = Color(0xFF64748B);
+  static const Color _card = Color(0xFF1E2638);
+
+  @override
+  Widget build(BuildContext context) {
+    final winner = match.winner;
+    final bool youWon = winner == PaintballWinner.you;
+    final bool draw = winner == PaintballWinner.tie || winner == null;
+    final String opp = players.opponent.name;
+
+    final Color accent = draw ? _them : (youWon ? _mint : _red);
+    final String title = draw ? 'DRAW' : (youWon ? 'YOU WIN' : '${opp.toUpperCase()} WINS');
+    final IconData medal = draw
+        ? Icons.handshake_rounded
+        : (youWon ? Icons.emoji_events_rounded : Icons.gps_fixed_rounded);
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 18),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 380,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+            ),
+            child: Container(
+              width: 380,
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFA111A2E), Color(0xFA0A0E1A)],
+                ),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.4),
+                boxShadow: [
+                  BoxShadow(color: accent.withValues(alpha: 0.20), blurRadius: 40),
+                  const BoxShadow(color: Color(0xCC000000), blurRadius: 28, offset: Offset(0, 14)),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -30),
+                    child: Center(child: _Medallion(icon: medal, color: accent)),
+                  ),
+                  Transform.translate(
+                    offset: const Offset(0, -18),
+                    child: Column(
+                      children: [
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.4,
+                            shadows: [Shadow(color: accent.withValues(alpha: 0.45), blurRadius: 18)],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _howItEnded(match, opp),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: _muted, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.4),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _PlayerColumn(
+                          player: players.you,
+                          color: _you,
+                          stats: match.you,
+                          hitsLanded: match.opponent.hitsTaken,
+                          crowned: youWon,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 22),
+                        child: Text('VS', style: TextStyle(color: _subtle, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                      ),
+                      Expanded(
+                        child: _PlayerColumn(
+                          player: players.opponent,
+                          color: _them,
+                          stats: match.opponent,
+                          hitsLanded: match.you.hitsTaken,
+                          crowned: winner == PaintballWinner.opponent,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  _CardButton(label: 'REMATCH', icon: Icons.replay_rounded, primary: true, onTap: onRematch),
+                  if (onPlayFriend != null) ...[
+                    const SizedBox(height: 10),
+                    _CardButton(label: 'CHALLENGE A FRIEND', icon: Icons.people_alt_rounded, onTap: onPlayFriend!),
+                  ],
+                  if (onLobby != null) ...[
+                    const SizedBox(height: 10),
+                    _CardButton(label: 'BACK TO LOBBY', icon: Icons.grid_view_rounded, onTap: onLobby!),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _clock(double seconds) {
+    final s = seconds.clamp(0, 999).round();
+    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
+  }
+
+  static String _howItEnded(PaintballMatchState m, String opp) {
+    final played = PaintballK.matchDurationSeconds - m.timeRemaining;
+    switch (m.winner) {
+      case PaintballWinner.you:
+        if (m.opponent.isEliminated) return 'You landed ${PaintballK.hitsToWin} hits in ${_clock(played)}.';
+        return 'Time ran out: you took fewer hits.';
+      case PaintballWinner.opponent:
+        if (m.you.isEliminated) return '$opp landed ${PaintballK.hitsToWin} hits in ${_clock(played)}.';
+        return 'Time ran out: $opp took fewer hits.';
+      case PaintballWinner.tie:
+      case null:
+        return 'Sudden death ended level.';
+    }
+  }
+}
+
+/// Round glowing badge that sits half above the card.
+class _Medallion extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  const _Medallion({required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: [color.withValues(alpha: 0.35), const Color(0xFF0F172A)]),
+        border: Border.all(color: color, width: 2),
+        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 22)],
+      ),
+      child: Icon(icon, color: color, size: 30),
+    );
+  }
+}
+
+/// One player's side: crowned avatar, name, hits landed, progress, stats.
+class _PlayerColumn extends StatelessWidget {
+  final PaintballPlayer player;
+  final Color color;
+  final PaintballPlayerState stats;
+  final int hitsLanded;
+  final bool crowned;
+
+  const _PlayerColumn({
+    required this.player,
+    required this.color,
+    required this.stats,
+    required this.hitsLanded,
+    required this.crowned,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isWinner = match.winner == PaintballWinner.you;
-    final isTie = match.winner == PaintballWinner.tie;
-
-    final themeColor = isWinner
-        ? const Color(0xFF00FFCC)
-        : (isTie ? const Color(0xFFF59E0B) : const Color(0xFFEF4444));
-
-    final durationSeconds = (PaintballK.matchDurationSeconds - match.timeRemaining)
-        .clamp(0, PaintballK.matchDurationSeconds)
-        .toInt();
-    final durationStr = '${durationSeconds ~/ 60}:${(durationSeconds % 60).toString().padLeft(2, '0')}';
-
-    return Container(
-      // The scrim behind the card comes from the screen's reveal animation.
-      alignment: Alignment.center,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 420),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF131D31),
-                Color(0xFF0B1020),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: themeColor.withValues(alpha: 0.80), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: themeColor.withValues(alpha: 0.22),
-                blurRadius: 32,
-                spreadRadius: 2,
-              ),
-              const BoxShadow(
-                color: Colors.black54,
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ── 1. Medallion & Title ───────────────────────────────────────
-              _buildVerdictMedallion(isWinner, isTie, themeColor),
-              const SizedBox(height: 12),
-              Text(
-                isWinner ? 'VICTORY!' : (isTie ? 'SUDDEN DEATH DRAW' : 'DEFEAT'),
-                style: UiFont.style(
-                  size: 26,
-                  weight: 900,
-                  color: themeColor,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                isWinner
-                    ? 'You eliminated the opponent in $durationStr!'
-                    : (isTie
-                        ? 'Match tied after sudden death!'
-                        : 'You took 3 hits in the arena. Better luck next time!'),
-                textAlign: TextAlign.center,
-                style: UiFont.style(
-                  size: 13,
-                  weight: 500,
-                  color: const Color(0xFF94A3B8),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // ── 2. Versus Header (Avatars, Crowns, Big Scores) ──────────────
-              _buildPlayersVersus(isWinner, isTie),
-              const SizedBox(height: 20),
-
-              // ── 3. Head-to-Head Performance Matrix ────────────────────────
-              _buildStatsTable(durationStr),
-              const SizedBox(height: 24),
-
-              // ── 4. Action Buttons ──────────────────────────────────────────
-              _buildActionButtons(context),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVerdictMedallion(bool isWinner, bool isTie, Color themeColor) {
-    final IconData icon = isWinner
-        ? Icons.emoji_events_rounded
-        : (isTie ? Icons.handshake_rounded : Icons.shield_outlined);
-
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: themeColor.withValues(alpha: 0.15),
-        border: Border.all(color: themeColor, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: themeColor.withValues(alpha: 0.35),
-            blurRadius: 18,
-          ),
-        ],
-      ),
-      child: Icon(icon, color: themeColor, size: 32),
-    );
-  }
-
-  Widget _buildPlayersVersus(bool isWinner, bool isTie) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E293B)),
-      ),
-      child: Row(
-        children: [
-          // Player (YOU)
-          Expanded(
-            child: _buildPlayerCard(
-              name: 'YOU',
-              nameColor: const Color(0xFF38BDF8),
-              avatarBg: const Color(0xFF0284C7),
-              avatarIcon: Icons.military_tech_rounded,
-              isCrowned: isWinner,
-              hitsTaken: match.you.hitsTaken,
-              shotsHit: match.you.shotsHit,
-              isLeft: true,
-            ),
-          ),
-
-          // VS Divider
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'VS',
-              style: UiFont.style(
-                size: 11,
-                weight: 900,
-                color: const Color(0xFF64748B),
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-
-          // Opponent (BOT)
-          Expanded(
-            child: _buildPlayerCard(
-              name: 'BOT',
-              nameColor: const Color(0xFFF59E0B),
-              avatarBg: const Color(0xFFD97706),
-              avatarIcon: Icons.smart_toy_rounded,
-              isCrowned: !isWinner && !isTie,
-              hitsTaken: match.opponent.hitsTaken,
-              shotsHit: match.opponent.shotsHit,
-              isLeft: false,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayerCard({
-    required String name,
-    required Color nameColor,
-    required Color avatarBg,
-    required IconData avatarIcon,
-    required bool isCrowned,
-    required int hitsTaken,
-    required int shotsHit,
-    required bool isLeft,
-  }) {
+    final progress = (hitsLanded / PaintballK.hitsToWin).clamp(0.0, 1.0).toDouble();
     return Column(
       children: [
-        // Avatar + Optional Crown
         Stack(
           clipBehavior: Clip.none,
-          alignment: Alignment.center,
+          alignment: Alignment.topCenter,
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: avatarBg.withValues(alpha: 0.25),
-                border: Border.all(color: nameColor, width: 1.5),
-              ),
-              child: Icon(avatarIcon, color: nameColor, size: 24),
+            AppAvatar(
+              avatar: player.avatar,
+              size: 52,
+              borderColor: crowned ? const Color(0xFFF59E0B) : color.withValues(alpha: 0.6),
+              borderWidth: crowned ? 2.5 : 1.5,
             ),
-            if (isCrowned)
-              const Positioned(
-                top: -14,
-                child: Icon(
-                  Icons.workspace_premium_rounded,
-                  color: Color(0xFFFACC15),
-                  size: 22,
-                ),
-              ),
+            if (crowned)
+              const Positioned(top: -16, child: Text('👑', style: TextStyle(fontSize: 18))),
           ],
         ),
-        const SizedBox(height: 6),
-
+        const SizedBox(height: 8),
         Text(
-          name,
-          style: UiFont.style(size: 13, weight: 800, color: nameColor),
+          player.name.toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: 0.8),
         ),
-        const SizedBox(height: 4),
-
-        // Surviving Hit Pips (3 pips, filled = alive, hollow = damaged)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(PaintballK.hitsToWin, (i) {
-            final isDamaged = i < hitsTaken;
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2.5),
-              width: 9,
-              height: 9,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDamaged ? Colors.transparent : nameColor,
-                border: Border.all(
-                  color: isDamaged ? const Color(0xFF475569) : nameColor,
-                  width: 1.5,
-                ),
+        const SizedBox(height: 2),
+        Text(
+          '$hitsLanded',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 36,
+            fontWeight: FontWeight.w900,
+            height: 1.1,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+        Text(
+          'HITS OF ${PaintballK.hitsToWin}',
+          style: const TextStyle(color: PaintballResultCard._subtle, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: SizedBox(
+              height: 5,
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: PaintballResultCard._card,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
-            );
-          }),
+            ),
+          ),
         ),
-        const SizedBox(height: 6),
-
-        // Big Hit Score
-        Text(
-          '$shotsHit HITS',
-          style: UiFont.style(size: 15, weight: 900, color: Colors.white),
-        ),
+        const SizedBox(height: 10),
+        _Stat(label: 'ACCURACY', value: '${stats.accuracyPercent.round()}%'),
+        _Stat(label: 'SHOTS', value: '${stats.shotsFired}'),
+        _Stat(label: 'DODGED', value: '${stats.timesDodged}'),
+        _Stat(label: 'LONGEST ALIVE', value: '${stats.longestSurvivalSeconds.round()}s'),
       ],
     );
   }
+}
 
-  Widget _buildStatsTable(String durationStr) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF1E293B)),
-      ),
-      child: Column(
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+  const _Stat({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: Row(
         children: [
-          _buildStatRow(
-            label: 'Hits Landed',
-            val1: '${match.you.shotsHit}',
-            val2: '${match.opponent.shotsHit}',
-            isVal1Better: match.you.shotsHit > match.opponent.shotsHit,
-            isVal2Better: match.opponent.shotsHit > match.you.shotsHit,
-          ),
-          const Divider(color: Color(0xFF1E293B), height: 16),
-          _buildStatRow(
-            label: 'Shots Fired',
-            val1: '${match.you.shotsFired}',
-            val2: '${match.opponent.shotsFired}',
-          ),
-          const Divider(color: Color(0xFF1E293B), height: 16),
-          _buildStatRow(
-            label: 'Accuracy',
-            val1: '${match.you.accuracyPercent.toStringAsFixed(1)}%',
-            val2: '${match.opponent.accuracyPercent.toStringAsFixed(1)}%',
-            isVal1Better: match.you.accuracyPercent > match.opponent.accuracyPercent,
-            isVal2Better: match.opponent.accuracyPercent > match.you.accuracyPercent,
-          ),
-          const Divider(color: Color(0xFF1E293B), height: 16),
-          _buildStatRow(
-            label: 'Times Dodged',
-            val1: '${match.you.timesDodged}',
-            val2: '${match.opponent.timesDodged}',
-            isVal1Better: match.you.timesDodged > match.opponent.timesDodged,
-            isVal2Better: match.opponent.timesDodged > match.you.timesDodged,
-          ),
-          const Divider(color: Color(0xFF1E293B), height: 16),
-          _buildStatRow(
-            label: 'Longest Survival',
-            val1: '${match.you.longestSurvivalSeconds.toStringAsFixed(1)}s',
-            val2: '${match.opponent.longestSurvivalSeconds.toStringAsFixed(1)}s',
-            isVal1Better: match.you.longestSurvivalSeconds > match.opponent.longestSurvivalSeconds,
-            isVal2Better: match.opponent.longestSurvivalSeconds > match.you.longestSurvivalSeconds,
-          ),
-          const Divider(color: Color(0xFF1E293B), height: 16),
-          _buildStatRow(
-            label: 'Duration',
-            val1: durationStr,
-            val2: durationStr,
-          ),
+          Text(label, style: const TextStyle(color: PaintballResultCard._subtle, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+          const Spacer(),
+          Text(value, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 12, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStatRow({
-    required String label,
-    required String val1,
-    required String val2,
-    bool isVal1Better = false,
-    bool isVal2Better = false,
-  }) {
-    return Row(
-      children: [
-        // Player 1 Value
-        SizedBox(
-          width: 65,
-          child: Text(
-            val1,
-            style: UiFont.style(
-              size: 13,
-              weight: isVal1Better ? 800 : 600,
-              color: isVal1Better ? const Color(0xFF38BDF8) : Colors.white,
-            ),
-          ),
-        ),
+class _CardButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool primary;
 
-        // Metric Label
-        Expanded(
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: UiFont.style(
-              size: 12,
-              weight: 600,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-        ),
+  const _CardButton({required this.label, required this.icon, required this.onTap, this.primary = false});
 
-        // Player 2 Value
-        SizedBox(
-          width: 65,
-          child: Text(
-            val2,
-            textAlign: TextAlign.right,
-            style: UiFont.style(
-              size: 13,
-              weight: isVal2Better ? 800 : 600,
-              color: isVal2Better ? const Color(0xFFF59E0B) : Colors.white,
-            ),
-          ),
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        icon: Icon(icon, size: 18),
+        label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1)),
+        style: ElevatedButton.styleFrom(
+          elevation: 0,
+          backgroundColor: primary ? PaintballResultCard._you : PaintballResultCard._card,
+          foregroundColor: primary ? const Color(0xFF0A0E1A) : Colors.white,
+          side: primary ? null : const BorderSide(color: Color(0x2EFFFFFF)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-      ],
-    );
-  }
-
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        if (onLobby != null) ...[
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                onLobby!();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF94A3B8),
-                side: const BorderSide(color: Color(0xFF334155)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Text(
-                'LOBBY',
-                style: UiFont.style(size: 12.5, weight: 800, color: const Color(0xFF94A3B8)),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
-        Expanded(
-          flex: 2,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              HapticFeedback.heavyImpact();
-              onRematch();
-            },
-            icon: const Icon(Icons.replay_rounded, size: 18),
-            label: Text(
-              'PLAY AGAIN',
-              style: UiFont.style(
-                size: 13,
-                weight: 900,
-                color: const Color(0xFF0A0E1A),
-                letterSpacing: 0.5,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF38BDF8),
-              foregroundColor: const Color(0xFF0A0E1A),
-              elevation: 4,
-              shadowColor: const Color(0xFF38BDF8).withValues(alpha: 0.5),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
