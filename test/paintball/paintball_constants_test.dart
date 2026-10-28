@@ -54,21 +54,27 @@ void main() {
   });
 
   group('PaintballK Stance Exposure Calculations', () {
-    test('stand stance exposes between 0.35 and 1.0', () {
+    test('stand stance exposes from the tyre top (0.55) to 1.0', () {
       expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.0), isFalse);
-      expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.30), isFalse);
-      expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.35), isTrue);
+      expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.35), isFalse);
+      expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.54), isFalse);
+      expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.55), isTrue);
       expect(PaintballK.isHeightExposed(PaintballStance.stand, 0.70), isTrue);
       expect(PaintballK.isHeightExposed(PaintballStance.stand, 1.00), isTrue);
       expect(PaintballK.isHeightExposed(PaintballStance.stand, 1.05), isFalse);
     });
 
-    test('crouch stance exposes only head/shoulders between 0.55 and 0.80', () {
+    test('crouch stance exposes only head/shoulders between 0.55 and 0.72', () {
       expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.40), isFalse);
       expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.55), isTrue);
       expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.65), isTrue);
-      expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.80), isTrue);
-      expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.85), isFalse);
+      expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.72), isTrue);
+      expect(PaintballK.isHeightExposed(PaintballStance.crouch, 0.80), isFalse);
+    });
+
+    test('tyre top matches the stand and crouch lower bounds', () {
+      expect(PaintballK.standMinExposureY, PaintballK.tyreCoverHeight);
+      expect(PaintballK.crouchMinExposureY, PaintballK.tyreCoverHeight);
     });
 
     test('duck stance is completely immune at all heights', () {
