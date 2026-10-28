@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
@@ -43,9 +44,6 @@ class PaintballSession implements PaintballNetLink {
   /// Seconds the opponent may be gone before it counts as a forfeit.
   static const int forfeitAfterSeconds = 10;
 
-  /// Lead time from "both in" to the shared start (server clock).
-  static const int startLeadMs = 1500;
-
   final CloudMatch match;
   final String myUid;
   final PaintballGame game;
@@ -77,26 +75,43 @@ class PaintballSession implements PaintballNetLink {
 
   String get _hostUid => match.player1.uid;
 
-  /// Why the last connect failed (shown small in the error card).
-  String? lastError;
+  // ─── Ready room state (read by the screen's room card) ─────────────────
 
-  /// RETRY from the error card.
-  Future<void> retry() async {
-    if (_disposed) return;
-    lastError = null;
-    status.value = PaintballSessionStatus.connecting;
-    for (final s in _subs) {
-      await s.cancel();
-    }
-    _subs.clear();
-    await connect();
-  }
+  /// The opponent has this match open right now.
+  final ValueNotifier<bool> opponentHere = ValueNotifier(false);
+  final ValueNotifier<bool> meReady = ValueNotifier(false);
+  final ValueNotifier<bool> opponentReady = ValueNotifier(false);
+
+  /// Server time the duel starts (both ready); null while waiting.
+  final ValueNotifier<int?> startAt = ValueNotifier(null);
+
+  /// Connected and set up (READY can be pressed).
+  final ValueNotifier<bool> connected = ValueNotifier(false);
+
+  /// Several connection attempts failed; still retrying in the background.
+  final ValueNotifier<bool> struggling = ValueNotifier(false);
+
+  int _attempts = 0;
+  Timer? _startTimer;
+  Timer? _retryTimer;
+  PaintballNetMeta? _meta;
 
   // ─── Connect ──────────────────────────────────────────────────────────────
 
+  /// Called when the room opens. Waits until the database connection is up
+  /// and carries the sign-in, then sets up the room. Failures retry quietly.
   Future<void> connect() async {
+    if (_disposed) return;
     try {
       _db.goOnline();
+      // The sign-in token must reach the database before the first request,
+      // or it's treated as anonymous and refused.
+      await FirebaseAuth.instance.currentUser?.getIdToken();
+      await _db
+          .ref('.info/connected')
+          .onValue
+          .firstWhere((e) => e.snapshot.value == true)
+          .timeout(const Duration(seconds: 8));
       final off = await _db.ref('.info/serverTimeOffset').onValue.first;
       clock.updateOffset(off.snapshot.value as num?);
 
@@ -105,23 +120,19 @@ class PaintballSession implements PaintballNetLink {
         final m = cur is Map ? Map<String, dynamic>.from(cur) : <String, dynamic>{};
         m['v'] = kPaintballProtocolVersion;
         m['h'] = _hostUid;
-        if (isHost) {
-          m['st'] ??= PaintballMatchNetStatus.waiting.code;
-        } else {
-          m['g'] = myUid;
-          if (m['st'] == null || m['st'] == PaintballMatchNetStatus.waiting.code) {
-            m['st'] = PaintballMatchNetStatus.ready.code;
-          }
-        }
+        m['st'] ??= PaintballMatchNetStatus.waiting.code;
+        if (!isHost) m['g'] = myUid;
         return Transaction.success(m);
       });
 
-      final me = _root.child('p/$myUid');
-      await me.onDisconnect().update({'c': false});
+      await _root.child('p/$myUid').onDisconnect().update({'c': false});
+      await _root.child('rd/$myUid').onDisconnect().remove();
       game.net = this;
+      _sent.clear();
       sendState();
 
       _subs.add(_root.child('meta').onValue.listen(_onMeta));
+      _subs.add(_root.child('rd').onValue.listen(_onReady));
       // Only what this player needs: the opponent's shots, and the verdicts
       // on our own shots (each is filed under its shooter).
       _subs.add(_root.child('r/$myUid').onChildAdded.listen(_onResult));
@@ -129,16 +140,81 @@ class PaintballSession implements PaintballNetLink {
 
       final known = match.opponentPlayer(myUid)?.uid;
       if (known != null && known.isNotEmpty) _watchOpponent(known);
+      if (!isHost) _watchOpponent(_hostUid);
+
+      _attempts = 0;
+      struggling.value = false;
+      connected.value = true;
+      if (status.value == PaintballSessionStatus.connecting) {
+        status.value = PaintballSessionStatus.waitingForOpponent;
+      }
     } catch (e) {
-      debugPrint('[PaintballSession] connect failed: $e');
-      lastError = e.toString();
-      if (!_disposed) status.value = PaintballSessionStatus.error;
+      debugPrint('[PaintballSession] connect attempt failed: $e');
+      if (_disposed) return;
+      for (final s in _subs) {
+        s.cancel();
+      }
+      _subs.clear();
+      _attempts++;
+      if (_attempts >= 3) struggling.value = true;
+      final wait = Duration(milliseconds: (700 * _attempts).clamp(700, 5000));
+      _retryTimer = Timer(wait, connect);
+    }
+  }
+
+  /// READY toggle from the room card. Both ready starts the countdown.
+  Future<void> setReady(bool ready) async {
+    if (!connected.value || _started) return;
+    meReady.value = ready; // instant feedback; the listener confirms
+    try {
+      final ref = _root.child('rd/$myUid');
+      if (ready) {
+        await ref.set(true);
+      } else {
+        await ref.remove();
+      }
+    } catch (e) {
+      debugPrint('[PaintballSession] ready write failed: $e');
+      meReady.value = !ready;
+    }
+  }
+
+  void _onReady(DatabaseEvent e) {
+    final v = e.snapshot.value;
+    _rd = v is Map ? v : const {};
+    _applyReady();
+  }
+
+  Map<dynamic, dynamic> _rd = const {};
+
+  void _applyReady() {
+    meReady.value = _rd[myUid] == true;
+    final opp = opponentUid.value;
+    opponentReady.value = opp != null && _rd[opp] == true;
+    _hostCheckStart();
+  }
+
+  /// Host only: both ready → shared start 3.5 s out; someone un-readies or
+  /// leaves before it → cancel back to waiting.
+  void _hostCheckStart() {
+    if (!isHost || _started || _disposed) return;
+    final both = meReady.value && opponentReady.value && opponentHere.value;
+    final meta = _meta;
+    final counting = meta?.status == PaintballMatchNetStatus.live && meta?.startAtMs != null;
+    if (both && !counting) {
+      _root.child('meta').update({
+        'st': PaintballMatchNetStatus.live.code,
+        'at': clock.serverNowMs + 3500,
+      });
+    } else if (!both && counting && (meta!.startAtMs! > clock.serverNowMs)) {
+      _root.child('meta').update({'st': PaintballMatchNetStatus.ready.code, 'at': null});
     }
   }
 
   void _watchOpponent(String uid) {
     if (opponentUid.value == uid) return;
     opponentUid.value = uid;
+    _applyReady();
     _oppSub?.cancel();
     _oppShotSub?.cancel();
     _oppSub = _root.child('p/$uid').onValue.listen(_onOpponentState);
@@ -151,49 +227,47 @@ class PaintballSession implements PaintballNetLink {
     final v = e.snapshot.value;
     if (v is! Map) return;
     final meta = PaintballNetMeta.fromMap(v);
+    _meta = meta;
     if (!meta.isVersionCompatible) {
       status.value = PaintballSessionStatus.versionMismatch;
       return;
     }
     final guest = meta.guestUid;
     if (guest != null && guest != myUid) _watchOpponent(guest);
-    if (!isHost) _watchOpponent(_hostUid);
+    if (_started) return;
 
-    switch (meta.status) {
-      case PaintballMatchNetStatus.waiting:
-        if (!_started) status.value = PaintballSessionStatus.waitingForOpponent;
-      case PaintballMatchNetStatus.ready:
-        if (!_started) status.value = PaintballSessionStatus.waitingForOpponent;
-        // Both in: the host sets the shared start.
-        if (isHost && guest != null) {
-          _root.child('meta').update({
-            'st': PaintballMatchNetStatus.live.code,
-            'at': clock.serverNowMs + startLeadMs,
-          });
-        }
-      case PaintballMatchNetStatus.live:
-        final at = meta.startAtMs;
-        if (at != null && !_started) {
+    final at = meta.startAtMs;
+    if (meta.status == PaintballMatchNetStatus.live && at != null) {
+      if (startAt.value != at) {
+        startAt.value = at;
+        _startTimer?.cancel();
+        final wait = at - clock.serverNowMs;
+        void go() {
+          if (_disposed || _started) return;
           _started = true;
           status.value = PaintballSessionStatus.live;
-          final elapsed = (clock.serverNowMs - at) / 1000.0;
-          if (elapsed >= 0) {
-            game.startOnline(elapsed);
-          } else {
-            Timer(Duration(milliseconds: (-elapsed * 1000).round()), () {
-              if (!_disposed) game.startOnline(0);
-            });
-          }
+          game.startOnline(((clock.serverNowMs - at) / 1000.0).clamp(0.0, 30.0));
         }
-      case PaintballMatchNetStatus.done:
-        break;
+        if (wait <= 0) {
+          go();
+        } else {
+          _startTimer = Timer(Duration(milliseconds: wait), go);
+        }
+      }
+    } else {
+      // Countdown cancelled (someone un-readied or left).
+      _startTimer?.cancel();
+      startAt.value = null;
     }
+    _hostCheckStart();
   }
 
   void _onOpponentState(DatabaseEvent e) {
     final v = e.snapshot.value;
     if (v is! Map) return;
     final st = PaintballNetPlayerState.fromMap(v);
+    opponentHere.value = st.connected;
+    _hostCheckStart();
     if (!st.connected) {
       if (_started && !_finished) {
         status.value = PaintballSessionStatus.opponentReconnecting;
@@ -409,6 +483,8 @@ class PaintballSession implements PaintballNetLink {
     if (_disposed) return;
     _disposed = true;
     _forfeitTimer?.cancel();
+    _startTimer?.cancel();
+    _retryTimer?.cancel();
     if (_finished) {
       // Leaving during the 4 s grace: clean up before disconnecting.
       _removeAndGoOffline();
@@ -417,5 +493,11 @@ class PaintballSession implements PaintballNetLink {
     }
     status.dispose();
     opponentUid.dispose();
+    opponentHere.dispose();
+    meReady.dispose();
+    opponentReady.dispose();
+    startAt.dispose();
+    connected.dispose();
+    struggling.dispose();
   }
 }
