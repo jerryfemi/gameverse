@@ -188,10 +188,10 @@ abstract final class PaintballK {
   static const double cameraMaxPanFraction = 0.28;
 
   /// Vertical camera dip when player crouches (normalized screen height fraction).
-  static const double cameraCrouchDipFraction = 0.10;
+  static const double cameraCrouchDipFraction = 0.05;
 
   /// Vertical camera dip when player ducks (normalized screen height fraction).
-  static const double cameraDuckDipFraction = 0.24;
+  static const double cameraDuckDipFraction = 0.11;
 
   /// Camera spring dampening settling duration (seconds).
   static const double cameraSettleSeconds = 0.25;
@@ -221,6 +221,13 @@ abstract final class PaintballK {
 
   /// On-screen height of your standing player (over-the-shoulder, close).
   static const double youStandHeight = 0.40;
+
+  /// Ground line under your own tyre stacks (a step in front of your feet).
+  static const double nearTyreGroundY = 0.90;
+
+  /// Front-lip height of your own tyre stacks, as a fraction of screen height.
+  /// The stack's top surface adds roughly 40% more above this line.
+  static const double nearTyreCoverHeight = 0.22;
 
   /// Reticle snap-assist radius in logical pixels.
   static const double reticleSnapRadiusPx = 20.0;
