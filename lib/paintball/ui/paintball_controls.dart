@@ -110,16 +110,16 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 58,
               icon: Icons.chevron_left_rounded,
               iconSize: 32,
-              enabled: you.lane > PaintballK.minLane && !you.isSliding,
-              onTap: () => you.trySlide(-1),
+              enabled: game.canAct && you.lane > PaintballK.minLane && !you.isSliding,
+              onTap: () => game.playerSlide(-1),
             ),
             const SizedBox(width: 12),
             _buildRoundButton(
               size: 58,
               icon: Icons.chevron_right_rounded,
               iconSize: 32,
-              enabled: you.lane < PaintballK.maxLane && !you.isSliding,
-              onTap: () => you.trySlide(1),
+              enabled: game.canAct && you.lane < PaintballK.maxLane && !you.isSliding,
+              onTap: () => game.playerSlide(1),
             ),
           ],
         ),
@@ -142,30 +142,18 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 48,
               icon: Icons.keyboard_arrow_up_rounded,
               iconSize: 28,
-              enabled: you.stance != PaintballStance.stand && !you.isSliding,
+              enabled: game.canAct && you.stance != PaintballStance.stand && !you.isSliding,
               highlight: you.stance == PaintballStance.stand,
-              onTap: () {
-                if (you.stance == PaintballStance.duck) {
-                  you.tryChangeStance(PaintballStance.crouch);
-                } else if (you.stance == PaintballStance.crouch) {
-                  you.tryChangeStance(PaintballStance.stand);
-                }
-              },
+              onTap: () => game.playerStanceStep(1),
             ),
             const SizedBox(height: 8),
             _buildRoundButton(
               size: 48,
               icon: Icons.keyboard_arrow_down_rounded,
               iconSize: 28,
-              enabled: you.stance != PaintballStance.duck && !you.isSliding,
+              enabled: game.canAct && you.stance != PaintballStance.duck && !you.isSliding,
               highlight: you.stance == PaintballStance.duck,
-              onTap: () {
-                if (you.stance == PaintballStance.stand) {
-                  you.tryChangeStance(PaintballStance.crouch);
-                } else if (you.stance == PaintballStance.crouch) {
-                  you.tryChangeStance(PaintballStance.duck);
-                }
-              },
+              onTap: () => game.playerStanceStep(-1),
             ),
           ],
         ),
@@ -173,16 +161,16 @@ class PaintballControlsOverlay extends StatelessWidget {
 
         // Glowing Red FIRE Action Button
         GestureDetector(
-          onTap: you.canFire ? game.firePlayerShot : null,
+          onTap: game.playerCanFire ? game.firePlayerShot : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: 84,
             height: 84,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: you.canFire ? const Color(0xFFEF4444) : const Color(0xFF4B5563),
+              color: game.playerCanFire ? const Color(0xFFEF4444) : const Color(0xFF4B5563),
               border: Border.all(color: Colors.white, width: 3.5),
-              boxShadow: you.canFire
+              boxShadow: game.playerCanFire
                   ? [
                       BoxShadow(
                         color: const Color(0xFFEF4444).withValues(alpha: 0.65),
