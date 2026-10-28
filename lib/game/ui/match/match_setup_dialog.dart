@@ -164,7 +164,7 @@ class MatchSetupDialog extends HookWidget {
       final text = match.isArchery
           ? '🎯 Shoot archery with me on GameVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code'
           : match.isPaintball
-              ? '🎨 Paintball duel on GameVerse! First to 3 hits. Match code: $code\nhttps://dunkverse.web.app/match/$code'
+              ? '🎨 Paintball duel on GameVerse! Best of 3 rounds. Match code: $code\nhttps://dunkverse.web.app/match/$code'
           : match.isDarts
               ? '🎯 Play me at darts on GameVerse! 301, first to zero. Match code: $code\nhttps://dunkverse.web.app/match/$code'
               : '🏀 Play me 1v1 on DunkVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code';
@@ -238,7 +238,7 @@ class MatchSetupDialog extends HookWidget {
         : (isArchery ? _archery : (isDarts ? _darts : _hoops));
 
     final String subtitleText = isPaintball
-        ? 'Live duel, first to 3 hits wins'
+        ? 'Live duel, best of 3 rounds'
         : isArchery
         ? 'Sets of 3 arrows, first to 6 set points'
         : (isDarts
