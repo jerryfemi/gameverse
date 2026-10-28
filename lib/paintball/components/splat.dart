@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:b_ball/paintball/paintball_constants.dart';
 
 /// One paint splat decal on a tire stack or character.
 class SplatDecal {
@@ -83,6 +84,8 @@ class SplatCanvasComponent extends Component {
   final Paint _splatPaint = Paint()..isAntiAlias = true;
 
   final int drawPriority;
+  double cameraPanOffset = 0.0;
+  double cameraDipOffset = 0.0;
 
   SplatCanvasComponent({this.drawPriority = 45});
 
@@ -117,11 +120,19 @@ class SplatCanvasComponent extends Component {
 
   @override
   void render(Canvas canvas) {
+    final shiftX = cameraPanOffset * PaintballK.parallaxFarTires;
+    final shiftY = -cameraDipOffset * PaintballK.parallaxFarTiresY;
+
+    canvas.save();
+    canvas.translate(shiftX, shiftY);
+
     for (final splat in _splats) {
       if (splat.isActive) {
         splat.render(canvas, _splatPaint);
       }
     }
+
+    canvas.restore();
   }
 
   void clear() {
