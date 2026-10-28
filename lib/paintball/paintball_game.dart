@@ -47,6 +47,8 @@ class PaintballGame extends FlameGame {
 
   // ─── Lifecycle & Layout Cache ─────────────────────────────────────────────
   bool _isReady = false;
+  final Vector2 _muzzle = Vector2.zero();
+  bool _endPosesApplied = false;
   double _cachedWidth = 0.0;
   double _cachedHeight = 0.0;
 
@@ -133,9 +135,13 @@ class PaintballGame extends FlameGame {
 
     // Position Far Tires (at y ≈ 36% - 48%)
     // Each tire stack is chunky and wide (~80% of lane step)
-    final farTireW = laneStep * 0.82;
-    final farTireH = h * 0.15;
-    final farY = h * 0.38;
+    // The far tyre's top sits at tyreCoverHeight of a standing opponent, so a
+    // ducked opponent is hidden and a crouched one peeks out (matches HitResolver).
+    final oppH = h * PaintballK.oppStandHeight;
+    final farGround = h * PaintballK.farGroundY;
+    final farTireW = laneStep * 0.55;
+    final farY = farGround - oppH * PaintballK.tyreCoverHeight;
+    final farTireH = (farGround + h * 0.012) - farY;
 
     for (int i = 0; i < farTires.length; i++) {
       final cx = centerX + ((i - 2) * laneStep);
@@ -154,15 +160,10 @@ class PaintballGame extends FlameGame {
       nearTires[i].position.setValues(cx - nearTireW * 0.5, nearY);
     }
 
-    // Player (Foreground, over-the-shoulder)
-    final playerW = laneStep * 0.95;
-    final playerH = h * 0.42;
-    playerComponent.size.setValues(playerW, playerH);
-
-    // Opponent (Distance)
-    final oppW = laneStep * 0.65;
-    final oppH = h * 0.24;
-    opponentComponent.size.setValues(oppW, oppH);
+    // Players: position = ground point under the feet, standHeight = on-screen
+    // height of the standing pose. Stance poses are baked into the sprites.
+    playerComponent.standHeight = h * PaintballK.youStandHeight;
+    opponentComponent.standHeight = oppH;
 
     _updatePlayerPositions(w, h);
     _updateCameraTarget();
@@ -183,10 +184,11 @@ class PaintballGame extends FlameGame {
       playerLaneX = centerX + ((match.you.lane - 2) * laneStep);
     }
 
-    // Offset slightly right for authentic over-the-shoulder perspective
+    // Ground point, offset slightly left so the marker (right hand) sits near
+    // screen centre for the over-the-shoulder look.
     playerComponent.position.setValues(
-      playerLaneX - (playerComponent.size.x * 0.45),
-      h * 0.58,
+      playerLaneX - laneStep * 0.10,
+      h * PaintballK.nearGroundY,
     );
 
     // 2. Opponent (Worker)
@@ -203,8 +205,8 @@ class PaintballGame extends FlameGame {
     }
 
     opponentComponent.position.setValues(
-      oppLaneX - (opponentComponent.size.x * 0.5),
-      h * 0.31,
+      oppLaneX,
+      h * PaintballK.farGroundY,
     );
   }
 
@@ -283,6 +285,9 @@ class PaintballGame extends FlameGame {
     cameraDipOffset = 0.0;
     _targetCameraDip = 0.0;
     match.startMatch();
+    _endPosesApplied = false;
+    playerComponent.resetVisual();
+    opponentComponent.resetVisual();
     if (_cachedWidth > 0 && _cachedHeight > 0) {
       _layoutScene(_cachedWidth, _cachedHeight);
     }
@@ -308,10 +313,11 @@ class PaintballGame extends FlameGame {
     final laneStep = _cachedWidth / PaintballK.visibleLanes;
     final centerX = _cachedWidth * 0.5;
 
-    // Far horizon baseline + parallax vertical dip
-    final farY = (_cachedHeight * 0.38) - (cameraDipOffset * PaintballK.parallaxFarTiresY);
+    // aimY is a fraction of a standing opponent's height above their feet,
+    // the same scale HitResolver uses for exposure.
+    final farGround = (_cachedHeight * PaintballK.farGroundY) - (cameraDipOffset * PaintballK.parallaxFarTiresY);
     final targetX = centerX + (reticle.aimX * (laneStep * 2.0)) + (cameraPanOffset * PaintballK.parallaxFarTires);
-    final targetY = farY - (reticle.aimY * (_cachedHeight * 0.14));
+    final targetY = farGround - (reticle.aimY * (_cachedHeight * PaintballK.oppStandHeight));
 
     reticle.position.setValues(targetX, targetY);
 
@@ -336,8 +342,9 @@ class PaintballGame extends FlameGame {
     AudioEngine.playFloorBounce(7.0); // Pneumatic marker pop placeholder
 
     // Launch from player's gun barrel (accounting for current camera pan)
-    final startX = playerComponent.position.x + (playerComponent.size.x * 0.70) + (cameraPanOffset * 1.0);
-    final startY = playerComponent.position.y + (playerComponent.size.y * 0.22) - (cameraDipOffset * 0.40);
+    playerComponent.muzzle(_muzzle);
+    final startX = _muzzle.x + (cameraPanOffset * 1.0);
+    final startY = _muzzle.y - (cameraDipOffset * 0.40);
 
     final targetX = reticle.position.x;
     final targetY = reticle.position.y;
@@ -364,15 +371,18 @@ class PaintballGame extends FlameGame {
     AudioEngine.playFloorBounce(5.5);
 
     // Launch from bot's gun barrel (accounting for far parallax)
-    final startX = opponentComponent.position.x + (opponentComponent.size.x * 0.25) + (cameraPanOffset * PaintballK.parallaxFarTires);
-    final startY = opponentComponent.position.y + (opponentComponent.size.y * 0.35) - (cameraDipOffset * PaintballK.parallaxFarTiresY);
+    opponentComponent.muzzle(_muzzle);
+    final startX = _muzzle.x + (cameraPanOffset * PaintballK.parallaxFarTires);
+    final startY = _muzzle.y - (cameraDipOffset * PaintballK.parallaxFarTiresY);
 
     // Calculate target coordinate on player's screen
     final laneOnPlayerScreen = PaintballK.mirrorLane(PaintballK.aimXToLane(aimX));
     final laneStep = _cachedWidth / PaintballK.visibleLanes;
     final centerX = _cachedWidth * 0.5;
     final targetX = centerX + ((laneOnPlayerScreen - 2) * laneStep) + (cameraPanOffset * 1.0);
-    final targetY = (_cachedHeight * 0.65) - (aimY * (_cachedHeight * 0.15)) - (cameraDipOffset * 1.0);
+    final targetY = (_cachedHeight * PaintballK.nearGroundY) -
+        (aimY * (_cachedHeight * PaintballK.youStandHeight)) -
+        (cameraDipOffset * 0.40);
 
     _spawnBall(
       startX: startX,
@@ -472,6 +482,15 @@ class PaintballGame extends FlameGame {
 
     // 1. Advance Match Clock & State Machines
     match.tick(dt);
+
+    // Win / death poses once the match is decided.
+    if (match.phase == PaintballMatchPhase.gameOver && !_endPosesApplied) {
+      _endPosesApplied = true;
+      playerComponent.showWin = match.winner == PaintballWinner.you;
+      opponentComponent.showWin = match.winner == PaintballWinner.opponent;
+      playerComponent.showDeath = match.you.isEliminated;
+      opponentComponent.showDeath = match.opponent.isEliminated;
+    }
 
     // 2. Refresh Camera Targets & Advance Dual-Axis Damped Springs
     _updateCameraTarget();
