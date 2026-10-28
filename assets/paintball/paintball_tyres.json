@@ -1,0 +1,19 @@
+{
+  "credit": "\"Dirty Tyre\" by amanda_98 (https://sketchfab.com/amanda_98), CC BY 4.0.",
+  "near": {
+    "image": "paintball_tyres_near.webp",
+    "width": 525,
+    "height": 640,
+    "coverY": 182.1,
+    "groundY": 632.5,
+    "centerX": 259.0
+  },
+  "far": {
+    "image": "paintball_tyres_far.webp",
+    "width": 183,
+    "height": 192,
+    "coverY": 12.4,
+    "groundY": 187.5,
+    "centerX": 91.7
+  }
+}
