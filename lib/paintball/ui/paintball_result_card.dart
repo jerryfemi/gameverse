@@ -39,7 +39,7 @@ class PaintballResultCard extends StatelessWidget {
     final durationStr = '${durationSeconds ~/ 60}:${(durationSeconds % 60).toString().padLeft(2, '0')}';
 
     return Container(
-      color: Colors.black.withValues(alpha: 0.82),
+      // The scrim behind the card comes from the screen's reveal animation.
       alignment: Alignment.center,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
