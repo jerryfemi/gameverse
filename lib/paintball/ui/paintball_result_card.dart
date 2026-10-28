@@ -42,7 +42,9 @@ class PaintballResultCard extends StatelessWidget {
     final String opp = players.opponent.name;
 
     final Color accent = draw ? _them : (youWon ? _mint : _red);
-    final String title = draw ? 'DRAW' : (youWon ? 'YOU WIN' : '${opp.toUpperCase()} WINS');
+    final String title = draw
+        ? 'DRAW'
+        : (youWon ? 'YOU WIN' : '${opp.toUpperCase()} WINS');
     final IconData medal = draw
         ? Icons.handshake_rounded
         : (youWon ? Icons.emoji_events_rounded : Icons.gps_fixed_rounded);
@@ -67,10 +69,20 @@ class PaintballResultCard extends StatelessWidget {
                   colors: [Color(0xFA111A2E), Color(0xFA0A0E1A)],
                 ),
                 borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: accent.withValues(alpha: 0.45), width: 1.4),
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.45),
+                  width: 1.4,
+                ),
                 boxShadow: [
-                  BoxShadow(color: accent.withValues(alpha: 0.20), blurRadius: 40),
-                  const BoxShadow(color: Color(0xCC000000), blurRadius: 28, offset: Offset(0, 14)),
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.20),
+                    blurRadius: 40,
+                  ),
+                  const BoxShadow(
+                    color: Color(0xCC000000),
+                    blurRadius: 28,
+                    offset: Offset(0, 14),
+                  ),
                 ],
               ),
               child: Column(
@@ -79,7 +91,9 @@ class PaintballResultCard extends StatelessWidget {
                 children: [
                   Transform.translate(
                     offset: const Offset(0, -30),
-                    child: Center(child: _Medallion(icon: medal, color: accent)),
+                    child: Center(
+                      child: _Medallion(icon: medal, color: accent),
+                    ),
                   ),
                   Transform.translate(
                     offset: const Offset(0, -18),
@@ -95,14 +109,24 @@ class PaintballResultCard extends StatelessWidget {
                             fontSize: 30,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.4,
-                            shadows: [Shadow(color: accent.withValues(alpha: 0.45), blurRadius: 18)],
+                            shadows: [
+                              Shadow(
+                                color: accent.withValues(alpha: 0.45),
+                                blurRadius: 18,
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           _howItEnded(match, opp),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: _muted, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.4),
+                          style: const TextStyle(
+                            color: _muted,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
@@ -115,34 +139,57 @@ class PaintballResultCard extends StatelessWidget {
                           player: players.you,
                           color: _you,
                           stats: match.you,
-                          hitsLanded: match.opponent.hitsTaken,
+                          roundsWon: match.youRounds,
+                          hitsLanded: match.youHitsLanded,
                           crowned: youWon,
                         ),
                       ),
                       const Padding(
                         padding: EdgeInsets.only(top: 22),
-                        child: Text('VS', style: TextStyle(color: _subtle, fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                        child: Text(
+                          'VS',
+                          style: TextStyle(
+                            color: _subtle,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                        ),
                       ),
                       Expanded(
                         child: _PlayerColumn(
                           player: players.opponent,
                           color: _them,
                           stats: match.opponent,
-                          hitsLanded: match.you.hitsTaken,
+                          roundsWon: match.opponentRounds,
+                          hitsLanded: match.opponentHitsLanded,
                           crowned: winner == PaintballWinner.opponent,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 22),
-                  _CardButton(label: 'REMATCH', icon: Icons.replay_rounded, primary: true, onTap: onRematch),
+                  _CardButton(
+                    label: 'REMATCH',
+                    icon: Icons.replay_rounded,
+                    primary: true,
+                    onTap: onRematch,
+                  ),
                   if (onPlayFriend != null) ...[
                     const SizedBox(height: 10),
-                    _CardButton(label: 'CHALLENGE A FRIEND', icon: Icons.people_alt_rounded, onTap: onPlayFriend!),
+                    _CardButton(
+                      label: 'CHALLENGE A FRIEND',
+                      icon: Icons.people_alt_rounded,
+                      onTap: onPlayFriend!,
+                    ),
                   ],
                   if (onLobby != null) ...[
                     const SizedBox(height: 10),
-                    _CardButton(label: 'BACK TO LOBBY', icon: Icons.grid_view_rounded, onTap: onLobby!),
+                    _CardButton(
+                      label: 'BACK TO LOBBY',
+                      icon: Icons.grid_view_rounded,
+                      onTap: onLobby!,
+                    ),
                   ],
                 ],
               ),
@@ -153,23 +200,18 @@ class PaintballResultCard extends StatelessWidget {
     );
   }
 
-  static String _clock(double seconds) {
-    final s = seconds.clamp(0, 999).round();
-    return '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
-  }
-
   static String _howItEnded(PaintballMatchState m, String opp) {
-    final played = PaintballK.matchDurationSeconds - m.timeRemaining;
+    final score = '${m.youRounds}–${m.opponentRounds}';
+    final rounds = m.roundHits.map((r) => '${r.$1}–${r.$2}').join(' · ');
+    final detail = rounds.isEmpty ? '' : '\nRounds: $rounds';
     switch (m.winner) {
       case PaintballWinner.you:
-        if (m.opponent.isEliminated) return 'You landed ${PaintballK.hitsToWin} hits in ${_clock(played)}.';
-        return 'Time ran out: you took fewer hits.';
+        return 'You won $score on rounds.$detail';
       case PaintballWinner.opponent:
-        if (m.you.isEliminated) return '$opp landed ${PaintballK.hitsToWin} hits in ${_clock(played)}.';
-        return 'Time ran out: $opp took fewer hits.';
+        return '$opp won $score on rounds.$detail';
       case PaintballWinner.tie:
       case null:
-        return 'Sudden death ended level.';
+        return 'Level at $score after ${m.roundHits.length} rounds.$detail';
     }
   }
 }
@@ -187,9 +229,13 @@ class _Medallion extends StatelessWidget {
       height: 64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(colors: [color.withValues(alpha: 0.35), const Color(0xFF0F172A)]),
+        gradient: RadialGradient(
+          colors: [color.withValues(alpha: 0.35), const Color(0xFF0F172A)],
+        ),
         border: Border.all(color: color, width: 2),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 22)],
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 22),
+        ],
       ),
       child: Icon(icon, color: color, size: 30),
     );
@@ -201,6 +247,7 @@ class _PlayerColumn extends StatelessWidget {
   final PaintballPlayer player;
   final Color color;
   final PaintballPlayerState stats;
+  final int roundsWon;
   final int hitsLanded;
   final bool crowned;
 
@@ -208,13 +255,16 @@ class _PlayerColumn extends StatelessWidget {
     required this.player,
     required this.color,
     required this.stats,
+    required this.roundsWon,
     required this.hitsLanded,
     required this.crowned,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = (hitsLanded / PaintballK.hitsToWin).clamp(0.0, 1.0).toDouble();
+    final progress = (roundsWon / PaintballK.roundsToWin)
+        .clamp(0.0, 1.0)
+        .toDouble();
     return Column(
       children: [
         Stack(
@@ -224,11 +274,16 @@ class _PlayerColumn extends StatelessWidget {
             AppAvatar(
               avatar: player.avatar,
               size: 52,
-              borderColor: crowned ? const Color(0xFFF59E0B) : color.withValues(alpha: 0.6),
+              borderColor: crowned
+                  ? const Color(0xFFF59E0B)
+                  : color.withValues(alpha: 0.6),
               borderWidth: crowned ? 2.5 : 1.5,
             ),
             if (crowned)
-              const Positioned(top: -16, child: Text('👑', style: TextStyle(fontSize: 18))),
+              const Positioned(
+                top: -16,
+                child: Text('👑', style: TextStyle(fontSize: 18)),
+              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -236,11 +291,16 @@ class _PlayerColumn extends StatelessWidget {
           player.name.toUpperCase(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: color, fontSize: 11.5, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+          style: TextStyle(
+            color: color,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
-          '$hitsLanded',
+          '$roundsWon',
           style: const TextStyle(
             color: Colors.white,
             fontSize: 36,
@@ -250,8 +310,13 @@ class _PlayerColumn extends StatelessWidget {
           ),
         ),
         Text(
-          'HITS OF ${PaintballK.hitsToWin}',
-          style: const TextStyle(color: PaintballResultCard._subtle, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+          'ROUNDS WON',
+          style: const TextStyle(
+            color: PaintballResultCard._subtle,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
         ),
         const SizedBox(height: 8),
         Padding(
@@ -269,10 +334,14 @@ class _PlayerColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
+        _Stat(label: 'HITS LANDED', value: '$hitsLanded'),
         _Stat(label: 'ACCURACY', value: '${stats.accuracyPercent.round()}%'),
         _Stat(label: 'SHOTS', value: '${stats.shotsFired}'),
         _Stat(label: 'DODGED', value: '${stats.timesDodged}'),
-        _Stat(label: 'LONGEST ALIVE', value: '${stats.longestSurvivalSeconds.round()}s'),
+        _Stat(
+          label: 'LONGEST ALIVE',
+          value: '${stats.longestSurvivalSeconds.round()}s',
+        ),
       ],
     );
   }
@@ -289,9 +358,25 @@ class _Stat extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: PaintballResultCard._subtle, fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: PaintballResultCard._subtle,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
           const Spacer(),
-          Text(value, style: const TextStyle(color: Color(0xFFE2E8F0), fontSize: 12, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFFE2E8F0),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
         ],
       ),
     );
@@ -304,7 +389,12 @@ class _CardButton extends StatelessWidget {
   final VoidCallback onTap;
   final bool primary;
 
-  const _CardButton({required this.label, required this.icon, required this.onTap, this.primary = false});
+  const _CardButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.primary = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -316,13 +406,24 @@ class _CardButton extends StatelessWidget {
           onTap();
         },
         icon: Icon(icon, size: 18),
-        label: Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1)),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+          ),
+        ),
         style: ElevatedButton.styleFrom(
           elevation: 0,
-          backgroundColor: primary ? PaintballResultCard._you : PaintballResultCard._card,
+          backgroundColor: primary
+              ? PaintballResultCard._you
+              : PaintballResultCard._card,
           foregroundColor: primary ? const Color(0xFF0A0E1A) : Colors.white,
           side: primary ? null : const BorderSide(color: Color(0x2EFFFFFF)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
     );
