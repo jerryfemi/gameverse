@@ -55,8 +55,8 @@ class LobbyGame {
     this.heroAlignmentNarrow = Alignment.center,
     this.available = true,
     this.featured = false,
-  })  : heroImage = heroImage ?? image,
-        heroImageNarrow = heroImageNarrow ?? heroImage ?? image;
+  }) : heroImage = heroImage ?? image,
+       heroImageNarrow = heroImageNarrow ?? heroImage ?? image;
 }
 
 /// The games in GameVerse, in lobby order.
@@ -73,13 +73,13 @@ const List<LobbyGame> lobbyGames = [
     heroAlignment: Alignment.centerRight,
     heroImageNarrow: 'assets/lobby/hoops_poster.webp',
     route: '/hoops',
+    featured: true,
   ),
   LobbyGame(
     id: 'archery',
     title: 'Archery',
     tagline: 'Read the wind and hit the gold.',
     pitch: 'Three arrows a set, and the wind changes every shot. First archer to six set points wins.',
-    heroLabel: 'New this week',
     accent: Color(0xFF00FFCC),
     image: 'assets/lobby/archery.webp',
     heroImage: 'assets/lobby/archery_hero.webp',
@@ -87,14 +87,12 @@ const List<LobbyGame> lobbyGames = [
     // Phones: the wind pill, the target and the apple tree all in frame.
     heroAlignmentNarrow: Alignment(0.16, 0),
     route: '/archery',
-    featured: true,
   ),
   LobbyGame(
     id: 'darts',
     title: 'Darts',
     tagline: "301 to zero. Flick, don't fling.",
     pitch: 'Three darts a turn, down to exactly zero. Go past it and the whole turn counts for nothing.',
-    heroLabel: 'New',
     accent: Color(0xFFEF4444),
     image: 'assets/lobby/darts.webp',
     imageAlignment: Alignment(0, -0.3),
@@ -124,10 +122,10 @@ LobbyGame get featuredGame =>
 
 /// Banner slides: the featured game first, then the rest in lobby order.
 List<LobbyGame> get heroGames => [
-      featuredGame,
-      for (final g in lobbyGames)
-        if (!identical(g, featuredGame)) g,
-    ];
+  featuredGame,
+  for (final g in lobbyGames)
+    if (!identical(g, featuredGame)) g,
+];
 
 /// The lobby entry for a `CloudMatch.game` id (falls back to basketball).
 LobbyGame lobbyGameById(String id) =>
