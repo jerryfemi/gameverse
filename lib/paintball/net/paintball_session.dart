@@ -137,6 +137,7 @@ class PaintballSession implements PaintballNetLink {
       // on our own shots (each is filed under its shooter).
       _subs.add(_root.child('r/$myUid').onChildAdded.listen(_onResult));
       _subs.add(_root.child('end').onValue.listen(_onEnd));
+      _subs.add(_root.child('rs').onChildAdded.listen(_onRoundStart));
 
       final known = match.opponentPlayer(myUid)?.uid;
       if (known != null && known.isNotEmpty) _watchOpponent(known);
@@ -245,6 +246,7 @@ class PaintballSession implements PaintballNetLink {
         void go() {
           if (_disposed || _started) return;
           _started = true;
+          _roundStartMs = at;
           status.value = PaintballSessionStatus.live;
           game.startOnline(((clock.serverNowMs - at) / 1000.0).clamp(0.0, 30.0));
         }
@@ -289,6 +291,8 @@ class PaintballSession implements PaintballNetLink {
     if (id == null || v is! Map || !_seenShots.add(id)) return;
     final shot = PaintballNetShot.fromMap(id, v);
     if (!_started) return;
+    // A ball fired in an earlier round never lands in this one.
+    if (shot.serverMs < _roundStartMs) return;
     final elapsed = ((clock.serverNowMs - shot.serverMs) / 1000.0)
         .clamp(0.0, PaintballK.ballFlightSeconds);
     game.applyRemoteShot(id, shot.aimX, shot.aimY, elapsed);
@@ -307,6 +311,10 @@ class PaintballSession implements PaintballNetLink {
     final end = PaintballNetEnd.fromMap(v);
     if (end.reason == PaintballEndReason.forfeit && !end.isTie) {
       game.forceEnd(youWin: end.winnerUid == myUid);
+    } else if (!isHost) {
+      // The host's verdict on the final round is the one both keep.
+      game.match.settleFinalRound(_toWinner(end.winnerUid));
+      _submitResult();
     }
     _finish();
   }
@@ -374,7 +382,12 @@ class PaintballSession implements PaintballNetLink {
   @override
   void matchOver(PaintballWinner? winner) {
     // Each side records its own result in Firestore (permanent history).
-    _submitResult();
+    // The guest waits briefly for the host's verdict so both records agree.
+    if (isHost) {
+      _submitResult();
+    } else {
+      Timer(const Duration(seconds: 3), _submitResult);
+    }
     final w = switch (winner) {
       PaintballWinner.you => myUid,
       PaintballWinner.opponent => opponentUid.value ?? 'tie',
@@ -423,19 +436,79 @@ class PaintballSession implements PaintballNetLink {
     _finish();
   }
 
+  PaintballWinner _toWinner(String w) => w == myUid
+      ? PaintballWinner.you
+      : (w == 'tie' ? PaintballWinner.tie : PaintballWinner.opponent);
+
+  String _toUid(PaintballWinner? w) => switch (w) {
+        PaintballWinner.you => myUid,
+        PaintballWinner.opponent => opponentUid.value ?? 'tie',
+        _ => 'tie',
+      };
+
+  // ─── Rounds ───────────────────────────────────────────────────────────────
+
+  /// Server time the current round went live (older shots are ignored).
+  int _roundStartMs = 0;
+  final Set<int> _roundsScheduled = <int>{};
+  bool _submitted = false;
+
+  @override
+  void roundOver(int round, PaintballWinner? winner) {
+    if (!isHost || _disposed) return;
+    // Banner, then 3-2-1, then live for both at the same server moment.
+    final at = clock.serverNowMs +
+        ((PaintballK.roundBreakSeconds + 3.0) * 1000).round();
+    _root.child('rs/$round').set({'w': _toUid(winner), 'at': at}).catchError(
+        (Object e) => debugPrint('[PaintballSession] round start write failed: $e'));
+  }
+
+  void _onRoundStart(DatabaseEvent e) {
+    final n = int.tryParse(e.snapshot.key ?? '');
+    final v = e.snapshot.value;
+    if (n == null || v is! Map || !_roundsScheduled.add(n)) return;
+    final at = (v['at'] as num?)?.toInt();
+    if (at == null) return;
+    final result = _toWinner((v['w'] as String?) ?? 'tie');
+    _roundStartMs = at;
+    // Start the 3-2-1 three seconds before the shared moment.
+    final wait = at - 3000 - clock.serverNowMs;
+    void go() {
+      if (_disposed) return;
+      game.match.beginNextRound(
+        countdownSeconds: (at - clock.serverNowMs) / 1000.0,
+        result: result,
+      );
+    }
+    if (wait <= 0) {
+      go();
+    } else {
+      Timer(Duration(milliseconds: wait), go);
+    }
+  }
+
   void _submitResult() {
+    if (_submitted) return;
+    _submitted = true;
     final m = game.match;
+    // Score = rounds won (the match outcome compares it); one summary per
+    // round with the hits landed that round.
+    final summaries = <RoundSummaryStats>[
+      for (var r = 0; r < m.roundHits.length; r++)
+        RoundSummaryStats(
+          roundIndex: r + 1,
+          score: m.roundHits[r].$1,
+          madeShots: r == 0 ? m.you.shotsHit : 0,
+          totalShots: r == 0 ? m.you.shotsFired : 0,
+          swishes: r == 0 ? m.you.timesDodged : 0,
+          bestStreak: r == 0 ? m.you.longestSurvivalSeconds.round() : 0,
+        ),
+    ];
     FirestoreMatchService.instance.submitPaintballResult(
       matchId: match.id,
       uid: myUid,
-      stats: RoundSummaryStats(
-        roundIndex: 1,
-        score: m.opponent.hitsTaken.clamp(0, PaintballK.hitsToWin),
-        madeShots: m.you.shotsHit,
-        totalShots: m.you.shotsFired,
-        swishes: m.you.timesDodged,
-        bestStreak: m.you.longestSurvivalSeconds.round(),
-      ),
+      roundsWon: m.youRounds.clamp(0, PaintballK.roundsToWin),
+      rounds: summaries,
     );
   }
 
