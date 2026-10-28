@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 /// Fixed rules info card for official Archery and Darts sets.
 class MatchRulesCard extends StatelessWidget {
   final bool isArchery;
+  final bool isPaintball;
 
   const MatchRulesCard({
     super.key,
     required this.isArchery,
+    this.isPaintball = false,
   });
 
   @override
@@ -22,7 +24,9 @@ class MatchRulesCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isArchery ? 'OFFICIAL SET RULES' : 'OFFICIAL 301 RULES',
+            isPaintball
+                ? 'OFFICIAL DUEL RULES'
+                : (isArchery ? 'OFFICIAL SET RULES' : 'OFFICIAL 301 RULES'),
             style: const TextStyle(
               color: Color(0xFF64748B),
               fontSize: 10.5,
@@ -32,7 +36,9 @@ class MatchRulesCard extends StatelessWidget {
           ),
           const SizedBox(height: 6.0),
           Text(
-            isArchery
+            isPaintball
+                ? '• Live 1v1 from behind 5 tyre stacks\n• First to 3 hits wins · 90s, then sudden death\n• 5 balls, reload only while ducked'
+                : isArchery
                 ? '• Sets of 3 arrows each (first to 6 set points)\n• 2 set points for winning a set, 1 each on a tie\n• 45s shot clock per set'
                 : '• 301 points countdown to exactly zero\n• 3 darts per turn · 20 rounds maximum\n• Must finish with a double or bullseye',
             style: const TextStyle(
