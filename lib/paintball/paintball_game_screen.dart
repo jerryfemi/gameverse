@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
@@ -21,6 +23,9 @@ import 'package:b_ball/paintball/ui/paintball_result_card.dart';
 class PaintballGameScreen extends StatefulWidget {
   const PaintballGameScreen({super.key});
 
+  /// Looping theme (loop points are trimmed to the first/last real sample).
+  static const String themeTrack = 'assets/paintball/pb_theme.mp3';
+
   @override
   State<PaintballGameScreen> createState() => _PaintballGameScreenState();
 }
@@ -32,7 +37,15 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
   void initState() {
     super.initState();
     _game = PaintballGame();
-    AudioEngine.silenceForLobby();
+    // Paintball's own sounds (decoded only now) and its theme while open.
+    unawaited(AudioEngine.loadPaintballSfx());
+    AudioEngine.claimSoundtrack(this, track: PaintballGameScreen.themeTrack);
+  }
+
+  @override
+  void dispose() {
+    AudioEngine.releaseSoundtrack(this);
+    super.dispose();
   }
 
   @override

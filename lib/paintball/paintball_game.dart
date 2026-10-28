@@ -415,7 +415,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     if (!match.you.tryFire()) return false;
 
     HapticFeedback.lightImpact();
-    AudioEngine.playFloorBounce(7.0); // Pneumatic marker pop placeholder
+    AudioEngine.playPaintballShot();
 
     // Launch from player's gun barrel (accounting for current camera pan)
     playerComponent.muzzle(_muzzle);
@@ -444,7 +444,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     if (!canAct) return;
     if (!match.opponent.tryFire()) return;
 
-    AudioEngine.playFloorBounce(5.5);
+    AudioEngine.playPaintballShot(opponent: true);
 
     // Launch from bot's gun barrel (accounting for far parallax)
     opponentComponent.muzzle(_muzzle);
@@ -541,9 +541,16 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     if (result.isHit) {
       target.applyDamage();
       shooter.shotsHit++;
-      if (!ball.firedByYou) HapticFeedback.mediumImpact();
-    } else if (result.isDodged) {
-      target.timesDodged++;
+      // Hit sounds carry their own haptic (medium, on you only).
+      if (ball.firedByYou) {
+        AudioEngine.playPaintballHitOpponent();
+      } else {
+        AudioEngine.playPaintballHitYou();
+      }
+    } else {
+      if (result.isDodged) target.timesDodged++;
+      // Burst on cover or the ground: louder on your side.
+      AudioEngine.playPaintballSplat(near: !ball.firedByYou);
     }
 
     // Blob radius on screen: small on the far row, big up close on your side.
