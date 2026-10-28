@@ -21,3 +21,8 @@ CC BY needs this credit visible in the game (credits screen or the lobby footer)
   - "Old Wooden Pallet" by Luka Feric (https://sketchfab.com/lferic), Sketchfab Standard licence (no credit required; credited anyway)
   - Grass, mud, sky and hills: generated for GameVerse.
 - Paint splats: generated for GameVerse.
+
+- Sounds:
+  - Marker shots (`pb_shot_1..5.wav`): cut from "Paintball Gun Shots" (freesound_community, Pixabay, file 70051). Check the Pixabay Content License on its page; credited anyway.
+  - Theme (`pb_theme.mp3`): "Main Theme" (freesound_community, Pixabay, file 68815). Same licence note.
+  - Splat and hit (`pb_splat.wav`, `pb_hit.wav`): synthesised for GameVerse.
