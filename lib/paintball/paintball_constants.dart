@@ -222,6 +222,22 @@ abstract final class PaintballK {
   /// On-screen height of your standing player (over-the-shoulder, close).
   static const double youStandHeight = 0.40;
 
+  /// Width of the play stage as a fraction of screen height (9:16 portrait).
+  /// Lane spacing comes from this stage, never from the window width, so a
+  /// wide window shows more scenery at the sides with the same layout.
+  static const double stageAspect = 0.5625;
+
+  /// Far-row lane spacing relative to your row (perspective). At 0.5 all five
+  /// far stacks and the opponent fit on screen at once.
+  static const double farLaneScale = 0.5;
+
+  /// Furthest you can aim from straight ahead, in aimX units (1.0 = two lanes).
+  /// 2.0 lets you reach any far lane from any lane.
+  static const double maxAimOffset = 2.0;
+
+  /// Camera pan from aiming, as a fraction of stage width per 1.0 of aim offset.
+  static const double aimPanFraction = 0.10;
+
   /// Ground line under your own tyre stacks (a step in front of your feet).
   static const double nearTyreGroundY = 0.90;
 
