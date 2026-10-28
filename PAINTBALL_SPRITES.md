@@ -28,3 +28,10 @@ Claude wires these sprites into `player_sprite.dart`. Gemini: leave that file's 
 
 ## Pipeline
 Mixamo would not accept the CC skeleton, so the T-pose mesh was exported without bones or marker (`Downloads/realistic-paintball-player-animated/paintball_player_mixamo.zip`) and auto-rigged. The marker (GLB `Object_19`) is skinned 100% to `mixamorigRightHand` using its bind-pose offset. Rendered headless with three.js 0.160 (warm key + #38BDF8 rim).
+
+## In the game (28 Oct)
+- `components/player_sprite.dart` loads the atlases through `PaintballPlayerAtlas.load()` (cached) and draws with `drawImageRect` from precomputed rects: no allocations per frame.
+- The component's `position` is the **ground point** under the feet; `standHeight` is the on-screen height of the standing pose. Stance poses come from the sprites, not from moving the sprite down.
+- Clip priority: death > win > hit (0.6 s, on `hitsTaken` going up) > slide (left/right picked from the on-screen direction) > fire (0.25 s, on `shotsFired` going up, standing only) > stand/crouch/duck. A red flicker shows invulnerability.
+- Heights now match the sprites. `PaintballK.tyreCoverHeight = 0.55`: stand is exposed 0.55–1.0, crouch 0.55–0.72, duck never. The far tyre's top is drawn at that height; the reticle's `aimY` is a fraction of the standing opponent's height above their feet; the bot's aim at you uses the same scale.
+- Layout constants: `farGroundY 0.52`, `oppStandHeight 0.13`, `nearGroundY 0.97`, `youStandHeight 0.40` (fractions of screen height). Tune these after seeing it on a phone.
