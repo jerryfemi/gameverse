@@ -204,9 +204,9 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
             child: GameWidget<PaintballGame>(
               game: _game,
               overlayBuilderMap: {
-                'HUD': (context, game) => StreamBuilder<void>(
-                      stream: Stream.periodic(const Duration(milliseconds: 100)),
-                      builder: (context, _) {
+                'HUD': (context, game) => ValueListenableBuilder<int>(
+                      valueListenable: game.uiVersion,
+                      builder: (context, _, _) {
                         if (game.waitingForOpponent) return const SizedBox.shrink();
                         if (game.match.phase == PaintballMatchPhase.intro) {
                           return _IntroOverlay(game: game);
@@ -227,9 +227,9 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                         );
                       },
                     ),
-                'Controls': (context, game) => StreamBuilder<void>(
-                      stream: Stream.periodic(const Duration(milliseconds: 50)),
-                      builder: (context, _) {
+                'Controls': (context, game) => ValueListenableBuilder<int>(
+                      valueListenable: game.uiVersion,
+                      builder: (context, _, _) {
                         if (game.waitingForOpponent ||
                             game.match.phase == PaintballMatchPhase.intro) {
                           return const SizedBox.shrink();
@@ -260,7 +260,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
               initialActiveOverlays: const ['HUD', 'Controls'],
             ),
           ),
-          if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby),
+          if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby, opponentName: _players.opponent.isBot ? null : _players.opponent.name),
           if (_paused)
             Positioned.fill(
               child: ArcheryPauseMenu(
@@ -631,6 +631,7 @@ class _SessionStatusLayer extends StatelessWidget {
   final PaintballSession session;
   final PaintballGame game;
   final String code;
+  final String? opponentName;
   final VoidCallback onLobby;
 
   const _SessionStatusLayer({
@@ -638,6 +639,7 @@ class _SessionStatusLayer extends StatelessWidget {
     required this.game,
     required this.code,
     required this.onLobby,
+    this.opponentName,
   });
 
   @override
@@ -655,11 +657,26 @@ class _SessionStatusLayer extends StatelessWidget {
             ),
           );
         }
+        // Host got here first: the arena stays live behind a small pill and
+        // the intro starts the moment the opponent joins.
+        if (st == PaintballSessionStatus.waitingForOpponent && game.waitingForOpponent) {
+          return Positioned(
+            top: 86,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: _Pill(
+                  text: opponentName == null
+                      ? 'WAITING FOR OPPONENT · CODE $code'
+                      : 'WAITING FOR ${opponentName!.toUpperCase()}…',
+                  color: const Color(0xFF00FFCC),
+                ),
+              ),
+            ),
+          );
+        }
         final (title, body, color, spinner) = switch (st) {
-          PaintballSessionStatus.connecting =>
-            ('CONNECTING', 'Joining the arena…', const Color(0xFF38BDF8), true),
-          PaintballSessionStatus.waitingForOpponent when game.waitingForOpponent =>
-            ('WAITING FOR OPPONENT', 'Match code $code', const Color(0xFF00FFCC), true),
           PaintballSessionStatus.versionMismatch =>
             ('UPDATE NEEDED', 'You and your opponent are on different versions. Refresh the page.', const Color(0xFFEF4444), false),
           PaintballSessionStatus.error =>

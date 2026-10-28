@@ -3,6 +3,7 @@ import 'dart:ui' show Canvas;
 
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/widgets.dart' show KeyEventResult;
 import 'package:flutter/services.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
@@ -96,6 +97,36 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   // Last state sent, so writes happen only on change (never per frame).
   int _sentLane = -1, _sentFrom = -2, _sentStance = -1, _sentAmmo = -1;
   int _sentHits = -1, _sentAim = 9, _aimBucket = 0;
+
+  /// Bumped only when something the HUD or controls show has changed (hits,
+  /// ammo, stance, lane, phase, whole clock seconds). The Flutter overlays
+  /// listen to this instead of rebuilding on a timer.
+  final ValueNotifier<int> uiVersion = ValueNotifier<int>(0);
+  int _uiSignature = 0;
+
+  void _publishUi() {
+    final y = match.you, o = match.opponent;
+    final sig = Object.hash(
+      match.phase.index,
+      y.hitsTaken,
+      o.hitsTaken,
+      y.ammo,
+      y.stance.index,
+      y.isSliding,
+      y.lane,
+      canAct,
+      playerCanFire,
+      match.timeRemaining.ceil(),
+      match.suddenDeathRemaining.ceil(),
+      match.countdownRemaining.ceil(),
+      showResults,
+      waitingForOpponent,
+    );
+    if (sig != _uiSignature) {
+      _uiSignature = sig;
+      uiVersion.value++;
+    }
+  }
 
   /// Opponent's upper-body pose from the network (-1, 0, 1).
   int remoteAimBucket = 0;
@@ -436,7 +467,6 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   /// changes play through the same timers as local moves; never a teleport.
   void applyRemoteState(PaintballNetPlayerState st) {
     final opp = match.opponent;
-    opp.ammo = st.ammo;
     remoteAimBucket = st.aimBucket;
     // Trust the target's own hit count if it is ahead of ours.
     if (st.hitsTaken > opp.hitsTaken) opp.hitsTaken = st.hitsTaken;
@@ -964,6 +994,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   void update(double dt) {
     super.update(dt);
     if (!_isReady) return;
+    _publishUi();
     if (waitingForOpponent) {
       if (_cachedWidth > 0 && _cachedHeight > 0) {
         _updatePlayerPositions(_cachedWidth, _cachedHeight);
