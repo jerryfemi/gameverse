@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:b_ball/game/ui/common/app_avatar.dart';
 import 'package:flutter/physics.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -14,7 +16,6 @@ import 'package:b_ball/paintball/logic/paintball_players.dart';
 import 'package:b_ball/paintball/net/paintball_session.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/game/match/match_config.dart';
-import 'package:b_ball/game/ui/match/match_lobby_dialog.dart';
 import 'package:b_ball/game/ui/match/match_setup_dialog.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/player_descriptor.dart';
@@ -302,9 +303,18 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
           if (!_tiltDismissed &&
               MediaQuery.sizeOf(context).shortestSide < 600 &&
               MediaQuery.orientationOf(context) == Orientation.portrait)
-            _TiltHint(onDismiss: () => setState(() => _tiltDismissed = true)),
+            _RotateChip(onDone: () => setState(() => _tiltDismissed = true)),
           if (_tour) ArcheryTour(steps: _tourSteps, onDone: _endTour),
-          if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby, opponentName: _players.opponent.isBot ? null : _players.opponent.name),
+          if (_session != null && _game.waitingForOpponent)
+            _ReadyRoom(
+              session: _session!,
+              code: widget.match!.joinCode,
+              you: _players.you,
+              opponent: _players.opponent,
+              onPlayBot: _leaveRoom(toBot: true),
+              onLobby: _leaveRoom(toBot: false),
+            ),
+          if (_session != null && !_game.waitingForOpponent) _SessionPills(session: _session!),
           if (_paused)
             Positioned.fill(
               child: ArcheryPauseMenu(
@@ -346,12 +356,32 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
   }
 
   /// Online rematch: the shared instant-rematch challenge (same as archery).
+  /// Reads the match fresh: the copy this screen opened with may predate the
+  /// opponent joining, and then there's "nobody" to rematch.
   Future<void> _rematchOnline() async {
     final m = widget.match;
     final me = AuthService.instance.currentUser?.uid;
     if (m == null || me == null) return;
-    await PaintballChallenge.rematch(context, finished: m, myUid: me);
+    final fresh = await FirestoreMatchService.instance.getMatch(m.id) ?? m;
+    if (!mounted) return;
+    await PaintballChallenge.rematch(context, finished: fresh, myUid: me);
   }
+
+  /// Leaving the ready room before the duel starts. Nobody joined yet: close
+  /// the room (and withdraw a friend challenge). Otherwise just leave; the
+  /// opponent sees you go. Not a forfeit, nothing was played.
+  VoidCallback _leaveRoom({required bool toBot}) => () async {
+        final m = widget.match;
+        final me = AuthService.instance.currentUser?.uid;
+        final router = GoRouter.maybeOf(context);
+        if (m != null && me != null && _session?.opponentUid.value == null) {
+          final fresh = await FirestoreMatchService.instance.getMatch(m.id) ?? m;
+          if (fresh.player2 == null) {
+            unawaited(FirestoreMatchService.instance.leaveOrDismissMatch(matchId: m.id, myUid: me));
+          }
+        }
+        router?.go(toBot ? '/paintball' : '/');
+      };
 
   Widget _buildCountdownBanner(PaintballGame game) {
     final count = game.match.countdownRemaining.ceil();
@@ -573,8 +603,7 @@ class _IntroOverlayState extends State<_IntroOverlay> with SingleTickerProviderS
 }
 
 /// Creates an online paintball match (code or friend challenge) and takes the
-/// player into it. Same flow as ArcheryChallenge / DartsChallenge: the shared
-/// MatchSetupDialog, then the shared MatchLobbyDialog.
+/// player into it: the shared MatchSetupDialog, then this screen's ready room.
 abstract final class PaintballChallenge {
   static const MatchConfig config = MatchConfig(
     game: 'paintball',
@@ -611,17 +640,9 @@ abstract final class PaintballChallenge {
         );
     if (!context.mounted) return;
 
-    void enter(CloudMatch m) {
-      if (context.mounted) GoRouter.maybeOf(context)?.go('/match/${m.id}');
-    }
-
-    await MatchLobbyDialog.show(
-      context: context,
-      match: match,
-      challengedFriend: chosen.opponentFriend,
-      onPlaySoloWhileWaiting: () => enter(match),
-      onEnterArena: enter,
-    );
+    // Straight into the paintball ready room (code, presence, READY);
+    // the turn-based lobby dialog doesn't fit a live duel.
+    GoRouter.maybeOf(context)?.go('/match/${match.id}');
   }
 
   /// Instant rematch with the same opponent: creates or joins their rematch.
@@ -669,22 +690,10 @@ abstract final class PaintballChallenge {
   }
 }
 
-/// Online states over the arena: connecting, waiting for the opponent (with
-/// the match code), opponent reconnecting, and in-card errors. No SnackBars.
-class _SessionStatusLayer extends StatelessWidget {
+/// In-match online pills: opponent reconnecting, or an "update needed" card.
+class _SessionPills extends StatelessWidget {
   final PaintballSession session;
-  final PaintballGame game;
-  final String code;
-  final String? opponentName;
-  final VoidCallback onLobby;
-
-  const _SessionStatusLayer({
-    required this.session,
-    required this.game,
-    required this.code,
-    required this.onLobby,
-    this.opponentName,
-  });
+  const _SessionPills({required this.session});
 
   @override
   Widget build(BuildContext context) {
@@ -701,98 +710,319 @@ class _SessionStatusLayer extends StatelessWidget {
             ),
           );
         }
-        // Host got here first: the arena stays live behind a small pill and
-        // the intro starts the moment the opponent joins.
-        if (st == PaintballSessionStatus.waitingForOpponent && game.waitingForOpponent) {
-          return Positioned(
-            top: 86,
-            left: 0,
-            right: 0,
-            child: IgnorePointer(
-              child: Center(
-                child: _Pill(
-                  text: opponentName == null
-                      ? 'WAITING FOR OPPONENT · CODE $code'
-                      : 'WAITING FOR ${opponentName!.toUpperCase()}…',
-                  color: const Color(0xFF00FFCC),
+        return const SizedBox.shrink();
+      },
+    );
+  }
+}
+
+/// Live 1v1 ready room: both players, who's here, who's READY. Both ready →
+/// a shared 3-2-1 on this card, then the arena. Always has a way out.
+class _ReadyRoom extends StatefulWidget {
+  final PaintballSession session;
+  final String code;
+  final PaintballPlayer you;
+  final PaintballPlayer opponent;
+  final VoidCallback onPlayBot;
+  final VoidCallback onLobby;
+
+  const _ReadyRoom({
+    required this.session,
+    required this.code,
+    required this.you,
+    required this.opponent,
+    required this.onPlayBot,
+    required this.onLobby,
+  });
+
+  @override
+  State<_ReadyRoom> createState() => _ReadyRoomState();
+}
+
+class _ReadyRoomState extends State<_ReadyRoom> {
+  static const _sky = Color(0xFF38BDF8);
+  static const _cyan = Color(0xFF00FFCC);
+  static const _slate = Color(0xFF94A3B8);
+
+  Timer? _tick;
+  late final DateTime _opened = DateTime.now();
+  bool _copied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Drives the 3-2-1 and the "still waiting" nudge.
+    _tick = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _copy() async {
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.code));
+      HapticFeedback.lightImpact();
+      setState(() => _copied = true);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _copied = false);
+      });
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.session;
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        s.connected, s.struggling, s.meReady, s.opponentReady, s.opponentHere,
+        s.startAt, s.opponentUid, s.status,
+      ]),
+      builder: (context, _) {
+        if (s.status.value == PaintballSessionStatus.versionMismatch) {
+          return _wrap(_message(Icons.system_update_rounded, 'UPDATE NEEDED',
+              'You and your opponent are on different versions. Refresh the page.'));
+        }
+        final joined = s.opponentUid.value != null;
+        final here = s.opponentHere.value;
+        final at = s.startAt.value;
+        final secs = at == null ? null : ((at - s.clock.serverNowMs) / 1000.0).ceil().clamp(0, 3);
+        final waitedLong = DateTime.now().difference(_opened).inSeconds > 120 && !here;
+
+        return _wrap(Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('PAINTBALL · LIVE 1V1',
+                style: UiFont.style(size: 12, weight: 800, color: _sky, letterSpacing: 1.6)),
+            const SizedBox(height: 18),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: _seat(widget.you, here: s.connected.value, ready: s.meReady.value)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 26),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: secs != null
+                        ? Text('$secs',
+                            key: ValueKey(secs),
+                            style: UiFont.style(size: 40, weight: 900, color: _cyan))
+                        : Text('VS',
+                            key: const ValueKey('vs'),
+                            style: UiFont.style(size: 14, weight: 800, color: const Color(0xFF64748B))),
+                  ),
                 ),
+                Expanded(
+                  child: _seat(
+                    joined ? widget.opponent : null,
+                    here: here,
+                    ready: s.opponentReady.value,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Text(
+                key: ValueKey('${secs != null}$joined$here${s.opponentReady.value}${s.meReady.value}'),
+                secs != null
+                    ? 'Get ready…'
+                    : !joined
+                        ? 'Send your friend the code to join'
+                        : !here
+                            ? 'Waiting for ${widget.opponent.name} to open the match'
+                            : s.opponentReady.value && !s.meReady.value
+                                ? '${widget.opponent.name} is ready. Tap READY!'
+                                : s.meReady.value && !s.opponentReady.value
+                                    ? 'Waiting for ${widget.opponent.name} to tap READY'
+                                    : 'Tap READY when you\'re set',
+                textAlign: TextAlign.center,
+                style: UiFont.style(size: 13.5, weight: 500, color: _slate),
               ),
             ),
-          );
-        }
-        final (title, body, color, spinner) = switch (st) {
-          PaintballSessionStatus.versionMismatch =>
-            ('UPDATE NEEDED', 'You and your opponent are on different versions. Refresh the page.', const Color(0xFFEF4444), false),
-          PaintballSessionStatus.error =>
-            ('CONNECTION FAILED', 'Couldn\'t reach the live arena. Check your internet.', const Color(0xFFEF4444), false),
-          _ => ('', '', Colors.transparent, false),
-        };
-        if (title.isEmpty) return const SizedBox.shrink();
-        return Positioned.fill(
-          child: ColoredBox(
-            color: const Color(0x990A0E1A),
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
+            if (!joined) ...[
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: _copy,
                 child: Container(
-                  key: ValueKey(title),
-                  width: 300,
-                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111827),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _copied ? _cyan : const Color(0xFF1E2638)),
+                  ),
+                  child: Text(_copied ? '✓ CODE COPIED' : widget.code,
+                      style: UiFont.style(
+                          size: _copied ? 13 : 20, weight: 900, color: _copied ? _cyan : Colors.white, letterSpacing: 3)),
+                ),
+              ),
+            ],
+            const SizedBox(height: 18),
+            SizedBox(width: double.infinity, height: 50, child: _readyButton(s, locked: secs != null)),
+            const SizedBox(height: 6),
+            if (waitedLong)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text('Still waiting… try the bot in the meantime?',
+                    style: UiFont.style(size: 12, weight: 600, color: const Color(0xFFF59E0B))),
+              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: widget.onPlayBot,
+                  child: Text('PLAY THE BOT',
+                      style: UiFont.style(size: 12, weight: 800, color: _sky, letterSpacing: 0.8)),
+                ),
+                const SizedBox(width: 6),
+                TextButton(
+                  onPressed: widget.onLobby,
+                  child: Text('BACK TO LOBBY',
+                      style: UiFont.style(size: 12, weight: 800, color: _slate, letterSpacing: 0.8)),
+                ),
+              ],
+            ),
+          ],
+        ));
+      },
+    );
+  }
+
+  Widget _readyButton(PaintballSession s, {required bool locked}) {
+    final connected = s.connected.value;
+    final ready = s.meReady.value;
+    final Widget label;
+    if (!connected) {
+      label = s.struggling.value
+          ? Text('RECONNECTING…', style: UiFont.style(size: 14, weight: 800, color: _slate, letterSpacing: 1))
+          : const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: _sky));
+    } else {
+      label = Text(ready ? '✓ READY' : 'READY',
+          style: UiFont.style(
+              size: 16, weight: 900, color: ready ? _cyan : const Color(0xFF0A0E1A), letterSpacing: 1.4));
+    }
+    return GestureDetector(
+      onTap: !connected || locked
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              s.setReady(!ready);
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: !connected
+              ? const Color(0xFF1E2638)
+              : ready
+                  ? const Color(0x1A00FFCC)
+                  : _sky,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: ready ? _cyan : Colors.transparent, width: 1.6),
+          boxShadow: ready ? [BoxShadow(color: _cyan.withValues(alpha: 0.25), blurRadius: 18)] : null,
+        ),
+        child: label,
+      ),
+    );
+  }
+
+  /// One player: avatar with a presence dot, name, and a READY tick.
+  Widget _seat(PaintballPlayer? p, {required bool here, required bool ready}) {
+    final ring = ready ? _cyan : (here ? _sky : const Color(0xFF334155));
+    return Column(
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: ring, width: 2.2),
+                boxShadow: ready ? [BoxShadow(color: _cyan.withValues(alpha: 0.35), blurRadius: 16)] : null,
+              ),
+              child: p == null
+                  ? const SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Icon(Icons.person_outline_rounded, color: Color(0xFF475569), size: 34),
+                    )
+                  : Opacity(opacity: here ? 1 : 0.45, child: AppAvatar(avatar: p.avatar, size: 64)),
+            ),
+            if (ready)
+              Positioned(
+                right: -2,
+                bottom: -2,
+                child: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(color: _cyan, shape: BoxShape.circle),
+                  child: const Icon(Icons.check_rounded, size: 16, color: Color(0xFF0A0E1A)),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(p?.name ?? 'Waiting…',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: UiFont.style(size: 14, weight: 800, color: p == null ? _slate : Colors.white)),
+        const SizedBox(height: 3),
+        Text(
+          ready ? 'READY' : (here ? 'Here' : (p == null ? 'Not joined' : 'Not here yet')),
+          style: UiFont.style(
+              size: 11, weight: 700, letterSpacing: 0.6, color: ready ? _cyan : (here ? _sky : const Color(0xFF64748B))),
+        ),
+      ],
+    );
+  }
+
+  Widget _message(IconData icon, String title, String body) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: const Color(0xFFEF4444), size: 30),
+          const SizedBox(height: 12),
+          Text(title, style: UiFont.style(size: 15, weight: 900, color: Colors.white, letterSpacing: 1.2)),
+          const SizedBox(height: 6),
+          Text(body, textAlign: TextAlign.center, style: UiFont.style(size: 13, weight: 500, color: _slate)),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: widget.onLobby,
+            child: Text('BACK TO LOBBY', style: UiFont.style(size: 12, weight: 800, color: _sky)),
+          ),
+        ],
+      );
+
+  Widget _wrap(Widget child) => Positioned.fill(
+        child: ColoredBox(
+          color: const Color(0xB30A0E1A),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 380),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 12),
                   decoration: BoxDecoration(
                     color: const Color(0xF20F172A),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: color.withValues(alpha: 0.5)),
-                    boxShadow: [BoxShadow(color: color.withValues(alpha: 0.18), blurRadius: 28)],
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0x4038BDF8)),
+                    boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 40)],
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (spinner)
-                        SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: CircularProgressIndicator(strokeWidth: 2.4, color: color),
-                        )
-                      else
-                        Icon(Icons.wifi_off_rounded, color: color, size: 28),
-                      const SizedBox(height: 14),
-                      Text(title,
-                          style: UiFont.style(size: 15, weight: 900, color: Colors.white, letterSpacing: 1.2)),
-                      const SizedBox(height: 6),
-                      Text(body,
-                          textAlign: TextAlign.center,
-                          style: UiFont.style(size: 12.5, weight: 600, color: const Color(0xFF94A3B8))),
-                      if (st == PaintballSessionStatus.error && session.lastError != null) ...[
-                        const SizedBox(height: 8),
-                        Text(session.lastError!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: UiFont.style(size: 10.5, weight: 500, color: const Color(0xFF64748B))),
-                      ],
-                      const SizedBox(height: 16),
-                      if (st == PaintballSessionStatus.error)
-                        FilledButton(
-                          onPressed: session.retry,
-                          style: FilledButton.styleFrom(backgroundColor: color),
-                          child: Text('RETRY',
-                              style: UiFont.style(size: 12, weight: 800, color: const Color(0xFF0A0E1A), letterSpacing: 1.0)),
-                        ),
-                      TextButton(
-                        onPressed: onLobby,
-                        child: Text('BACK TO LOBBY',
-                            style: UiFont.style(size: 12, weight: 800, color: color, letterSpacing: 1.0)),
-                      ),
-                    ],
-                  ),
+                  child: child,
                 ),
               ),
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
 }
 
 class _Pill extends StatelessWidget {
@@ -861,35 +1091,66 @@ class _LoadingCard extends StatelessWidget {
   }
 }
 
-/// Phone held upright: landscape shows more of the arena. Dismissible, and
-/// it disappears by itself once the phone is turned.
-class _TiltHint extends StatelessWidget {
-  final VoidCallback onDismiss;
-  const _TiltHint({required this.onDismiss});
+/// Phone held upright: a small chip suggests landscape for a wider view,
+/// then fades away after 2 seconds. Once per visit.
+class _RotateChip extends StatefulWidget {
+  final VoidCallback onDone;
+  const _RotateChip({required this.onDone});
+
+  @override
+  State<_RotateChip> createState() => _RotateChipState();
+}
+
+class _RotateChipState extends State<_RotateChip> {
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _shown = true);
+    });
+    Future.delayed(const Duration(milliseconds: 2300), () {
+      if (mounted) setState(() => _shown = false);
+    });
+    Future.delayed(const Duration(milliseconds: 2700), () {
+      if (mounted) widget.onDone();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: ColoredBox(
-        color: const Color(0xE60A0E1A),
+    return Positioned(
+      top: MediaQuery.paddingOf(context).top + 64,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
         child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.screen_rotation_rounded, color: Color(0xFF38BDF8), size: 44),
-              const SizedBox(height: 14),
-              Text('Turn your phone sideways',
-                  style: UiFont.style(size: 20, weight: 800, color: Colors.white, letterSpacing: -0.2)),
-              const SizedBox(height: 6),
-              Text('Landscape gives you a wider view of the arena.',
-                  style: UiFont.style(size: 14, weight: 500, color: const Color(0xFF94A3B8))),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: onDismiss,
-                child: Text('PLAY ANYWAY',
-                    style: UiFont.style(size: 13, weight: 800, color: const Color(0xFF38BDF8), letterSpacing: 1.0)),
+          child: AnimatedOpacity(
+            opacity: _shown ? 1 : 0,
+            duration: const Duration(milliseconds: 300),
+            child: AnimatedSlide(
+              offset: _shown ? Offset.zero : const Offset(0, -0.3),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xE60F172A),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: const Color(0x6638BDF8)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.screen_rotation_rounded, size: 16, color: Color(0xFF38BDF8)),
+                    const SizedBox(width: 8),
+                    Text('Rotate for a better view',
+                        style: UiFont.style(size: 12.5, weight: 700, color: Colors.white)),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
