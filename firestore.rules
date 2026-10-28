@@ -180,6 +180,35 @@ service cloud.firestore {
         );
       }
 
+      // Paintball (live over RTDB): each player writes their own result once
+      // (hits landed, 0-3). Whoever writes second marks the match completed.
+      function isSubmittingPaintballResult() {
+        return isParticipant() &&
+          resource.data.get('game', 'basketball') == 'paintball' &&
+          resource.data.status == 'active' &&
+          changedKeys().hasOnly(['status', 'updatedAt', 'expireAt', 'activeTurnPlayerUid', myKey()]) &&
+          request.resource.data.status in ['active', 'completed'] &&
+          request.resource.data.playerIds == resource.data.playerIds &&
+          request.resource.data[myKey()].uid == request.auth.uid &&
+          resource.data[myKey()].roundScores.size() == 0 &&
+          request.resource.data[myKey()].roundScores.size() == 1 &&
+          request.resource.data[myKey()].roundScores[0] is int &&
+          request.resource.data[myKey()].roundScores[0] >= 0 &&
+          request.resource.data[myKey()].roundScores[0] <= 3;
+      }
+
+      // Paintball: the opponent dropped off the live match for 10 s.
+      function isClaimingPaintballForfeit() {
+        return isParticipant() &&
+          resource.data.get('game', 'basketball') == 'paintball' &&
+          resource.data.status == 'active' &&
+          changedKeys().hasOnly(['status', 'forfeitedBy', 'winnerUid', 'activeTurnPlayerUid', 'updatedAt', 'expireAt']) &&
+          request.resource.data.status == 'forfeited' &&
+          request.resource.data.winnerUid == request.auth.uid &&
+          request.resource.data.forfeitedBy != request.auth.uid &&
+          request.resource.data.forfeitedBy in resource.data.playerIds;
+      }
+
       // Lightweight chat-metadata mirror for inbox badges (messages live in the subcollection).
       function isTouchingTimestamp() {
         return isParticipant() &&
@@ -320,7 +349,9 @@ service cloud.firestore {
         isAbandoningRoom() ||
         isDismissingFinished() ||
         isDecliningChallenge() ||
-        isClearingTelemetry();
+        isClearingTelemetry() ||
+        isSubmittingPaintballResult() ||
+        isClaimingPaintballForfeit();
 
       // Matches are never hard-deleted by clients: finished matches are permanent
       // trophy history. Orphaned docs (no playerIds left) are cleaned by the expireAt TTL.

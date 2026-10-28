@@ -1,0 +1,34 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "paintball": {
+      "$m": {
+        ".read": "auth != null && (data.child('meta/h').val() === auth.uid || data.child('meta/g').val() === auth.uid || (data.child('meta').exists() && data.child('meta/g').val() === null))",
+        "meta": {
+          ".write": "auth != null && ((!data.exists() && newData.child('h').val() === auth.uid) || data.child('h').val() === auth.uid || ((data.child('g').val() === null || data.child('g').val() === auth.uid) && newData.child('g').val() === auth.uid && newData.child('h').val() === data.child('h').val()))"
+        },
+        "p": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)"
+          }
+        },
+        "s": {
+          "$id": {
+            ".write": "!data.exists() && newData.child('b').val() === auth.uid && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)",
+            ".validate": "newData.hasChildren(['b','t','x','y'])"
+          }
+        },
+        "r": {
+          "$id": {
+            ".write": "!data.exists() && root.child('paintball/'+$m+'/s/'+$id).exists() && auth.uid !== root.child('paintball/'+$m+'/s/'+$id+'/b').val() && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)"
+          }
+        },
+        "end": {
+          ".write": "auth != null && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)"
+        },
+        ".write": "auth != null && !newData.exists() && root.child('paintball/'+$m+'/meta/h').val() === auth.uid"
+      }
+    }
+  }
+}
