@@ -110,7 +110,7 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 58,
               icon: Icons.chevron_left_rounded,
               iconSize: 32,
-              enabled: game.canAct && you.lane > PaintballK.minLane && !you.isSliding,
+              enabled: game.canAct && you.lane > PaintballK.minLane,
               onTap: () => game.playerSlide(-1),
             ),
             const SizedBox(width: 12),
@@ -118,7 +118,7 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 58,
               icon: Icons.chevron_right_rounded,
               iconSize: 32,
-              enabled: game.canAct && you.lane < PaintballK.maxLane && !you.isSliding,
+              enabled: game.canAct && you.lane < PaintballK.maxLane,
               onTap: () => game.playerSlide(1),
             ),
           ],
@@ -142,7 +142,7 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 48,
               icon: Icons.keyboard_arrow_up_rounded,
               iconSize: 28,
-              enabled: game.canAct && you.stance != PaintballStance.stand && !you.isSliding,
+              enabled: game.canAct && you.stance != PaintballStance.stand,
               highlight: you.stance == PaintballStance.stand,
               onTap: () => game.playerStanceStep(1),
             ),
@@ -151,7 +151,7 @@ class PaintballControlsOverlay extends StatelessWidget {
               size: 48,
               icon: Icons.keyboard_arrow_down_rounded,
               iconSize: 28,
-              enabled: game.canAct && you.stance != PaintballStance.duck && !you.isSliding,
+              enabled: game.canAct && you.stance != PaintballStance.duck,
               highlight: you.stance == PaintballStance.duck,
               onTap: () => game.playerStanceStep(-1),
             ),
@@ -160,8 +160,12 @@ class PaintballControlsOverlay extends StatelessWidget {
         const SizedBox(width: 14),
 
         // Glowing Red FIRE Action Button
-        GestureDetector(
-          onTap: game.playerCanFire ? game.firePlayerShot : null,
+        // Fires on touch-down (no wait for release, no tap-vs-drag
+        // disambiguation), so fast repeated taps all register.
+        _PressScale(
+          onPress: () {
+            if (game.playerCanFire) game.firePlayerShot();
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: 84,
@@ -205,8 +209,8 @@ class PaintballControlsOverlay extends StatelessWidget {
     required VoidCallback onTap,
     bool highlight = false,
   }) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
+    return _PressScale(
+      onPress: enabled ? onTap : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         width: size,
@@ -236,6 +240,42 @@ class PaintballControlsOverlay extends StatelessWidget {
                   ? Colors.white
                   : const Color(0xFF64748B),
         ),
+      ),
+    );
+  }
+}
+
+/// Button that acts on pointer-down and dips slightly while pressed.
+/// A Listener takes no part in the gesture arena, so it never loses a tap
+/// to the aim drag or to double-tap detection.
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.onPress, required this.child});
+
+  final VoidCallback? onPress;
+  final Widget child;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        widget.onPress?.call();
+        setState(() => _down = true);
+      },
+      onPointerUp: (_) => setState(() => _down = false),
+      onPointerCancel: (_) => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.92 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }
