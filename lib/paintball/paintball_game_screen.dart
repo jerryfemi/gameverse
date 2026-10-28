@@ -51,9 +51,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                   if (game.match.phase == PaintballMatchPhase.gameOver) {
                     return PaintballResultCard(
                       match: game.match,
-                      onRematch: () {
-                        game.match.startMatch();
-                      },
+                      onRematch: game.resetMatch,
                       onLobby: () {
                         if (context.mounted) context.go('/');
                       },
