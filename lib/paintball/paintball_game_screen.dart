@@ -85,8 +85,8 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
         'Drag on the right side to move the reticle, then tap FIRE or press Space. The ball takes a moment to fly, so lead your target.'),
     TourStep(Icons.refresh_rounded, 'Duck to reload',
         'You carry 5 balls. They only refill while you\'re ducked behind cover.'),
-    TourStep(Icons.emoji_events_rounded, 'First to 3 hits wins',
-        'You have 90 seconds. If it\'s tied when time runs out, the next hit wins.'),
+    TourStep(Icons.emoji_events_rounded, 'Best of 3 rounds',
+        'Land 3 hits to win a round. Rounds last 60 seconds, and a tie goes to sudden death. Win 2 rounds to take the match.'),
   ];
 
   void _checkTour() {
@@ -287,6 +287,9 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                             ),
                           );
                         }
+                        if (game.match.phase == PaintballMatchPhase.roundOver) {
+                          return _buildRoundBanner(game);
+                        }
                         return Stack(
                           children: [
                             PaintballControlsOverlay(game: game),
@@ -326,10 +329,10 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                       }
                     : null,
                 subtitle: _online
-                    ? 'Live vs ${_players.opponent.name} · first to ${PaintballK.hitsToWin} hits'
-                    : 'Solo vs ${_players.opponent.name} · first to ${PaintballK.hitsToWin} hits',
-                stat1Label: 'HITS',
-                stat1Value: '${m.opponent.hitsTaken} of ${PaintballK.hitsToWin}',
+                    ? 'Live vs ${_players.opponent.name} · best of 3 rounds'
+                    : 'Solo vs ${_players.opponent.name} · best of 3 rounds',
+                stat1Label: 'ROUND ${m.round}',
+                stat1Value: '${m.youRounds} – ${m.opponentRounds}',
                 stat2Label: 'AMMO',
                 stat2Value: '${m.you.ammo} of ${PaintballK.maxAmmo}',
                 stat2Color: const Color(0xFF38BDF8),
@@ -383,10 +386,63 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
         router?.go(toBot ? '/paintball' : '/');
       };
 
+  /// Between rounds: who took it and the score, then the 3-2-1.
+  Widget _buildRoundBanner(PaintballGame game) {
+    final m = game.match;
+    final opp = _players.opponent.name;
+    final took = switch (m.roundWinner) {
+      PaintballWinner.you => 'You take round ${m.round}',
+      PaintballWinner.opponent => '$opp takes round ${m.round}',
+      _ => 'Round ${m.round} is a draw',
+    };
+    final score = '${m.youRounds} – ${m.opponentRounds}';
+    final color = m.roundWinner == PaintballWinner.you
+        ? const Color(0xFF00FFCC)
+        : (m.roundWinner == PaintballWinner.opponent ? const Color(0xFFF59E0B) : const Color(0xFF94A3B8));
+    return IgnorePointer(
+      child: Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+          builder: (context, k, child) => Opacity(
+            opacity: k,
+            child: Transform.translate(offset: Offset(0, (1 - k) * 16), child: child),
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 18),
+            decoration: BoxDecoration(
+              color: const Color(0xE60B1020),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: color.withValues(alpha: 0.7), width: 1.5),
+              boxShadow: [BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 26)],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(took.toUpperCase(),
+                    style: UiFont.style(size: 13, weight: 800, color: color, letterSpacing: 1.2)),
+                const SizedBox(height: 6),
+                Text(score,
+                    style: UiFont.style(size: 44, weight: 900, color: Colors.white, letterSpacing: 1.0)),
+                const SizedBox(height: 4),
+                Text('ROUND ${m.round + 1} NEXT',
+                    style: UiFont.style(size: 11, weight: 700, color: const Color(0xFF94A3B8), letterSpacing: 1.4)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCountdownBanner(PaintballGame game) {
     final count = game.match.countdownRemaining.ceil();
     final text = count > 1 ? '$count' : (count == 1 ? '1' : 'DUEL!');
-    final subtitle = count > 1 ? 'GET READY' : (count == 1 ? 'TAKE COVER!' : 'FIRE AT WILL!');
+    final r = game.match.round;
+    final subtitle = count > 1
+        ? (r > 1 ? (game.match.isFinalRound ? 'FINAL ROUND' : 'ROUND $r') : 'GET READY')
+        : (count == 1 ? 'TAKE COVER!' : 'FIRE AT WILL!');
 
     return IgnorePointer(
       child: Center(
