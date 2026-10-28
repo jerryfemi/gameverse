@@ -91,6 +91,9 @@ class PaintballSession implements PaintballNetLink {
   /// Several connection attempts failed; still retrying in the background.
   final ValueNotifier<bool> struggling = ValueNotifier(false);
 
+  /// Rematches both players agreed to: the room opens already READY.
+  static final Set<String> autoReady = <String>{};
+
   int _attempts = 0;
   Timer? _startTimer;
   Timer? _retryTimer;
@@ -149,6 +152,7 @@ class PaintballSession implements PaintballNetLink {
       if (status.value == PaintballSessionStatus.connecting) {
         status.value = PaintballSessionStatus.waitingForOpponent;
       }
+      if (autoReady.remove(match.id)) unawaited(setReady(true));
     } catch (e) {
       debugPrint('[PaintballSession] connect attempt failed: $e');
       if (_disposed) return;
@@ -293,8 +297,11 @@ class PaintballSession implements PaintballNetLink {
     if (!_started) return;
     // A ball fired in an earlier round never lands in this one.
     if (shot.serverMs < _roundStartMs) return;
+    // Catch up on network lag, but never skip more than a third of the
+    // flight: a ball that arrives late still visibly flies at you (the
+    // target judges it where it lands, so nobody loses a dodge to lag).
     final elapsed = ((clock.serverNowMs - shot.serverMs) / 1000.0)
-        .clamp(0.0, PaintballK.ballFlightSeconds);
+        .clamp(0.0, PaintballK.ballFlightSeconds / 3);
     game.applyRemoteShot(id, shot.aimX, shot.aimY, elapsed);
   }
 
