@@ -4,7 +4,7 @@ import 'package:b_ball/paintball/paintball_constants.dart';
 
 void main() {
   group('HitResolver Direct Lane Evaluation', () {
-    test('standing player in lane is hit when aimY is within 0.35..1.0', () {
+    test('standing player in lane is hit when aimY is within 0.55..1.0', () {
       const target = TargetPlayerSnapshot(
         lane: 2,
         stance: PaintballStance.stand,
@@ -22,7 +22,7 @@ void main() {
       expect(result.isDodged, isFalse);
     });
 
-    test('standing player in lane blocks shot below 0.35 with tires', () {
+    test('standing player in lane blocks shot below the tyre top with tires', () {
       const target = TargetPlayerSnapshot(
         lane: 2,
         stance: PaintballStance.stand,
@@ -56,7 +56,7 @@ void main() {
       expect(result.isDodged, isFalse);
     });
 
-    test('crouched player is hit only on head/shoulders (0.55..0.80)', () {
+    test('crouched player is hit only on head/shoulders (0.55..0.72)', () {
       const target = TargetPlayerSnapshot(
         lane: 1,
         stance: PaintballStance.crouch,
