@@ -24,5 +24,5 @@ CC BY needs this credit visible in the game (credits screen or the lobby footer)
 
 - Sounds:
   - Marker shots (`pb_shot_1..5.wav`): cut from "Paintball Gun Shots" (freesound_community, Pixabay, file 70051). Check the Pixabay Content License on its page; credited anyway.
-  - Theme (`pb_theme.mp3`): "Main Theme" (freesound_community, Pixabay, file 68815). Same licence note.
+  - Theme (`pb_theme.mp3`): "Retro Game" by The_Mountain (Pixabay, file 593063), licensed under Pixabay Content License.
   - Splat and hit (`pb_splat.wav`, `pb_hit.wav`): synthesised for GameVerse.
