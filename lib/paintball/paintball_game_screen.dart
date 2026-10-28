@@ -71,7 +71,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
   /// First visit on this device (solo only): how-to-play before the match.
   bool _tour = false;
 
-  /// Phone held sideways: suggest upright (the arena is a portrait stage).
+  /// Phone held upright: suggest landscape for the wider view.
   bool _tiltDismissed = false;
   static const String _tourKey = 'paintball_tour_seen_v1';
 
@@ -301,7 +301,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
           ),
           if (!_tiltDismissed &&
               MediaQuery.sizeOf(context).shortestSide < 600 &&
-              MediaQuery.orientationOf(context) == Orientation.landscape)
+              MediaQuery.orientationOf(context) == Orientation.portrait)
             _TiltHint(onDismiss: () => setState(() => _tiltDismissed = true)),
           if (_tour) ArcheryTour(steps: _tourSteps, onDone: _endTour),
           if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby, opponentName: _players.opponent.isBot ? null : _players.opponent.name),
@@ -762,7 +762,22 @@ class _SessionStatusLayer extends StatelessWidget {
                       Text(body,
                           textAlign: TextAlign.center,
                           style: UiFont.style(size: 12.5, weight: 600, color: const Color(0xFF94A3B8))),
+                      if (st == PaintballSessionStatus.error && session.lastError != null) ...[
+                        const SizedBox(height: 8),
+                        Text(session.lastError!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: UiFont.style(size: 10.5, weight: 500, color: const Color(0xFF64748B))),
+                      ],
                       const SizedBox(height: 16),
+                      if (st == PaintballSessionStatus.error)
+                        FilledButton(
+                          onPressed: session.retry,
+                          style: FilledButton.styleFrom(backgroundColor: color),
+                          child: Text('RETRY',
+                              style: UiFont.style(size: 12, weight: 800, color: const Color(0xFF0A0E1A), letterSpacing: 1.0)),
+                        ),
                       TextButton(
                         onPressed: onLobby,
                         child: Text('BACK TO LOBBY',
@@ -846,7 +861,8 @@ class _LoadingCard extends StatelessWidget {
   }
 }
 
-/// Phone in landscape: the arena is built for portrait. Dismissible.
+/// Phone held upright: landscape shows more of the arena. Dismissible, and
+/// it disappears by itself once the phone is turned.
 class _TiltHint extends StatelessWidget {
   final VoidCallback onDismiss;
   const _TiltHint({required this.onDismiss});
@@ -862,10 +878,10 @@ class _TiltHint extends StatelessWidget {
             children: [
               const Icon(Icons.screen_rotation_rounded, color: Color(0xFF38BDF8), size: 44),
               const SizedBox(height: 14),
-              Text('Turn your phone upright',
+              Text('Turn your phone sideways',
                   style: UiFont.style(size: 20, weight: 800, color: Colors.white, letterSpacing: -0.2)),
               const SizedBox(height: 6),
-              Text('Paintball plays best in portrait.',
+              Text('Landscape gives you a wider view of the arena.',
                   style: UiFont.style(size: 14, weight: 500, color: const Color(0xFF94A3B8))),
               const SizedBox(height: 16),
               TextButton(
