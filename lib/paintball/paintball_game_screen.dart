@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:b_ball/archery/ui/archery_match_bar.dart' show ArcheryInbox;
 import 'package:b_ball/archery/ui/archery_pause_menu.dart';
+import 'package:b_ball/archery/ui/archery_tour.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/paintball/paintball_constants.dart';
 import 'package:b_ball/paintball/logic/paintball_players.dart';
@@ -67,11 +68,45 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
   PaintballSession? _session;
   bool get _online => widget.match != null;
 
+  /// First visit on this device (solo only): how-to-play before the match.
+  bool _tour = false;
+  static const String _tourKey = 'paintball_tour_seen_v1';
+
+  static const List<TourStep> _tourSteps = [
+    TourStep(Icons.swap_horiz_rounded, 'Slide between tyres',
+        'Tap ◀ ▶ to move along your five lanes. On a keyboard, use the arrow keys or A and D.'),
+    TourStep(Icons.unfold_more_rounded, 'Stand, crouch, duck',
+        'Tap ▲ ▼ to change stance. Standing shows your whole body, crouching only your head and shoulders, and ducking hides you completely.'),
+    TourStep(Icons.my_location_rounded, 'Drag to aim, tap FIRE',
+        'Drag on the right side to move the reticle, then tap FIRE or press Space. The ball takes a moment to fly, so lead your target.'),
+    TourStep(Icons.refresh_rounded, 'Duck to reload',
+        'You carry 5 balls. They only refill while you\'re ducked behind cover.'),
+    TourStep(Icons.emoji_events_rounded, 'First to 3 hits wins',
+        'You have 90 seconds. If it\'s tied when time runs out, the next hit wins.'),
+  ];
+
+  void _checkTour() {
+    if (_online) return;
+    ArcheryTour.shouldShow(_tourKey).then((show) {
+      if (!show || !mounted) return;
+      _game.pauseEngine();
+      setState(() => _tour = true);
+    });
+  }
+
+  void _endTour() {
+    setState(() => _tour = false);
+    _game.resumeEngine();
+    // Start fresh so the arena intro plays in full after the tour.
+    if (_game.isLoaded) _game.resetMatch();
+  }
+
   @override
   void initState() {
     super.initState();
     _game = PaintballGame(online: _online);
     _startSession();
+    _checkTour();
     // Paintball's own sounds (decoded only now) and its theme while open.
     unawaited(AudioEngine.loadPaintballSfx());
     AudioEngine.claimSoundtrack(this, track: PaintballGameScreen.themeTrack);
@@ -260,6 +295,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
               initialActiveOverlays: const ['HUD', 'Controls'],
             ),
           ),
+          if (_tour) ArcheryTour(steps: _tourSteps, onDone: _endTour),
           if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby, opponentName: _players.opponent.isBot ? null : _players.opponent.name),
           if (_paused)
             Positioned.fill(
