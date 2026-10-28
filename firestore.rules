@@ -194,7 +194,7 @@ service cloud.firestore {
           request.resource.data[myKey()].roundScores.size() == 1 &&
           request.resource.data[myKey()].roundScores[0] is int &&
           request.resource.data[myKey()].roundScores[0] >= 0 &&
-          request.resource.data[myKey()].roundScores[0] <= 3;
+          request.resource.data[myKey()].roundScores[0] <= 2;
       }
 
       // Paintball: the opponent dropped off the live match for 10 s.
