@@ -242,4 +242,23 @@ void main() {
       expect(result.targetLane, 0);
     });
   });
+
+  group('Shots fired at each lane land on the mirrored lane', () {
+    // Regression for review 1, bug 1: the game compared the shooter's screen
+    // lane with the target's own lane number without mirroring.
+    for (var aimLane = PaintballK.minLane; aimLane <= PaintballK.maxLane; aimLane++) {
+      test('aim at screen lane $aimLane hits a standing target only in lane ${PaintballK.maxLane - aimLane}', () {
+        final aimX = PaintballK.laneToAimX(aimLane);
+        for (var targetLane = PaintballK.minLane; targetLane <= PaintballK.maxLane; targetLane++) {
+          final result = HitResolver.resolveFromShooterAim(
+            shooterAimX: aimX,
+            aimY: 0.65,
+            target: TargetPlayerSnapshot(lane: targetLane, stance: PaintballStance.stand),
+          );
+          expect(result.isHit, targetLane == PaintballK.maxLane - aimLane,
+              reason: 'aim lane $aimLane vs target lane $targetLane');
+        }
+      });
+    }
+  });
 }
