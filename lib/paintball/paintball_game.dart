@@ -240,6 +240,54 @@ class PaintballGame extends FlameGame {
     };
   }
 
+  // ─── Match Phase Gate ─────────────────────────────────────────────────────
+
+  /// Players may only move, change stance and fire while the duel is live.
+  bool get canAct =>
+      _isReady &&
+      (match.phase == PaintballMatchPhase.live ||
+          match.phase == PaintballMatchPhase.suddenDeath);
+
+  /// Slides the local player one lane (-1 left, +1 right). Ignored outside live play.
+  bool playerSlide(int direction) {
+    if (!canAct) return false;
+    return match.you.trySlide(direction);
+  }
+
+  /// Moves the local player one stance up (+1) or down (-1). Ignored outside live play.
+  bool playerStanceStep(int step) {
+    if (!canAct || match.you.isSliding) return false;
+    final i = (match.you.stance.index - step).clamp(0, PaintballStance.values.length - 1);
+    return match.you.tryChangeStance(PaintballStance.values[i]);
+  }
+
+  /// Whether the FIRE button should be enabled.
+  bool get playerCanFire => canAct && match.you.canFire;
+
+  // ─── Rematch ──────────────────────────────────────────────────────────────
+
+  /// Resets everything for a fresh match: rules state, balls in flight,
+  /// threat trackers, splats, bot timers, reticle and camera.
+  void resetMatch() {
+    for (final ball in _ballPool) {
+      ball.cancel();
+    }
+    _activeProjectiles.clear();
+    splatCanvas.clear();
+    botBrain.reset();
+    reticle.aimX = 0.0;
+    reticle.aimY = 0.65;
+    reticle.isLockedOn = false;
+    cameraPanOffset = 0.0;
+    _targetCameraPan = 0.0;
+    cameraDipOffset = 0.0;
+    _targetCameraDip = 0.0;
+    match.startMatch();
+    if (_cachedWidth > 0 && _cachedHeight > 0) {
+      _layoutScene(_cachedWidth, _cachedHeight);
+    }
+  }
+
   // ─── Input & Aiming ───────────────────────────────────────────────────────
 
   /// Updates reticle aim coordinates via relative drag.
@@ -281,7 +329,7 @@ class PaintballGame extends FlameGame {
 
   /// Fires a paintball from the local player toward the current reticle position.
   bool firePlayerShot() {
-    if (!_isReady) return false;
+    if (!canAct) return false;
     if (!match.you.tryFire()) return false;
 
     HapticFeedback.lightImpact();
@@ -300,8 +348,8 @@ class PaintballGame extends FlameGame {
       targetX: targetX,
       targetY: targetY,
       color: const Color(0xFFEC4899), // Pink paintball
-      targetLane: PaintballK.aimXToLane(reticle.aimX),
-      heightY: reticle.aimY,
+      aimX: reticle.aimX,
+      aimY: reticle.aimY,
       isFiredByPlayer: true,
     );
 
@@ -310,7 +358,7 @@ class PaintballGame extends FlameGame {
 
   /// Fires a paintball from the bot toward the local player.
   void fireBotShot(double aimX, double aimY) {
-    if (!_isReady) return;
+    if (!canAct) return;
     if (!match.opponent.tryFire()) return;
 
     AudioEngine.playFloorBounce(5.5);
@@ -332,8 +380,8 @@ class PaintballGame extends FlameGame {
       targetX: targetX,
       targetY: targetY,
       color: const Color(0xFF38BDF8), // Blue paintball
-      targetLane: laneOnPlayerScreen,
-      heightY: aimY,
+      aimX: aimX,
+      aimY: aimY,
       isFiredByPlayer: false,
     );
   }
@@ -344,26 +392,32 @@ class PaintballGame extends FlameGame {
     required double targetX,
     required double targetY,
     required Color color,
-    required int targetLane,
-    required double heightY,
+    required double aimX,
+    required double aimY,
     required bool isFiredByPlayer,
   }) {
     for (final ball in _ballPool) {
       if (!ball.isActive) {
+        // Your balls fly away from the camera and shrink; incoming balls grow.
         ball.launch(
           startX: startX,
           startY: startY,
           targetX: targetX,
           targetY: targetY,
           color: color,
+          firedByYou: isFiredByPlayer,
+          aimX: aimX,
+          aimY: aimY,
+          startScale: isFiredByPlayer ? PaintballK.ballStartScale : PaintballK.ballEndScale,
+          endScale: isFiredByPlayer ? PaintballK.ballEndScale : PaintballK.ballStartScale,
         );
 
         if (isFiredByPlayer) {
-          // Add threat tracker for bot defensive AI
+          // Threat tracker for the bot's defensive AI, in the bot's own lane numbers.
           _activeProjectiles.add(
             IncomingProjectile(
-              targetLane: targetLane,
-              heightY: heightY,
+              targetLane: PaintballK.mirrorLane(PaintballK.aimXToLane(aimX)),
+              heightY: aimY,
               flightTimeRemaining: PaintballK.ballFlightSeconds,
             ),
           );
@@ -374,55 +428,39 @@ class PaintballGame extends FlameGame {
   }
 
   void _handleBallLanding(FlyingPaintball ball) {
+    // A ball still landing after the match ended changes nothing.
+    if (!canAct) return;
+
     final landX = ball.trajectory.targetX;
     final landY = ball.trajectory.targetY;
-    final isPlayerBall = ball.ballColor == const Color(0xFFEC4899);
 
     // Unshift for splat canvas which applies parallax translation in render()
     final unshiftedX = landX - (cameraPanOffset * PaintballK.parallaxFarTires);
     final unshiftedY = landY - (-cameraDipOffset * PaintballK.parallaxFarTiresY);
 
-    if (isPlayerBall) {
-      // Shot targeted at Opponent
-      final targetLane = PaintballK.aimXToLane(reticle.aimX);
-      final result = HitResolver.resolveAtTargetLane(
-        targetLane: targetLane,
-        aimY: reticle.aimY,
-        target: match.opponent.toSnapshot(),
-      );
+    // Target-side check using the aim captured when the ball was fired.
+    // The shooter's aim is on the shooter's screen; resolveFromShooterAim
+    // mirrors it onto the target's lanes.
+    final target = ball.firedByYou ? match.opponent : match.you;
+    final shooter = ball.firedByYou ? match.you : match.opponent;
+    final result = HitResolver.resolveFromShooterAim(
+      shooterAimX: ball.aimX,
+      aimY: ball.aimY,
+      target: target.toSnapshot(),
+    );
 
-      if (result.isHit) {
-        match.opponent.applyDamage();
-        match.you.shotsHit++;
-        splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: 14.0);
-      } else {
-        if (result.isDodged) {
-          match.opponent.timesDodged++;
-        }
-        // Tire splat
-        splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: 10.0);
-      }
-    } else {
-      // Shot targeted at You (Player)
-      final playerLane = match.you.lane;
-      final result = HitResolver.resolveAtTargetLane(
-        targetLane: playerLane,
-        aimY: 0.65, // Standard bot hit check
-        target: match.you.toSnapshot(),
-      );
-
-      if (result.isHit) {
-        HapticFeedback.heavyImpact();
-        match.you.applyDamage();
-        match.opponent.shotsHit++;
-        splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: 16.0);
-      } else {
-        if (result.isDodged) {
-          match.you.timesDodged++;
-        }
-        splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: 12.0);
-      }
+    if (result.isHit) {
+      target.applyDamage();
+      shooter.shotsHit++;
+      if (!ball.firedByYou) HapticFeedback.mediumImpact();
+    } else if (result.isDodged) {
+      target.timesDodged++;
     }
+
+    final radius = ball.firedByYou
+        ? (result.isHit ? 14.0 : 10.0)
+        : (result.isHit ? 16.0 : 12.0);
+    splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: radius);
   }
 
   // ─── Game Loop ────────────────────────────────────────────────────────────
