@@ -37,7 +37,7 @@ class MatchRulesCard extends StatelessWidget {
           const SizedBox(height: 6.0),
           Text(
             isPaintball
-                ? '• Live 1v1 from behind 5 tyre stacks\n• First to 3 hits wins · 90s, then sudden death\n• 5 balls, reload only while ducked'
+                ? '• Live 1v1 from behind 5 tyre stacks\n• Best of 3 rounds · 3 hits wins a round · 60s each\n• 5 balls, reload only while ducked'
                 : isArchery
                 ? '• Sets of 3 arrows each (first to 6 set points)\n• 2 set points for winning a set, 1 each on a tie\n• 45s shot clock per set'
                 : '• 301 points countdown to exactly zero\n• 3 darts per turn · 20 rounds maximum\n• Must finish with a double or bullseye',
