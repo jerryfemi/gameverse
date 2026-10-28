@@ -73,7 +73,6 @@ const List<LobbyGame> lobbyGames = [
     heroAlignment: Alignment.centerRight,
     heroImageNarrow: 'assets/lobby/hoops_poster.webp',
     route: '/hoops',
-    featured: true,
   ),
   LobbyGame(
     id: 'archery',
@@ -114,6 +113,7 @@ const List<LobbyGame> lobbyGames = [
     heroAlignment: Alignment.center,
     heroImageNarrow: 'assets/lobby/paintball.webp',
     route: '/paintball',
+    featured: true,
   ),
 ];
 
