@@ -81,6 +81,7 @@ class PaintballHudOverlay extends HookConsumerWidget {
                           child: _PlayerBadge(
                             player: players.you,
                             hitsTaken: match.you.hitsTaken,
+                            roundsWon: match.youRounds,
                             color: _you,
                             isLeft: true,
                           ),
@@ -99,6 +100,7 @@ class PaintballHudOverlay extends HookConsumerWidget {
                           child: _PlayerBadge(
                             player: players.opponent,
                             hitsTaken: match.opponent.hitsTaken,
+                            roundsWon: match.opponentRounds,
                             color: _them,
                             isLeft: false,
                             social: socialReady,
@@ -171,6 +173,7 @@ class PaintballHudOverlay extends HookConsumerWidget {
 class _PlayerBadge extends StatelessWidget {
   final PaintballPlayer player;
   final int hitsTaken;
+  final int roundsWon;
   final Color color;
   final bool isLeft;
   final bool social;
@@ -180,6 +183,7 @@ class _PlayerBadge extends StatelessWidget {
   const _PlayerBadge({
     required this.player,
     required this.hitsTaken,
+    this.roundsWon = 0,
     required this.color,
     required this.isLeft,
     this.social = false,
@@ -221,18 +225,37 @@ class _PlayerBadge extends StatelessWidget {
         );
       }),
     );
+    // Rounds won (best of 3): two small amber marks.
+    final roundStars = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(PaintballK.roundsToWin, (i) {
+        final won = i < roundsWon;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          child: Icon(won ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: 12, color: won ? const Color(0xFFF59E0B) : const Color(0xFF475569)),
+        );
+      }),
+    );
     final text = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
       children: [
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 96),
-          child: Text(
-            player.name.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: UiFont.style(size: 10.5, weight: 800, color: Colors.white, letterSpacing: 0.8),
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!isLeft) ...[roundStars, const SizedBox(width: 6)],
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 96),
+              child: Text(
+                player.name.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: UiFont.style(size: 10.5, weight: 800, color: Colors.white, letterSpacing: 0.8),
+              ),
+            ),
+            if (isLeft) ...[const SizedBox(width: 6), roundStars],
+          ],
         ),
         const SizedBox(height: 4),
         pips,
@@ -277,10 +300,15 @@ class _ClockPill extends StatelessWidget {
       case PaintballMatchPhase.suddenDeath:
         text = 'SUDDEN DEATH';
         color = const Color(0xFFEF4444);
+      case PaintballMatchPhase.roundOver:
+        text = 'ROUND ${match.round}';
+        color = const Color(0xFFF59E0B);
       case PaintballMatchPhase.gameOver:
         text = 'FINAL';
         color = const Color(0xFF94A3B8);
     }
+    final inPlay = match.phase != PaintballMatchPhase.gameOver &&
+        match.phase != PaintballMatchPhase.roundOver;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -288,9 +316,19 @@ class _ClockPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0x22FFFFFF)),
       ),
-      child: Text(
-        text,
-        style: UiFont.style(size: 16, weight: 900, color: color, letterSpacing: 1.1),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            text,
+            style: UiFont.style(size: 16, weight: 900, color: color, letterSpacing: 1.1),
+          ),
+          if (inPlay)
+            Text(
+              'ROUND ${match.round} OF ${PaintballK.maxRounds}',
+              style: UiFont.style(size: 8.5, weight: 800, color: const Color(0xFF94A3B8), letterSpacing: 1.0),
+            ),
+        ],
       ),
     );
   }
