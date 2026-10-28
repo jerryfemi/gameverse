@@ -99,6 +99,14 @@ class PaintballBotBrain {
     _resetDecisionTimer();
   }
 
+  /// Clears all timers and reactions for a fresh match.
+  void reset() {
+    _isReactingToIncoming = false;
+    _reactionTimer = 0.0;
+    _willDuckSuccessfully = true;
+    _resetDecisionTimer();
+  }
+
   void _resetDecisionTimer() {
     _decisionInterval = minDecisionInterval +
         _random.nextDouble() * (maxDecisionInterval - minDecisionInterval);
