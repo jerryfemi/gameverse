@@ -70,6 +70,9 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
 
   /// First visit on this device (solo only): how-to-play before the match.
   bool _tour = false;
+
+  /// Phone held sideways: suggest upright (the arena is a portrait stage).
+  bool _tiltDismissed = false;
   static const String _tourKey = 'paintball_tour_seen_v1';
 
   static const List<TourStep> _tourSteps = [
@@ -238,6 +241,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
             },
             child: GameWidget<PaintballGame>(
               game: _game,
+              loadingBuilder: (_) => _LoadingCard(progress: _game.loadProgress),
               overlayBuilderMap: {
                 'HUD': (context, game) => ValueListenableBuilder<int>(
                       valueListenable: game.uiVersion,
@@ -295,6 +299,10 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
               initialActiveOverlays: const ['HUD', 'Controls'],
             ),
           ),
+          if (!_tiltDismissed &&
+              MediaQuery.sizeOf(context).shortestSide < 600 &&
+              MediaQuery.orientationOf(context) == Orientation.landscape)
+            _TiltHint(onDismiss: () => setState(() => _tiltDismissed = true)),
           if (_tour) ArcheryTour(steps: _tourSteps, onDone: _endTour),
           if (_session != null) _SessionStatusLayer(session: _session!, game: _game, code: widget.match!.joinCode, onLobby: _goToLobby, opponentName: _players.opponent.isBot ? null : _players.opponent.name),
           if (_paused)
@@ -787,4 +795,88 @@ class _Pill extends StatelessWidget {
         ),
         child: Text(text, style: UiFont.style(size: 11, weight: 800, color: color, letterSpacing: 1.0)),
       );
+}
+
+/// Shown while the arena's images and sounds load, so the screen is never blank.
+class _LoadingCard extends StatelessWidget {
+  final ValueNotifier<double> progress;
+  const _LoadingCard({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF0A0E1A),
+      child: Center(
+        child: SizedBox(
+          width: 260,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.blur_circular_rounded, color: Color(0xFF38BDF8), size: 40),
+              const SizedBox(height: 14),
+              Text('PAINTBALL',
+                  style: UiFont.style(size: 22, weight: 900, color: Colors.white, letterSpacing: 1.6)),
+              const SizedBox(height: 6),
+              Text('Setting up the arena…',
+                  style: UiFont.style(size: 13, weight: 500, color: const Color(0xFF94A3B8))),
+              const SizedBox(height: 20),
+              ValueListenableBuilder<double>(
+                valueListenable: progress,
+                builder: (context, p, _) => TweenAnimationBuilder<double>(
+                  // Eases between steps instead of jumping.
+                  tween: Tween(end: p.clamp(0.06, 1.0)),
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, v, _) => ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: v,
+                      minHeight: 6,
+                      backgroundColor: const Color(0xFF1E2638),
+                      valueColor: const AlwaysStoppedAnimation(Color(0xFF38BDF8)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Phone in landscape: the arena is built for portrait. Dismissible.
+class _TiltHint extends StatelessWidget {
+  final VoidCallback onDismiss;
+  const _TiltHint({required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: const Color(0xE60A0E1A),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.screen_rotation_rounded, color: Color(0xFF38BDF8), size: 44),
+              const SizedBox(height: 14),
+              Text('Turn your phone upright',
+                  style: UiFont.style(size: 20, weight: 800, color: Colors.white, letterSpacing: -0.2)),
+              const SizedBox(height: 6),
+              Text('Paintball plays best in portrait.',
+                  style: UiFont.style(size: 14, weight: 500, color: const Color(0xFF94A3B8))),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: onDismiss,
+                child: Text('PLAY ANYWAY',
+                    style: UiFont.style(size: 13, weight: 800, color: const Color(0xFF38BDF8), letterSpacing: 1.0)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
