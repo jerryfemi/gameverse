@@ -66,6 +66,8 @@ class PaintballSession implements PaintballNetLink {
 
   final List<StreamSubscription<DatabaseEvent>> _subs = [];
   StreamSubscription<DatabaseEvent>? _oppSub;
+  StreamSubscription<DatabaseEvent>? _oppShotSub;
+  final Map<String, Object> _sent = <String, Object>{};
   final Set<String> _myShots = <String>{};
   final Set<String> _seenShots = <String>{};
   Timer? _forfeitTimer;
@@ -105,8 +107,9 @@ class PaintballSession implements PaintballNetLink {
       sendState();
 
       _subs.add(_root.child('meta').onValue.listen(_onMeta));
-      _subs.add(_root.child('s').onChildAdded.listen(_onShot));
-      _subs.add(_root.child('r').onChildAdded.listen(_onResult));
+      // Only what this player needs: the opponent's shots, and the verdicts
+      // on our own shots (each is filed under its shooter).
+      _subs.add(_root.child('r/$myUid').onChildAdded.listen(_onResult));
       _subs.add(_root.child('end').onValue.listen(_onEnd));
 
       final known = match.opponentPlayer(myUid)?.uid;
@@ -121,7 +124,9 @@ class PaintballSession implements PaintballNetLink {
     if (opponentUid.value == uid) return;
     opponentUid.value = uid;
     _oppSub?.cancel();
+    _oppShotSub?.cancel();
     _oppSub = _root.child('p/$uid').onValue.listen(_onOpponentState);
+    _oppShotSub = _root.child('s/$uid').onChildAdded.listen(_onShot);
   }
 
   // ─── Incoming ─────────────────────────────────────────────────────────────
@@ -193,7 +198,7 @@ class PaintballSession implements PaintballNetLink {
     final v = e.snapshot.value;
     if (id == null || v is! Map || !_seenShots.add(id)) return;
     final shot = PaintballNetShot.fromMap(id, v);
-    if (shot.shooterUid == myUid || !_started) return;
+    if (!_started) return;
     final elapsed = ((clock.serverNowMs - shot.serverMs) / 1000.0)
         .clamp(0.0, PaintballK.ballFlightSeconds);
     game.applyRemoteShot(id, shot.aimX, shot.aimY, elapsed);
@@ -222,24 +227,30 @@ class PaintballSession implements PaintballNetLink {
   void sendState() {
     if (_disposed) return;
     final you = game.match.you;
-    final state = PaintballNetPlayerState(
-      lane: you.isSliding ? you.slideToLane : you.lane,
-      stance: you.stance.index,
-      ammo: you.ammo,
-      hitsTaken: you.hitsTaken,
-      aimBucket: game.aimBucket,
-      slideFromLane: you.isSliding ? you.slideFromLane : -1,
-      timestamp: ServerValue.timestamp,
-      connected: true,
-    );
-    _root.child('p/$myUid').set(state.toMap()).catchError((Object e) {
+    // Ammo isn't sent: nobody sees the opponent's, and their shots imply it.
+    final now = <String, Object>{
+      'l': you.isSliding ? you.slideToLane : you.lane,
+      's': you.stance.index,
+      'h': you.hitsTaken,
+      'm': game.aimBucket,
+      'sl': you.isSliding ? you.slideFromLane : -1,
+      'c': true,
+    };
+    final changed = <String, Object>{};
+    now.forEach((k, v) {
+      if (_sent[k] != v) changed[k] = v;
+    });
+    if (changed.isEmpty) return;
+    _sent.addAll(changed);
+    _root.child('p/$myUid').update(changed).catchError((Object e) {
+      _sent.clear(); // resend everything next time
       debugPrint('[PaintballSession] state write failed: $e');
     });
   }
 
   @override
   String sendShot(double aimX, double aimY) {
-    final ref = _root.child('s').push();
+    final ref = _root.child('s/$myUid').push();
     final id = ref.key!;
     _myShots.add(id);
     _seenShots.add(id);
@@ -257,8 +268,10 @@ class PaintballSession implements PaintballNetLink {
 
   @override
   void sendResult(String shotId, PaintballHitOutcome outcome, double dx, double aimY) {
+    final shooter = opponentUid.value;
+    if (shooter == null) return;
     _root
-        .child('r/$shotId')
+        .child('r/$shooter/$shotId')
         .set(PaintballNetShotResult(
           shotId: shotId,
           outcome: PaintballNetHitOutcome.fromDomain(outcome),
@@ -343,14 +356,21 @@ class PaintballSession implements PaintballNetLink {
     _finished = true;
     _forfeitTimer?.cancel();
     status.value = PaintballSessionStatus.finished;
-    Timer(const Duration(seconds: 4), () async {
-      if (isHost) {
-        try {
-          await _root.remove();
-        } catch (_) {}
-      }
-      _goOffline();
-    });
+    // Either player clears the live node (whoever is still here), so it
+    // doesn't linger when the host closes the tab early.
+    Timer(const Duration(seconds: 4), _removeAndGoOffline);
+  }
+
+  bool _removed = false;
+
+  Future<void> _removeAndGoOffline() async {
+    if (!_removed) {
+      _removed = true;
+      try {
+        await _root.remove().timeout(const Duration(seconds: 3));
+      } catch (_) {}
+    }
+    _goOffline();
   }
 
   void _goOffline() {
@@ -360,6 +380,8 @@ class PaintballSession implements PaintballNetLink {
     _subs.clear();
     _oppSub?.cancel();
     _oppSub = null;
+    _oppShotSub?.cancel();
+    _oppShotSub = null;
     game.net = null;
     try {
       _db.goOffline();
@@ -371,7 +393,12 @@ class PaintballSession implements PaintballNetLink {
     if (_disposed) return;
     _disposed = true;
     _forfeitTimer?.cancel();
-    _goOffline();
+    if (_finished) {
+      // Leaving during the 4 s grace: clean up before disconnecting.
+      _removeAndGoOffline();
+    } else {
+      _goOffline();
+    }
     status.dispose();
     opponentUid.dispose();
   }
