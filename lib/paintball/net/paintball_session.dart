@@ -42,7 +42,8 @@ class PaintballSession implements PaintballNetLink {
       'https://game-arcade-bball-default-rtdb.firebaseio.com';
 
   /// Seconds the opponent may be gone before it counts as a forfeit.
-  static const int forfeitAfterSeconds = 10;
+  /// 25 s accommodates mobile cellular network handoffs and battery throttling.
+  static const int forfeitAfterSeconds = 25;
 
   final CloudMatch match;
   final String myUid;
@@ -526,9 +527,10 @@ class PaintballSession implements PaintballNetLink {
     _finished = true;
     _forfeitTimer?.cancel();
     status.value = PaintballSessionStatus.finished;
-    // Either player clears the live node (whoever is still here), so it
-    // doesn't linger when the host closes the tab early.
-    Timer(const Duration(seconds: 4), _removeAndGoOffline);
+    // Either player clears the live node (whoever is still here). Wait
+    // 15 seconds so a reconnecting opponent receives the end packet and
+    // displays results rather than becoming stranded in an orphaned match.
+    Timer(const Duration(seconds: 15), _removeAndGoOffline);
   }
 
   bool _removed = false;
