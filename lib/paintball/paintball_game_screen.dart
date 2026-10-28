@@ -1,5 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:go_router/go_router.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/game/ui/common/ui_font.dart';
@@ -49,12 +50,16 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                 stream: Stream.periodic(const Duration(milliseconds: 50)),
                 builder: (context, _) {
                   if (game.match.phase == PaintballMatchPhase.gameOver) {
-                    return PaintballResultCard(
-                      match: game.match,
-                      onRematch: game.resetMatch,
-                      onLobby: () {
-                        if (context.mounted) context.go('/');
-                      },
+                    // Let the death / win animations play before the card.
+                    if (!game.showResults) return const SizedBox.shrink();
+                    return _ResultReveal(
+                      child: PaintballResultCard(
+                        match: game.match,
+                        onRematch: game.resetMatch,
+                        onLobby: () {
+                          if (context.mounted) context.go('/');
+                        },
+                      ),
                     );
                   }
                   return Stack(
@@ -118,6 +123,70 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Soft entrance for the results card: a dim scrim fades in while the card
+/// rises a few pixels and fades from transparent to opaque on a critically
+/// damped spring (no overshoot; nothing the player did "threw" it in).
+/// With reduced motion it is an opacity fade only.
+class _ResultReveal extends StatefulWidget {
+  final Widget child;
+  const _ResultReveal({required this.child});
+
+  @override
+  State<_ResultReveal> createState() => _ResultRevealState();
+}
+
+class _ResultRevealState extends State<_ResultReveal>
+    with SingleTickerProviderStateMixin {
+  // Damping ratio 1.0, response ~0.45 s.
+  static final SpringDescription _spring =
+      SpringDescription.withDampingRatio(mass: 1, stiffness: 195, ratio: 1.0);
+
+  late final AnimationController _c =
+      AnimationController.unbounded(vsync: this, value: 0.0);
+
+  @override
+  void initState() {
+    super.initState();
+    _c.animateWith(SpringSimulation(_spring, 0.0, 1.0, 0.0));
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _c.value.clamp(0.0, 1.0);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // Scrim pushes the scene back so the card reads as the focus.
+            IgnorePointer(
+              child: ColoredBox(color: Color.fromRGBO(6, 9, 19, 0.62 * t)),
+            ),
+            Opacity(
+              opacity: t,
+              child: reduceMotion
+                  ? child
+                  : Transform.translate(
+                      offset: Offset(0, 24 * (1 - _c.value)),
+                      child: Transform.scale(scale: 0.97 + 0.03 * _c.value, child: child),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
