@@ -911,6 +911,41 @@ class FirestoreMatchService {
   /// Purges all ephemeral live telemetry documents (`live_shots` and `live_reactions`)
   /// for a match, ensuring no ephemeral shot or event documents linger in Firestore
   /// once a match has concluded or been forfeited across Basketball, Archery, and Darts.
+  /// Paintball (live over RTDB): records one player's result once, at the end
+  /// of the duel. [hitsLanded] (0-3) is the score. Whoever writes second marks
+  /// the match completed; completed matches are permanent history.
+  Future<void> submitPaintballResult({
+    required String matchId,
+    required String uid,
+    required RoundSummaryStats stats,
+  }) async {
+    final docRef = _matchesRef.doc(matchId.trim().toUpperCase());
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
+        if (!snapshot.exists) return;
+        final match = CloudMatch.fromFirestore(snapshot);
+        if (match.status != MatchStatus.active) return;
+        final isP1 = match.player1.uid == uid;
+        final me = isP1 ? match.player1 : match.player2;
+        final opp = isP1 ? match.player2 : match.player1;
+        if (me == null || me.uid != uid || me.roundScores.isNotEmpty) return;
+        final done = opp != null && opp.roundScores.isNotEmpty;
+        final key = isP1 ? 'player1' : 'player2';
+        transaction.update(docRef, {
+          'status': (done ? MatchStatus.completed : MatchStatus.active).key,
+          'activeTurnPlayerUid': '',
+          'updatedAt': DateTime.now().millisecondsSinceEpoch,
+          if (done) 'expireAt': FieldValue.delete(),
+          '$key.roundScores': [stats.score],
+          '$key.roundSummaries': [stats.toMap()],
+        });
+      });
+    } catch (e) {
+      debugPrint('[FirestoreMatchService] Paintball result for $matchId failed: $e');
+    }
+  }
+
   Future<void> purgeMatchTelemetry(String matchId) async {
     final cleanId = matchId.trim().toUpperCase();
     if (cleanId.isEmpty) return;
