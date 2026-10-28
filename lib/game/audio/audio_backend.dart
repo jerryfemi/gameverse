@@ -3,7 +3,8 @@ import 'package:b_ball/game/audio/audio_backend_native.dart'
     as impl;
 
 /// Pre-decoded sound effects. The first five are basketball's; arrow* are
-/// archery's; dart* are darts' ([AudioEngine.loadDartsSfx]).
+/// archery's; dart* are darts' ([AudioEngine.loadDartsSfx]); pb* are
+/// paintball's ([AudioEngine.loadPaintballSfx]).
 enum Sfx {
   rim,
   backboard,
@@ -23,6 +24,13 @@ enum Sfx {
   dartBust,
   dartPull,
   dartTick,
+  pbShot1,
+  pbShot2,
+  pbShot3,
+  pbShot4,
+  pbShot5,
+  pbSplat,
+  pbHit,
 }
 
 /// Low-level sound output used by [AudioEngine].
