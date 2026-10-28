@@ -1,0 +1,323 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:b_ball/paintball/logic/hit_resolver.dart';
+import 'package:b_ball/paintball/paintball_constants.dart';
+
+void main() {
+  group('HitResolver Direct Lane Evaluation', () {
+    test('standing player in lane is hit when aimY is within 0.55..1.0', () {
+      const target = TargetPlayerSnapshot(
+        lane: 2,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveAtTargetLane(
+        targetLane: 2,
+        aimY: 0.65,
+        target: target,
+      );
+
+      expect(result.isHit, isTrue);
+      expect(result.outcome, PaintballHitOutcome.hitBody);
+      expect(result.targetLane, 2);
+      expect(result.isDodged, isFalse);
+    });
+
+    test('standing player in lane blocks shot below the tyre top with tires', () {
+      const target = TargetPlayerSnapshot(
+        lane: 2,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveAtTargetLane(
+        targetLane: 2,
+        aimY: 0.20,
+        target: target,
+      );
+
+      expect(result.isHit, isFalse);
+      expect(result.outcome, PaintballHitOutcome.hitTire);
+      expect(result.isDodged, isFalse);
+    });
+
+    test('shot at wrong lane completely misses', () {
+      const target = TargetPlayerSnapshot(
+        lane: 2,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveAtTargetLane(
+        targetLane: 3,
+        aimY: 0.65,
+        target: target,
+      );
+
+      expect(result.isHit, isFalse);
+      expect(result.outcome, PaintballHitOutcome.missedLane);
+      expect(result.isDodged, isFalse);
+    });
+
+    test('crouched player is hit only on head/shoulders (0.55..0.72)', () {
+      const target = TargetPlayerSnapshot(
+        lane: 1,
+        stance: PaintballStance.crouch,
+      );
+
+      // Height 0.65: head/shoulders peeking -> hit!
+      final headHit = HitResolver.resolveAtTargetLane(
+        targetLane: 1,
+        aimY: 0.65,
+        target: target,
+      );
+      expect(headHit.isHit, isTrue);
+      expect(headHit.outcome, PaintballHitOutcome.hitBody);
+
+      // Height 0.40: protected by tires -> tire hit & dodged
+      final tireHit = HitResolver.resolveAtTargetLane(
+        targetLane: 1,
+        aimY: 0.40,
+        target: target,
+      );
+      expect(tireHit.isHit, isFalse);
+      expect(tireHit.outcome, PaintballHitOutcome.hitTire);
+      expect(tireHit.isDodged, isTrue);
+
+      // Height 0.90: shot flew over crouched head -> tire/miss & dodged
+      final overHit = HitResolver.resolveAtTargetLane(
+        targetLane: 1,
+        aimY: 0.90,
+        target: target,
+      );
+      expect(overHit.isHit, isFalse);
+      expect(overHit.isDodged, isTrue);
+    });
+
+    test('ducked player is 100% immune and registers dodged stat', () {
+      const target = TargetPlayerSnapshot(
+        lane: 4,
+        stance: PaintballStance.duck,
+      );
+
+      // Shot at chest height (would hit standing)
+      final result = HitResolver.resolveAtTargetLane(
+        targetLane: 4,
+        aimY: 0.65,
+        target: target,
+      );
+
+      expect(result.isHit, isFalse);
+      expect(result.outcome, PaintballHitOutcome.hitTire);
+      expect(result.isDodged, isTrue); // Saved by ducking!
+    });
+
+    test('invulnerable player takes no damage even if directly hit', () {
+      const target = TargetPlayerSnapshot(
+        lane: 2,
+        stance: PaintballStance.stand,
+        isInvulnerable: true,
+      );
+
+      final result = HitResolver.resolveAtTargetLane(
+        targetLane: 2,
+        aimY: 0.70,
+        target: target,
+      );
+
+      expect(result.isHit, isFalse);
+      expect(result.outcome, PaintballHitOutcome.invulnerable);
+      expect(result.isDodged, isFalse);
+    });
+  });
+
+  group('HitResolver Mid-Slide Dual Vulnerability', () {
+    test('first half of slide (progress < 0.50): vulnerable in BOTH lanes', () {
+      const slidingPlayer = TargetPlayerSnapshot(
+        lane: 1,
+        stance: PaintballStance.stand,
+        isSliding: true,
+        slideFromLane: 1,
+        slideToLane: 2,
+        slideProgress: 0.30, // 30% through slide
+      );
+
+      // Shot into departure lane 1 -> HITS
+      final shotLane1 = HitResolver.resolveAtTargetLane(
+        targetLane: 1,
+        aimY: 0.65,
+        target: slidingPlayer,
+      );
+      expect(shotLane1.isHit, isTrue);
+
+      // Shot into arrival lane 2 -> ALSO HITS
+      final shotLane2 = HitResolver.resolveAtTargetLane(
+        targetLane: 2,
+        aimY: 0.65,
+        target: slidingPlayer,
+      );
+      expect(shotLane2.isHit, isTrue);
+
+      // Shot into lane 0 -> misses
+      final shotLane0 = HitResolver.resolveAtTargetLane(
+        targetLane: 0,
+        aimY: 0.65,
+        target: slidingPlayer,
+      );
+      expect(shotLane0.isHit, isFalse);
+    });
+
+    test('second half of slide (progress >= 0.50): vulnerable ONLY in destination lane', () {
+      const committedPlayer = TargetPlayerSnapshot(
+        lane: 1,
+        stance: PaintballStance.stand,
+        isSliding: true,
+        slideFromLane: 1,
+        slideToLane: 2,
+        slideProgress: 0.70, // 70% through slide
+      );
+
+      // Shot into departure lane 1 -> MISSES (left that lane)
+      final shotLane1 = HitResolver.resolveAtTargetLane(
+        targetLane: 1,
+        aimY: 0.65,
+        target: committedPlayer,
+      );
+      expect(shotLane1.isHit, isFalse);
+      expect(shotLane1.outcome, PaintballHitOutcome.missedLane);
+
+      // Shot into arrival lane 2 -> HITS
+      final shotLane2 = HitResolver.resolveAtTargetLane(
+        targetLane: 2,
+        aimY: 0.65,
+        target: committedPlayer,
+      );
+      expect(shotLane2.isHit, isTrue);
+    });
+  });
+
+  group('HitResolver Shooter Coordinate Mirroring', () {
+    test('shooter aim at far-left (aimX = -1.0) hits target at far-right (lane 4)', () {
+      const targetAtLane4 = TargetPlayerSnapshot(
+        lane: 4,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveFromShooterAim(
+        shooterAimX: -1.0, // Shooter aims at their own far-left
+        aimY: 0.65,
+        target: targetAtLane4,
+      );
+
+      expect(result.isHit, isTrue);
+      expect(result.targetLane, 4);
+    });
+
+    test('shooter aim at center (aimX = 0.0) hits target at center (lane 2)', () {
+      const targetAtLane2 = TargetPlayerSnapshot(
+        lane: 2,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveFromShooterAim(
+        shooterAimX: 0.0,
+        aimY: 0.65,
+        target: targetAtLane2,
+      );
+
+      expect(result.isHit, isTrue);
+      expect(result.targetLane, 2);
+    });
+
+    test('shooter aim at far-right (aimX = 1.0) hits target at far-left (lane 0)', () {
+      const targetAtLane0 = TargetPlayerSnapshot(
+        lane: 0,
+        stance: PaintballStance.stand,
+      );
+
+      final result = HitResolver.resolveFromShooterAim(
+        shooterAimX: 1.0,
+        aimY: 0.65,
+        target: targetAtLane0,
+      );
+
+      expect(result.isHit, isTrue);
+      expect(result.targetLane, 0);
+    });
+  });
+
+  group('Shots fired at each lane land on the mirrored lane', () {
+    // Regression for review 1, bug 1: the game compared the shooter's screen
+    // lane with the target's own lane number without mirroring.
+    for (var aimLane = PaintballK.minLane; aimLane <= PaintballK.maxLane; aimLane++) {
+      test('aim at screen lane $aimLane hits a standing target only in lane ${PaintballK.maxLane - aimLane}', () {
+        final aimX = PaintballK.laneToAimX(aimLane);
+        for (var targetLane = PaintballK.minLane; targetLane <= PaintballK.maxLane; targetLane++) {
+          final result = HitResolver.resolveFromShooterAim(
+            shooterAimX: aimX,
+            aimY: 0.65,
+            target: TargetPlayerSnapshot(lane: targetLane, stance: PaintballStance.stand),
+          );
+          expect(result.isHit, targetLane == PaintballK.maxLane - aimLane,
+              reason: 'aim lane $aimLane vs target lane $targetLane');
+        }
+      });
+    }
+  });
+
+  group('Body-accurate resolution (resolveBody)', () {
+    // Fake body: a column 0.3 stands wide centred on the feet, up to [top].
+    bool Function(double, double) body(double top) =>
+        (dx, y) => dx.abs() <= 0.15 && y >= 0 && y <= top;
+    const lane = 0.77; // one far lane in stands
+
+    HitResult shoot(double aimX, double aimY, {double top = 1.0, bool inv = false}) =>
+        HitResolver.resolveBody(
+          shooterAimX: aimX,
+          aimY: aimY,
+          targetAimX: 0.0,
+          targetInvulnerable: inv,
+          laneWidthStands: lane,
+          isBody: body(top),
+          isBodyStanding: body(1.0),
+        );
+
+    test('on the body above the tyre lip is a hit', () {
+      expect(shoot(0.0, 0.7).isHit, isTrue);
+    });
+
+    test('beside the body in the same lane misses and flies past', () {
+      final r = shoot(0.15, 0.8); // 0.23 stands right of centre
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.missedLane);
+    });
+
+    test('on the body but below the lip is blocked by the tyre', () {
+      final r = shoot(0.0, 0.4);
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.hitTire);
+    });
+
+    test('a ducked pose (top below the lip) is never hit', () {
+      for (var y = 0.0; y <= 1.0; y += 0.05) {
+        expect(shoot(0.0, y, top: 0.48).isHit, isFalse, reason: 'y=$y');
+      }
+    });
+
+    test('a crouched pose is hit only between the lip and its head', () {
+      expect(shoot(0.0, 0.62, top: 0.70).isHit, isTrue);
+      expect(shoot(0.0, 0.85, top: 0.70).isHit, isFalse);
+    });
+
+    test('a shot over a crouched head counts as dodged', () {
+      expect(shoot(0.0, 0.85, top: 0.70).isDodged, isTrue);
+    });
+
+    test('invulnerable target is touched but not hit', () {
+      final r = shoot(0.0, 0.7, inv: true);
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.invulnerable);
+    });
+
+    test('below the lip at another lane splats that lane\'s tyre', () {
+      expect(shoot(0.5, 0.3).outcome, PaintballHitOutcome.hitTire);
+    });
+  });
+}

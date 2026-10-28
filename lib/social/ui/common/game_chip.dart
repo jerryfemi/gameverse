@@ -33,6 +33,10 @@ class GameChip extends StatelessWidget {
       icon = Icons.arrow_outward_rounded;
       color = const Color(0xFF00FFCC);
       label = 'Archery';
+    } else if (g == 'paintball') {
+      icon = Icons.gps_fixed_rounded;
+      color = const Color(0xFFEC4899);
+      label = 'Paintball';
     } else {
       icon = Icons.sports_basketball_rounded;
       color = const Color(0xFFF59E0B);

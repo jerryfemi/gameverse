@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'package:b_ball/archery/archery_game_screen.dart';
 import 'package:b_ball/darts/darts_game_screen.dart';
+import 'package:b_ball/paintball/paintball_game_screen.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/game/basketball_game.dart';
 import 'package:b_ball/game/ui/common/inline_feedback.dart';
@@ -202,7 +203,15 @@ class _MatchRouteScreenState extends ConsumerState<MatchRouteScreen> {
       );
     }
 
-    // 3. Basketball (DunkVerse) match
+    // 3. Paintball match
+    if (match.isPaintball) {
+      return PaintballGameScreen(
+        key: ValueKey(match.id),
+        match: match,
+      );
+    }
+
+    // 4. Basketball (DunkVerse) match
     return _BasketballMatchHarness(
       key: ValueKey(match.id),
       match: match,

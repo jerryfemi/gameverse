@@ -83,6 +83,12 @@ class WebAudioBackend implements AudioBackend {
   double _musicStartedAt = 0.0; // ctx.currentTime when the source started
   double _musicOffset = 0.0; // position within the track at that moment
 
+  /// Loop points inside the decoded music (seconds), as for ambience: MP3/AAC
+  /// pad each end with a few ms of silence, which is an audible gap every
+  /// time a short track loops. 0/0 = loop the whole buffer.
+  double _musicLoopStart = 0.0;
+  double _musicLoopEnd = 0.0;
+
   // ── Ambience loop (independent of music) ──
   _GainNode? _ambGain;
   String? _ambKey;
@@ -232,6 +238,8 @@ class WebAudioBackend implements AudioBackend {
     _stopMusicSource();
     _musicBuffer = null;
     _musicOffset = 0.0;
+    _musicLoopStart = 0.0;
+    _musicLoopEnd = 0.0;
     try {
       final data = await rootBundle.load(assetKey);
       final bytes = Uint8List.fromList(
@@ -240,6 +248,9 @@ class WebAudioBackend implements AudioBackend {
       final buffer = await ctx.decodeAudioData(bytes.buffer.toJS).toDart;
       if (gen != _musicGen) return; // track changed or unloaded meanwhile
       _musicBuffer = buffer;
+      final loop = _audibleRange(buffer);
+      _musicLoopStart = loop.$1;
+      _musicLoopEnd = loop.$2;
       if (_wantMusicPlaying) _startMusicSource();
     } catch (e) {
       debugPrint('[WebAudio] Music load failed for $assetKey: $e');
@@ -256,9 +267,21 @@ class WebAudioBackend implements AudioBackend {
       final source = ctx.createBufferSource();
       source.buffer = buffer;
       source.loop = true;
+      final hasLoop = _musicLoopEnd > _musicLoopStart;
+      if (hasLoop) {
+        source.loopStart = _musicLoopStart;
+        source.loopEnd = _musicLoopEnd;
+      }
       source.connect(gain);
-      final duration = buffer.duration;
-      final offset = duration > 0 ? _musicOffset % duration : 0.0;
+      final double offset;
+      if (hasLoop) {
+        final span = _musicLoopEnd - _musicLoopStart;
+        final rel = (_musicOffset - _musicLoopStart) % span; // Dart % is never negative
+        offset = _musicLoopStart + rel;
+      } else {
+        final duration = buffer.duration;
+        offset = duration > 0 ? _musicOffset % duration : 0.0;
+      }
       source.start(0, offset);
       _musicSource = source;
       _musicStartedAt = ctx.currentTime;
@@ -351,6 +374,29 @@ class WebAudioBackend implements AudioBackend {
     } catch (e) {
       debugPrint('[WebAudio] Ambience load failed for $assetKey: $e');
     }
+  }
+
+  /// First and last audible sample (looking at most 0.25 s in from each end),
+  /// in seconds; (0, 0) if none found. Used for the music loop.
+  (double, double) _audibleRange(_AudioBuffer buffer) {
+    try {
+      final Float32List data = buffer.getChannelData(0).toDart;
+      final int n = data.length;
+      final double rate = buffer.sampleRate;
+      if (n == 0 || rate <= 0) return (0.0, 0.0);
+      final int scan = (rate * 0.25).round().clamp(0, n ~/ 2);
+      const double floor = 1e-4;
+      int first = 0;
+      while (first < scan && data[first].abs() < floor) {
+        first++;
+      }
+      int last = n - 1;
+      while (last > n - 1 - scan && data[last].abs() < floor) {
+        last--;
+      }
+      if (last > first) return (first / rate, (last + 1) / rate);
+    } catch (_) {}
+    return (0.0, 0.0);
   }
 
   /// Finds the first and last audible sample (looking at most 0.25 s in from

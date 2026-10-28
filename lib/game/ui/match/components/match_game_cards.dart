@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// 3 game selection cards (HOOPS, ARCHERY, DARTS) matching Templates 16 and 17.
+/// Game selection cards (HOOPS, ARCHERY, DARTS, PAINTBALL) matching Templates 16 and 17.
 class MatchGameCards extends StatelessWidget {
   final String selectedGame;
   final bool enabled;
@@ -17,6 +17,7 @@ class MatchGameCards extends StatelessWidget {
   static const Color hoopsColor = Color(0xFFF59E0B);
   static const Color archeryColor = Color(0xFF00FFCC);
   static const Color dartsColor = Color(0xFF38BDF8);
+  static const Color paintballColor = Color(0xFFF472B6);
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +45,14 @@ class MatchGameCards extends StatelessWidget {
           icon: Icons.gps_fixed_rounded,
           accent: dartsColor,
           isSelected: selectedGame == 'darts',
+        ),
+        const SizedBox(width: 8.0),
+        _buildCard(
+          key: 'paintball',
+          label: 'PAINTBALL',
+          icon: Icons.blur_circular_rounded,
+          accent: paintballColor,
+          isSelected: selectedGame == 'paintball',
         ),
       ],
     );
@@ -94,6 +103,9 @@ class MatchGameCards extends StatelessWidget {
               const SizedBox(height: 5.0),
               Text(
                 label,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
                 style: TextStyle(
                   color: isSelected ? accent : const Color(0xFF64748B),
                   fontSize: 11.0,

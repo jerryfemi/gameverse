@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -153,6 +154,7 @@ class AudioEngine {
       unawaited(_loadSfx());
       if (_archerySfxWanted) unawaited(loadArcherySfx());
       if (_dartsSfxWanted) unawaited(loadDartsSfx());
+      if (_paintballSfxWanted) unawaited(loadPaintballSfx());
     }
     await _savePref(_prefKeySfxEnabled, enabled);
   }
@@ -174,6 +176,8 @@ class AudioEngine {
   static bool _archerySfxLoaded = false;
   static bool _dartsSfxWanted = false;
   static bool _dartsSfxLoaded = false;
+  static bool _paintballSfxWanted = false;
+  static bool _paintballSfxLoaded = false;
 
   // ── Monotonic stopwatch (zero-allocation rate-limiting) ──
   static final Stopwatch _clock = Stopwatch();
@@ -206,6 +210,16 @@ class AudioEngine {
     Sfx.dartTick: 'assets/darts/sfx_tick.wav',
     Sfx.dartBust: 'assets/audio/buzzer.wav',
     Sfx.dartPull: 'assets/archery/sfx_click.wav',
+  };
+
+  static const Map<Sfx, String> _paintballSfxAssets = {
+    Sfx.pbShot1: 'assets/paintball/pb_shot_1.wav',
+    Sfx.pbShot2: 'assets/paintball/pb_shot_2.wav',
+    Sfx.pbShot3: 'assets/paintball/pb_shot_3.wav',
+    Sfx.pbShot4: 'assets/paintball/pb_shot_4.wav',
+    Sfx.pbShot5: 'assets/paintball/pb_shot_5.wav',
+    Sfx.pbSplat: 'assets/paintball/pb_splat.wav',
+    Sfx.pbHit: 'assets/paintball/pb_hit.wav',
   };
 
   // ── Available Background Music Tracks ──
@@ -265,6 +279,7 @@ class AudioEngine {
       if (sfxEnabled) unawaited(_loadSfx());
       if (sfxEnabled && _archerySfxWanted) unawaited(loadArcherySfx());
       if (sfxEnabled && _dartsSfxWanted) unawaited(loadDartsSfx());
+      if (sfxEnabled && _paintballSfxWanted) unawaited(loadPaintballSfx());
       final ambience = _ambienceTrack;
       if (ambience != null) {
         unawaited(_backend
@@ -332,6 +347,20 @@ class AudioEngine {
     } catch (e) {
       _dartsSfxLoaded = false;
       debugPrint('[AudioEngine] Darts sounds failed to load: $e');
+    }
+  }
+
+  /// Decodes paintball's sounds (only when paintball is opened, so other
+  /// games never pay for them). Safe to call repeatedly.
+  static Future<void> loadPaintballSfx() async {
+    _paintballSfxWanted = true;
+    if (_paintballSfxLoaded || !_initialized || !sfxEnabled) return;
+    _paintballSfxLoaded = true;
+    try {
+      await _backend.loadSfx(_paintballSfxAssets);
+    } catch (e) {
+      _paintballSfxLoaded = false;
+      debugPrint('[AudioEngine] Paintball sounds failed to load: $e');
     }
   }
 
@@ -661,6 +690,44 @@ class AudioEngine {
     _safeHaptic(HapticFeedback.selectionClick);
   }
 
+  // ── Paintball Sound Effects ──
+
+  static const List<Sfx> _pbShots = [Sfx.pbShot1, Sfx.pbShot2, Sfx.pbShot3, Sfx.pbShot4, Sfx.pbShot5];
+  static final math.Random _pbRng = math.Random();
+  static int _pbLastShot = -1;
+
+  /// Marker shot. Picks one of five recorded shots (never the same twice in a
+  /// row) with a little pitch variation. [opponent] shots are across the field:
+  /// quieter and a touch duller.
+  static void playPaintballShot({bool opponent = false}) {
+    if (!_canPlaySfx) return;
+    var i = _pbRng.nextInt(_pbShots.length - 1);
+    if (i >= _pbLastShot && _pbLastShot >= 0) i++;
+    _pbLastShot = i;
+    final rate = (opponent ? 0.93 : 0.97) + _pbRng.nextDouble() * 0.08;
+    _safePlay(_pbShots[i], opponent ? 0.42 : 0.9, rate: rate);
+  }
+
+  /// A ball bursting. [near] = on your side (your cover, or you), so louder.
+  static void playPaintballSplat({bool near = false}) {
+    if (!_canPlaySfx) return;
+    final rate = 0.9 + _pbRng.nextDouble() * 0.2;
+    _safePlay(Sfx.pbSplat, near ? 0.85 : 0.4, rate: rate);
+  }
+
+  /// You were hit: splat plus a body thud, with a medium haptic.
+  static void playPaintballHitYou() {
+    if (!_canPlaySfx) return;
+    _safePlay(Sfx.pbHit, 0.95, rate: 0.96 + _pbRng.nextDouble() * 0.08);
+    _safeHaptic(HapticFeedback.mediumImpact);
+  }
+
+  /// You hit the opponent: a distant hit, so they hear the body thud faintly.
+  static void playPaintballHitOpponent() {
+    if (!_canPlaySfx) return;
+    _safePlay(Sfx.pbHit, 0.5, rate: 1.02 + _pbRng.nextDouble() * 0.06);
+  }
+
   static void _safePlay(Sfx sfx, double volume, {double rate = 1.0}) {
     final effectiveVolume = (volume * masterVolume * sfxVolume).clamp(
       0.0,
@@ -689,6 +756,7 @@ class AudioEngine {
     _sfxLoaded = false;
     _archerySfxLoaded = false;
     _dartsSfxLoaded = false;
+    _paintballSfxLoaded = false;
     _clock
       ..stop()
       ..reset();

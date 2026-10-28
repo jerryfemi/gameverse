@@ -130,6 +130,28 @@ class AuthService {
 
   UserProfile? get currentUser => currentUserNotifier.value;
 
+  /// Why the last Google sign-in didn't finish (shown in the profile card),
+  /// including failures that only surface after a redirect reloads the page.
+  final ValueNotifier<String?> googleSignInError = ValueNotifier<String?>(null);
+
+  /// True right after a Google account was linked or signed in, so the
+  /// profile card can confirm it. The card clears it.
+  final ValueNotifier<bool> googleJustLinked = ValueNotifier<bool>(false);
+
+  static String googleErrorMessage(FirebaseAuthException e) => switch (e.code) {
+        'unauthorized-domain' =>
+          'This site isn\'t in Firebase Auth → Settings → Authorized domains.',
+        'operation-not-allowed' =>
+          'Google sign-in is turned off in Firebase Auth → Sign-in method.',
+        'popup-closed-by-user' || 'cancelled-popup-request' =>
+          'The Google window closed before sign-in finished. Try again.',
+        'popup-blocked' => 'Your browser blocked the Google window. Allow pop-ups and try again.',
+        'credential-already-in-use' || 'email-already-in-use' =>
+          'That Google account already has a GameVerse profile. Tap Continue with Google again to switch to it.',
+        'network-request-failed' => 'No connection. Check your internet and try again.',
+        _ => e.message ?? 'Google sign-in failed (${e.code}).',
+      };
+
   /// Whether the user is confirmed and authenticated with Firebase Auth.
   bool get isAuthenticatedWithFirebase =>
       FirebaseAuth.instance.currentUser != null;
@@ -238,6 +260,9 @@ class AuthService {
               }
             }
           }
+          // Surface it: after a redirect the page reloaded, so nobody is
+          // awaiting this call any more.
+          googleSignInError.value = googleErrorMessage(e);
         } catch (e) {
           debugPrint('[AuthService] getRedirectResult notice: $e');
         }
@@ -437,8 +462,12 @@ class AuthService {
             await current.delete();
           } catch (_) {}
 
-          // Sign in to the existing permanent account
-          final cred = await auth.signInWithPopup(provider);
+          // Sign in to the existing permanent account. Reuse the credential
+          // from the popup that just closed: a second popup without a tap
+          // is blocked by browsers.
+          final cred = e.credential != null
+              ? await auth.signInWithCredential(e.credential!)
+              : await auth.signInWithPopup(provider);
           return await _syncProfileFromFirebaseUser(cred.user);
         } else if (e.code == 'popup-closed-by-user' ||
             e.code == 'cancelled-popup-request' ||
@@ -518,6 +547,10 @@ class AuthService {
     );
 
     currentUserNotifier.value = profile;
+    if (!user.isAnonymous) {
+      googleSignInError.value = null;
+      googleJustLinked.value = true;
+    }
     unawaited(_effectiveFriendsService.publishMyProfile(profile));
     return profile;
   }

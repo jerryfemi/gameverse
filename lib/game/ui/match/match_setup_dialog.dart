@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:b_ball/archery/state/archery_rules.dart';
 import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/paintball/paintball_constants.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/models/friend_profile.dart';
 import 'package:b_ball/models/player_descriptor.dart';
@@ -22,7 +23,7 @@ import 'package:b_ball/game/ui/match/components/match_hoops_settings_card.dart';
 import 'package:b_ball/game/ui/match/components/match_rules_card.dart';
 
 /// "Play a friend" modal dialog matching Design Templates 16 and 17:
-/// - 3 game selection cards (HOOPS, ARCHERY, DARTS)
+/// - Game selection cards (HOOPS, ARCHERY, DARTS, PAINTBALL)
 /// - Mode switcher (Share a code / A friend)
 /// - Hoops match settings (Rounds, Shot clock, Difficulty)
 /// - Friend radio-picker list
@@ -59,13 +60,15 @@ class MatchSetupDialog extends HookWidget {
   static const Color _hoops = Color(0xFFF59E0B);
   static const Color _archery = Color(0xFF00FFCC);
   static const Color _darts = Color(0xFF38BDF8);
+  static const Color _paintball = Color(0xFFF472B6);
 
   @override
   Widget build(BuildContext context) {
     final selectedGame = useState(initialConfig.game);
     final bool isArchery = selectedGame.value == 'archery';
     final bool isDarts = selectedGame.value == 'darts';
-    final bool fixedRules = isArchery || isDarts;
+    final bool isPaintball = selectedGame.value == 'paintball';
+    final bool fixedRules = isArchery || isDarts || isPaintball;
 
     MatchConfig withGameRules(MatchConfig c) => switch (selectedGame.value) {
           'archery' => c.copyWith(
@@ -77,6 +80,11 @@ class MatchSetupDialog extends HookWidget {
               game: 'darts',
               totalRounds: DartsRules.maxRounds,
               roundDurationSeconds: DartsRules.onlineTurnSeconds,
+            ),
+          'paintball' => c.copyWith(
+              game: 'paintball',
+              totalRounds: 1,
+              roundDurationSeconds: PaintballK.matchDurationSeconds,
             ),
           _ => c.copyWith(game: selectedGame.value),
         };
@@ -155,6 +163,8 @@ class MatchSetupDialog extends HookWidget {
       final code = match.joinCode;
       final text = match.isArchery
           ? '🎯 Shoot archery with me on GameVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code'
+          : match.isPaintball
+              ? '🎨 Paintball duel on GameVerse! First to 3 hits. Match code: $code\nhttps://dunkverse.web.app/match/$code'
           : match.isDarts
               ? '🎯 Play me at darts on GameVerse! 301, first to zero. Match code: $code\nhttps://dunkverse.web.app/match/$code'
               : '🏀 Play me 1v1 on DunkVerse! Match code: $code\nhttps://dunkverse.web.app/match/$code';
@@ -223,9 +233,13 @@ class MatchSetupDialog extends HookWidget {
     }
 
     final profile = AuthService.instance.currentUser;
-    final Color gameAccent = isArchery ? _archery : (isDarts ? _darts : _hoops);
+    final Color gameAccent = isPaintball
+        ? _paintball
+        : (isArchery ? _archery : (isDarts ? _darts : _hoops));
 
-    final String subtitleText = isArchery
+    final String subtitleText = isPaintball
+        ? 'Live duel, first to 3 hits wins'
+        : isArchery
         ? 'Sets of 3 arrows, first to 6 set points'
         : (isDarts
             ? '301 down to zero, checkout on a double'
@@ -310,7 +324,7 @@ class MatchSetupDialog extends HookWidget {
                     ),
                     const SizedBox(height: 16.0),
 
-                    // 3 Game Selection Cards (Hoops, Archery, Darts)
+                    // Game Selection Cards (Hoops, Archery, Darts, Paintball)
                     if (showGamePicker) ...[
                       MatchGameCards(
                         selectedGame: selectedGame.value,
@@ -378,7 +392,7 @@ class MatchSetupDialog extends HookWidget {
                                   onDifficultyChanged: (diff) => selectedDifficulty.value = diff,
                                 )
                               else
-                                MatchRulesCard(isArchery: isArchery),
+                                MatchRulesCard(isArchery: isArchery, isPaintball: isPaintball),
                             ] else ...[
                               FriendSelectorRibbon(
                                 profile: profile,

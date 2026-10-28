@@ -454,6 +454,7 @@ class CloudMatch {
   bool get isBasketball => game == 'basketball';
   bool get isArchery => game == 'archery';
   bool get isDarts => game == 'darts';
+  bool get isPaintball => game == 'paintball';
 
   static String gameTitle(String g) {
     switch (g) {
@@ -461,6 +462,8 @@ class CloudMatch {
         return 'Archery';
       case 'darts':
         return 'Darts';
+      case 'paintball':
+        return 'Paintball';
       case 'basketball':
       default:
         return 'Basketball';
@@ -473,6 +476,8 @@ class CloudMatch {
         return '🎯';
       case 'darts':
         return '🎯';
+      case 'paintball':
+        return '🔫';
       case 'basketball':
       default:
         return '🏀';

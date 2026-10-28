@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.1.5+20
+version: 2.2.0+21
 
 environment:
   sdk: ^3.13.2
@@ -42,7 +42,7 @@ dependencies:
   flutter_hooks: ^0.21.2
   hooks_riverpod: ^3.4.3
   flutter_soloud: ^5.2.0
-  forge2d: ^0.15.2
+  forge2d: 0.15.2
   vector_math: ^2.1.4
   firebase_core: ^4.15.0
   cloud_firestore: ^6.10.0
@@ -52,6 +52,7 @@ dependencies:
   url_launcher: ^6.3.3
   package_info_plus: ^10.2.2
   go_router: ^18.1.1
+  firebase_database: ^12.6.1
 
 dev_dependencies:
   flutter_test:
@@ -90,6 +91,7 @@ flutter:
     - assets/lobby/
     - assets/darts/sprites/
     - assets/darts/
+    - assets/paintball/
 
   # Shot callout lettering (SWISH! / BANK! / +3). Poppins Bold Italic
   # (SIL Open Font License), subset to basic Latin: ~9 KB.

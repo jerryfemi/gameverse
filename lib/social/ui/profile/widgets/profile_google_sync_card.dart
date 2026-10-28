@@ -19,6 +19,20 @@ class ProfileGoogleSyncCard extends HookWidget {
   Widget build(BuildContext context) {
     final isLoading = useState(false);
     final inlineError = useState<String?>(null);
+    final auth = AuthService.instance;
+    final redirectError = useValueListenable(auth.googleSignInError);
+    final justLinked = useValueListenable(auth.googleJustLinked);
+    // Show the confirmation for a few seconds, then settle.
+    useEffect(() {
+      if (!justLinked) return null;
+      HapticFeedback.lightImpact();
+      final t = Future<void>.delayed(const Duration(seconds: 4), () {
+        auth.googleJustLinked.value = false;
+      });
+      t.ignore();
+      return null;
+    }, [justLinked]);
+    final shownError = inlineError.value ?? redirectError;
     final authUser = FirebaseAuth.instance.currentUser;
     final isLinked =
         (profile != null &&
@@ -35,16 +49,17 @@ class ProfileGoogleSyncCard extends HookWidget {
         : (authUser?.email ?? '');
 
     if (isLinked && displayEmail.isNotEmpty) {
-      return _buildLinkedState(context, displayEmail, isLoading);
+      return _buildLinkedState(context, displayEmail, isLoading, justLinked);
     }
 
-    return _buildUnlinkedState(context, isLoading, inlineError);
+    return _buildUnlinkedState(context, isLoading, inlineError, shownError);
   }
 
   Widget _buildUnlinkedState(
     BuildContext context,
     ValueNotifier<bool> isLoading,
     ValueNotifier<String?> inlineError,
+    String? shownError,
   ) {
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -87,7 +102,7 @@ class ProfileGoogleSyncCard extends HookWidget {
               ),
             ],
           ),
-          if (inlineError.value != null) ...[
+          if (shownError != null) ...[
             const SizedBox(height: 12.0),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -109,7 +124,7 @@ class ProfileGoogleSyncCard extends HookWidget {
                   const SizedBox(width: 8.0),
                   Expanded(
                     child: Text(
-                      inlineError.value!,
+                      shownError,
                       style: UiFont.style(
                         size: 11.5,
                         weight: 600,
@@ -130,41 +145,17 @@ class ProfileGoogleSyncCard extends HookWidget {
                   : () async {
                       HapticFeedback.lightImpact();
                       inlineError.value = null;
+                      AuthService.instance.googleSignInError.value = null;
                       isLoading.value = true;
                       try {
                         await AuthService.instance.signInOrLinkWithGoogle();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✓ Account linked with Google!'),
-                              backgroundColor: Color(0xFF10B981),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
+                        // Success: the card swaps to the linked state with a
+                        // "✓ GOOGLE LINKED" badge (AuthService.googleJustLinked).
                       } catch (e) {
                         debugPrint('[ProfileGoogleSyncCard] Sign in error: $e');
-                        String errorMsg = 'Failed to sign in: $e';
-                        if (e is FirebaseAuthException) {
-                          switch (e.code) {
-                            case 'unauthorized-domain':
-                              errorMsg =
-                                  'This domain is not in Firebase Console -> Auth -> Settings -> Authorized domains.';
-                              break;
-                            case 'operation-not-allowed':
-                              errorMsg =
-                                  'Google Sign-In is disabled in Firebase Console -> Auth -> Sign-in method.';
-                              break;
-                            case 'popup-closed-by-user':
-                            case 'cancelled-popup-request':
-                            case 'popup-blocked':
-                              errorMsg =
-                                  'Sign-in window closed by browser. Please try again.';
-                              break;
-                            default:
-                              errorMsg = e.message ?? e.code;
-                          }
-                        }
+                        final errorMsg = e is FirebaseAuthException
+                            ? AuthService.googleErrorMessage(e)
+                            : 'Google sign-in failed. Try again.';
                         inlineError.value = errorMsg;
                       } finally {
                         isLoading.value = false;
@@ -214,13 +205,23 @@ class ProfileGoogleSyncCard extends HookWidget {
     BuildContext context,
     String email,
     ValueNotifier<bool> isLoading,
+    bool justLinked,
   ) {
-    return Container(
+    const green = Color(0xFF10B981);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: const Color(0xFF0F1523),
         borderRadius: BorderRadius.circular(14.0),
-        border: Border.all(color: const Color(0xFF1E2638), width: 1.0),
+        border: Border.all(
+          color: justLinked ? green.withValues(alpha: 0.7) : const Color(0xFF1E2638),
+          width: justLinked ? 1.4 : 1.0,
+        ),
+        boxShadow: justLinked
+            ? [BoxShadow(color: green.withValues(alpha: 0.25), blurRadius: 18.0)]
+            : null,
       ),
       child: Row(
         children: [
@@ -243,13 +244,17 @@ class ProfileGoogleSyncCard extends HookWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'GOOGLE ACCOUNT',
-                  style: UiFont.style(
-                    size: 9.5,
-                    weight: 800,
-                    color: const Color(0xFF64748B),
-                    letterSpacing: 0.8,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child: Text(
+                    justLinked ? '✓ GOOGLE LINKED · PROGRESS SAVED' : 'GOOGLE ACCOUNT',
+                    key: ValueKey(justLinked),
+                    style: UiFont.style(
+                      size: 9.5,
+                      weight: 800,
+                      color: justLinked ? green : const Color(0xFF64748B),
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 1.0),

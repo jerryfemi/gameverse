@@ -10,6 +10,7 @@ import 'package:b_ball/social/ui/common/verdict_banner.dart';
 import 'package:b_ball/social/ui/results/archery_results_body.dart';
 import 'package:b_ball/social/ui/results/darts_results_body.dart';
 import 'package:b_ball/social/ui/results/hoops_results_body.dart';
+import 'package:b_ball/social/ui/results/paintball_results_body.dart';
 import 'package:b_ball/social/ui/results/widgets/results_comparison_cards.dart';
 import 'package:b_ball/social/ui/results/widgets/results_footer_actions.dart';
 import 'package:b_ball/social/ui/results/widgets/results_h2h_peek_row.dart';
@@ -160,6 +161,9 @@ class ResultsSheet extends StatelessWidget {
     }
     if (match.isArchery) {
       return ArcheryResultsBody(match: match, myUid: myUid);
+    }
+    if (match.isPaintball) {
+      return PaintballResultsBody(match: match, myUid: myUid);
     }
     return HoopsResultsBody(match: match, myUid: myUid);
   }

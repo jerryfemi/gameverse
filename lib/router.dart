@@ -8,6 +8,7 @@ import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/game/basketball_game.dart';
 import 'package:b_ball/game/ui/game_hud_overlay.dart';
 import 'package:b_ball/lobby/game_lobby_screen.dart';
+import 'package:b_ball/paintball/paintball_game_screen.dart';
 import 'package:b_ball/routes/match_route_screen.dart';
 
 /// Central GameVerse GoRouter setup.
@@ -63,6 +64,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/darts',
       builder: (context, state) => const DartsGameScreen(),
+    ),
+    GoRoute(
+      path: '/paintball',
+      builder: (context, state) => const PaintballGameScreen(),
     ),
     GoRoute(
       path: '/match/:id',
