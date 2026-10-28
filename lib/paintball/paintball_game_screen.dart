@@ -50,42 +50,65 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Respect reduced motion: skip arena intro straight to countdown.
+    if (MediaQuery.disableAnimationsOf(context) &&
+        _game.match.phase == PaintballMatchPhase.intro) {
+      _game.skipIntro();
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF060913),
-      body: GameWidget<PaintballGame>(
-        game: _game,
-        overlayBuilderMap: {
-          'HUD': (context, game) => StreamBuilder<void>(
-                stream: Stream.periodic(const Duration(milliseconds: 100)),
-                builder: (context, _) => PaintballHudOverlay(match: game.match),
-              ),
-          'Controls': (context, game) => StreamBuilder<void>(
-                stream: Stream.periodic(const Duration(milliseconds: 50)),
-                builder: (context, _) {
-                  if (game.match.phase == PaintballMatchPhase.gameOver) {
-                    // Let the death / win animations play before the card.
-                    if (!game.showResults) return const SizedBox.shrink();
-                    return _ResultReveal(
-                      child: PaintballResultCard(
-                        match: game.match,
-                        onRematch: game.resetMatch,
-                        onLobby: () {
-                          if (context.mounted) context.go('/');
-                        },
-                      ),
-                    );
-                  }
-                  return Stack(
-                    children: [
-                      PaintballControlsOverlay(game: game),
-                      if (game.match.phase == PaintballMatchPhase.countdown)
-                        _buildCountdownBanner(game),
-                    ],
-                  );
-                },
-              ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () {
+          // A tap anywhere during arena intro skips it.
+          if (_game.match.phase == PaintballMatchPhase.intro) {
+            _game.skipIntro();
+          }
         },
-        initialActiveOverlays: const ['HUD', 'Controls'],
+        child: GameWidget<PaintballGame>(
+          game: _game,
+          overlayBuilderMap: {
+            'HUD': (context, game) => StreamBuilder<void>(
+                  stream: Stream.periodic(const Duration(milliseconds: 100)),
+                  builder: (context, _) {
+                    if (game.match.phase == PaintballMatchPhase.intro) {
+                      return const SizedBox.shrink();
+                    }
+                    return PaintballHudOverlay(match: game.match);
+                  },
+                ),
+            'Controls': (context, game) => StreamBuilder<void>(
+                  stream: Stream.periodic(const Duration(milliseconds: 50)),
+                  builder: (context, _) {
+                    if (game.match.phase == PaintballMatchPhase.intro) {
+                      return const SizedBox.shrink();
+                    }
+                    if (game.match.phase == PaintballMatchPhase.gameOver) {
+                      // Let the death / win animations play before the card.
+                      if (!game.showResults) return const SizedBox.shrink();
+                      return _ResultReveal(
+                        child: PaintballResultCard(
+                          match: game.match,
+                          onRematch: game.resetMatch,
+                          onLobby: () {
+                            if (context.mounted) context.go('/');
+                          },
+                        ),
+                      );
+                    }
+                    return Stack(
+                      children: [
+                        PaintballControlsOverlay(game: game),
+                        if (game.match.phase == PaintballMatchPhase.countdown)
+                          _buildCountdownBanner(game),
+                      ],
+                    );
+                  },
+                ),
+          },
+          initialActiveOverlays: const ['HUD', 'Controls'],
+        ),
       ),
     );
   }

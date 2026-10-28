@@ -3,6 +3,9 @@ import 'package:b_ball/paintball/logic/hit_resolver.dart';
 
 /// Current stage of a paintball duel.
 enum PaintballMatchPhase {
+  /// Arena overview pan + player walk-in before the countdown.
+  intro,
+
   /// 3-2-1 countdown before combat begins.
   countdown,
 
@@ -236,7 +239,13 @@ class PaintballPlayerState {
 
 /// SSOT deterministic match manager for a Paintball duel.
 class PaintballMatchState {
-  PaintballMatchPhase phase = PaintballMatchPhase.countdown;
+  PaintballMatchPhase phase = PaintballMatchPhase.intro;
+
+  /// Total duration of the intro sequence (4.0 s: 2.5s arena pan + 1.5s walk-in).
+  static const double introDurationSeconds = 4.0;
+
+  /// Elapsed time within intro phase.
+  double introElapsed = 0.0;
 
   /// Countdown before match start (seconds).
   double countdownRemaining = 3.0;
@@ -256,8 +265,14 @@ class PaintballMatchState {
   PaintballWinner? winner;
 
   /// Starts or restarts a match.
-  void startMatch() {
-    phase = PaintballMatchPhase.countdown;
+  void startMatch({bool skipIntro = false}) {
+    if (skipIntro) {
+      phase = PaintballMatchPhase.countdown;
+      introElapsed = introDurationSeconds;
+    } else {
+      phase = PaintballMatchPhase.intro;
+      introElapsed = 0.0;
+    }
     countdownRemaining = 3.0;
     timeRemaining = PaintballK.matchDurationSeconds.toDouble();
     suddenDeathRemaining = PaintballK.suddenDeathDurationSeconds.toDouble();
@@ -267,9 +282,24 @@ class PaintballMatchState {
     opponent.reset(startLane: PaintballK.defaultStartLane);
   }
 
+  /// Skips the intro sequence and jumps straight to countdown.
+  void skipIntro() {
+    if (phase == PaintballMatchPhase.intro) {
+      phase = PaintballMatchPhase.countdown;
+      introElapsed = introDurationSeconds;
+    }
+  }
+
   /// Advances match clock, countdown, and player state machines.
   void tick(double dt) {
     switch (phase) {
+      case PaintballMatchPhase.intro:
+        introElapsed += dt;
+        if (introElapsed >= introDurationSeconds) {
+          phase = PaintballMatchPhase.countdown;
+        }
+        return;
+
       case PaintballMatchPhase.countdown:
         countdownRemaining -= dt;
         if (countdownRemaining <= 0.0) {

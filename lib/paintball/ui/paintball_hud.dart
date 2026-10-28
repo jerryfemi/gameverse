@@ -48,6 +48,7 @@ class PaintballHudOverlay extends StatelessWidget {
     Color color = Colors.white;
 
     switch (match.phase) {
+      case PaintballMatchPhase.intro:
       case PaintballMatchPhase.countdown:
         final count = match.countdownRemaining.ceil();
         text = count > 0 ? '$count' : 'GO!';

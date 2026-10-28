@@ -231,11 +231,37 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       playerLaneX = centerX + ((match.you.lane - 2) * laneStep);
     }
 
+    // Ground point evaluation (including intro walk-in sequence: 2.5–4.0s)
+    double youGroundY = h * PaintballK.nearGroundY;
+    double oppGroundY = h * PaintballK.farGroundY;
+
+    if (match.phase == PaintballMatchPhase.intro) {
+      final introT = match.introElapsed;
+      if (introT < 2.5) {
+        // Overview pan (0–2.5s): you start 0.25h below ground, opponent 0.04h above
+        youGroundY = h * (PaintballK.nearGroundY + 0.25);
+        oppGroundY = h * (PaintballK.farGroundY - 0.04);
+        playerComponent.isWalking = false;
+        opponentComponent.isWalking = false;
+      } else {
+        // Walk-in (2.5–4.0s): you move up 0.25h, opponent moves down 0.04h
+        final p = ((introT - 2.5) / 1.5).clamp(0.0, 1.0);
+        final walkProgress = p * p * (3.0 - 2.0 * p);
+        youGroundY = h * (PaintballK.nearGroundY + 0.25 * (1.0 - walkProgress));
+        oppGroundY = h * (PaintballK.farGroundY - 0.04 * (1.0 - walkProgress));
+        playerComponent.isWalking = true;
+        opponentComponent.isWalking = true;
+      }
+    } else {
+      playerComponent.isWalking = false;
+      opponentComponent.isWalking = false;
+    }
+
     // Ground point, offset slightly left so the marker (right hand) sits near
     // screen centre for the over-the-shoulder look.
     playerComponent.position.setValues(
       playerLaneX - laneStep * 0.10,
-      h * PaintballK.nearGroundY,
+      youGroundY,
     );
 
     // 2. Opponent (Worker)
@@ -253,7 +279,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
 
     opponentComponent.position.setValues(
       oppLaneX,
-      h * PaintballK.farGroundY,
+      oppGroundY,
     );
   }
 
@@ -327,13 +353,29 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     _targetCameraPan = 0.0;
     cameraDipOffset = 0.0;
     _targetCameraDip = 0.0;
-    match.startMatch();
+    match.startMatch(skipIntro: true);
     _endPosesApplied = false;
     gameOverSeconds = 0.0;
     playerComponent.resetVisual();
     opponentComponent.resetVisual();
     if (_cachedWidth > 0 && _cachedHeight > 0) {
       _layoutScene(_cachedWidth, _cachedHeight);
+    }
+  }
+
+  /// Skips the arena intro and immediately begins the countdown.
+  void skipIntro() {
+    if (match.phase == PaintballMatchPhase.intro) {
+      match.skipIntro();
+      playerComponent.isWalking = false;
+      opponentComponent.isWalking = false;
+      cameraPanOffset = 0.0;
+      _targetCameraPan = 0.0;
+      cameraDipOffset = 0.0;
+      _targetCameraDip = 0.0;
+      if (_cachedWidth > 0 && _cachedHeight > 0) {
+        _updatePlayerPositions(_cachedWidth, _cachedHeight);
+      }
     }
   }
 
@@ -600,13 +642,30 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     opponentComponent.aimTurn = -(oppTarget - oppFacing);
 
     // 2. Refresh Camera Targets & Advance Dual-Axis Damped Springs
-    _updateCameraTarget();
+    if (match.phase == PaintballMatchPhase.intro) {
+      final stageW = _stageWidth(_cachedWidth, _cachedHeight);
+      final introT = match.introElapsed;
+      if (introT <= 2.5) {
+        final normT = (introT / 2.5).clamp(0.0, 1.0);
+        // Ease-in-out from +0.9 * stageWidth to 0 (PAINTBALL_GEMINI_NEXT Task A)
+        final ease = normT * normT * (3.0 - 2.0 * normT);
+        cameraPanOffset = (1.0 - ease) * (0.9 * stageW);
+        _targetCameraPan = 0.0;
+      } else {
+        cameraPanOffset = 0.0;
+        _targetCameraPan = 0.0;
+      }
+      cameraDipOffset = 0.0;
+      _targetCameraDip = 0.0;
+    } else {
+      _updateCameraTarget();
 
-    final diffX = _targetCameraPan - cameraPanOffset;
-    cameraPanOffset += diffX * math.min(1.0, dt * 10.0);
+      final diffX = _targetCameraPan - cameraPanOffset;
+      cameraPanOffset += diffX * math.min(1.0, dt * 10.0);
 
-    final diffY = _targetCameraDip - cameraDipOffset;
-    cameraDipOffset += diffY * math.min(1.0, dt * 12.0);
+      final diffY = _targetCameraDip - cameraDipOffset;
+      cameraDipOffset += diffY * math.min(1.0, dt * 12.0);
+    }
 
     // Distribute camera pan & dip to parallax layers
     backdrop.cameraPanOffset = cameraPanOffset;

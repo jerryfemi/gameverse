@@ -127,7 +127,35 @@ void main() {
       match.startMatch();
     });
 
+    test('intro phase transitions to countdown after 4.0 seconds', () {
+      expect(match.phase, PaintballMatchPhase.intro);
+      expect(match.introElapsed, 0.0);
+
+      match.tick(2.5);
+      expect(match.phase, PaintballMatchPhase.intro);
+      expect(match.introElapsed, 2.5);
+
+      match.tick(1.5);
+      expect(match.phase, PaintballMatchPhase.countdown);
+      expect(match.countdownRemaining, 3.0);
+    });
+
+    test('skipIntro() jumps straight to countdown', () {
+      expect(match.phase, PaintballMatchPhase.intro);
+
+      match.skipIntro();
+      expect(match.phase, PaintballMatchPhase.countdown);
+      expect(match.countdownRemaining, 3.0);
+    });
+
+    test('startMatch(skipIntro: true) starts directly in countdown', () {
+      match.startMatch(skipIntro: true);
+      expect(match.phase, PaintballMatchPhase.countdown);
+      expect(match.countdownRemaining, 3.0);
+    });
+
     test('countdown transitions to live combat after 3 seconds', () {
+      match.skipIntro();
       expect(match.phase, PaintballMatchPhase.countdown);
       expect(match.countdownRemaining, 3.0);
 

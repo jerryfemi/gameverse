@@ -25,7 +25,8 @@ enum PaintballClip {
   slideRight,
   hit,
   death,
-  win;
+  win,
+  walk;
 
   String get key => switch (this) {
         PaintballClip.standL => 'stand_l',
@@ -36,6 +37,7 @@ enum PaintballClip {
         PaintballClip.crouchR => 'crouch_r',
         PaintballClip.slideLeft => 'slide_left',
         PaintballClip.slideRight => 'slide_right',
+        PaintballClip.walk => 'walk',
         _ => name,
       };
 }
@@ -97,7 +99,16 @@ class PaintballPlayerAtlas {
 
     final clips = <PaintballClipFrames>[];
     for (final c in PaintballClip.values) {
-      final cj = clipsJson[c.key] as Map<String, dynamic>;
+      var key = c.key;
+      var cj = clipsJson[key] as Map<String, dynamic>?;
+      if (cj == null && c == PaintballClip.walk) {
+        // Stand-in while the atlas has no walk clip (PAINTBALL_GEMINI_NEXT Task A)
+        key = PaintballClip.slideLeft.key;
+        cj = clipsJson[key] as Map<String, dynamic>?;
+      }
+      if (cj == null) {
+        throw StateError('Missing clip key: $key');
+      }
       final n = (cj['frames'] as num).toInt();
       final cw = (cj['cellWidth'] as num).toDouble();
       final ch = (cj['cellHeight'] as num).toDouble();
@@ -105,7 +116,7 @@ class PaintballPlayerAtlas {
       final ay = (cj['anchorY'] as num).toDouble();
       final src = <Rect>[];
       for (var i = 0; i < n; i++) {
-        final f = framesJson['p1_${c.key}_$i'] as Map<String, dynamic>;
+        final f = framesJson['p1_${key}_$i'] as Map<String, dynamic>;
         src.add(Rect.fromLTWH(
           (f['x'] as num).toDouble(),
           (f['y'] as num).toDouble(),
@@ -158,6 +169,9 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   /// Set by the game when the match ends.
   bool showWin = false;
   bool showDeath = false;
+
+  /// Set by the game during the intro walk-in sequence.
+  bool isWalking = false;
 
   PaintballPlayerAtlas? _atlas;
 
@@ -213,6 +227,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   void resetVisual() {
     showWin = false;
     showDeath = false;
+    isWalking = false;
     _hitTimer = 0.0;
     _fireTimer = 0.0;
     _lastHitsTaken = state.hitsTaken;
@@ -309,6 +324,8 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
       want = PaintballClip.death;
     } else if (showWin) {
       want = PaintballClip.win;
+    } else if (isWalking) {
+      want = PaintballClip.walk;
     } else if (_hitTimer > 0.0) {
       want = PaintballClip.hit;
     } else if (state.isSliding) {
@@ -325,7 +342,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
 
   int _frameIndex(PaintballClipFrames c) {
     final double fps = switch (_clip) {
-      PaintballClip.slideLeft || PaintballClip.slideRight => _slideFps,
+      PaintballClip.slideLeft || PaintballClip.slideRight || PaintballClip.walk => _slideFps,
       PaintballClip.hit => c.frameCount / _hitSeconds,
       PaintballClip.fire || PaintballClip.fireL || PaintballClip.fireR => c.frameCount / _fireSeconds,
       _ => c.fps,
