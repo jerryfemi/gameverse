@@ -1,0 +1,520 @@
+{
+  "name": "paintball_front",
+  "image": "paintball_front_atlas.webp",
+  "view": "front",
+  "scalePxPerCm": 0.4315,
+  "layout": "One row per clip, in the order of the clips block. Each clip has its own cell size; frame key p1_<clip>_<i>. anchorX/anchorY in each clip = the ground point under the player, in that clip's cell pixels. Draw every clip with its anchor at the same screen point and they line up.",
+  "inPlace": true,
+  "clips": {
+    "stand": {
+      "name": "stand",
+      "frames": 8,
+      "seconds": 3.1,
+      "fps": 2.58,
+      "loop": true,
+      "cellWidth": 105,
+      "cellHeight": 287,
+      "anchorX": 52.9,
+      "anchorY": 284.3
+    },
+    "fire": {
+      "name": "fire",
+      "frames": 4,
+      "seconds": 1.033,
+      "fps": 3.87,
+      "loop": false,
+      "cellWidth": 102,
+      "cellHeight": 283,
+      "anchorX": 52.4,
+      "anchorY": 276.6
+    },
+    "crouch": {
+      "name": "crouch",
+      "frames": 8,
+      "seconds": 2.1,
+      "fps": 3.81,
+      "loop": true,
+      "cellWidth": 106,
+      "cellHeight": 205,
+      "anchorX": 55.4,
+      "anchorY": 198.9
+    },
+    "duck": {
+      "name": "duck",
+      "frames": 8,
+      "seconds": 2.433,
+      "fps": 3.29,
+      "loop": true,
+      "cellWidth": 149,
+      "cellHeight": 151,
+      "anchorX": 80.9,
+      "anchorY": 138.9
+    },
+    "slide_left": {
+      "name": "slide_left",
+      "frames": 8,
+      "seconds": 1.233,
+      "fps": 6.49,
+      "loop": true,
+      "cellWidth": 186,
+      "cellHeight": 234,
+      "anchorX": 92.5,
+      "anchorY": 232.6
+    },
+    "slide_right": {
+      "name": "slide_right",
+      "frames": 8,
+      "seconds": 1.2,
+      "fps": 6.67,
+      "loop": true,
+      "cellWidth": 198,
+      "cellHeight": 228,
+      "anchorX": 127.5,
+      "anchorY": 224.8
+    },
+    "hit": {
+      "name": "hit",
+      "frames": 6,
+      "seconds": 2.3,
+      "fps": 2.61,
+      "loop": false,
+      "cellWidth": 214,
+      "cellHeight": 296,
+      "anchorX": 158.6,
+      "anchorY": 285.2
+    },
+    "death": {
+      "name": "death",
+      "frames": 10,
+      "seconds": 2.833,
+      "fps": 3.53,
+      "loop": false,
+      "cellWidth": 232,
+      "cellHeight": 300,
+      "anchorX": 121.5,
+      "anchorY": 286.9
+    },
+    "win": {
+      "name": "win",
+      "frames": 8,
+      "seconds": 2.9,
+      "fps": 2.76,
+      "loop": true,
+      "cellWidth": 161,
+      "cellHeight": 366,
+      "anchorX": 71.0,
+      "anchorY": 371.9
+    }
+  },
+  "frames": {
+    "p1_stand_0": {
+      "x": 0,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_1": {
+      "x": 105,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_2": {
+      "x": 210,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_3": {
+      "x": 315,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_4": {
+      "x": 420,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_5": {
+      "x": 525,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_6": {
+      "x": 630,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_stand_7": {
+      "x": 735,
+      "y": 0,
+      "w": 105,
+      "h": 287
+    },
+    "p1_fire_0": {
+      "x": 0,
+      "y": 287,
+      "w": 102,
+      "h": 283
+    },
+    "p1_fire_1": {
+      "x": 102,
+      "y": 287,
+      "w": 102,
+      "h": 283
+    },
+    "p1_fire_2": {
+      "x": 204,
+      "y": 287,
+      "w": 102,
+      "h": 283
+    },
+    "p1_fire_3": {
+      "x": 306,
+      "y": 287,
+      "w": 102,
+      "h": 283
+    },
+    "p1_crouch_0": {
+      "x": 0,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_1": {
+      "x": 106,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_2": {
+      "x": 212,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_3": {
+      "x": 318,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_4": {
+      "x": 424,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_5": {
+      "x": 530,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_6": {
+      "x": 636,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_crouch_7": {
+      "x": 742,
+      "y": 570,
+      "w": 106,
+      "h": 205
+    },
+    "p1_duck_0": {
+      "x": 0,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_1": {
+      "x": 149,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_2": {
+      "x": 298,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_3": {
+      "x": 447,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_4": {
+      "x": 596,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_5": {
+      "x": 745,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_6": {
+      "x": 894,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_duck_7": {
+      "x": 1043,
+      "y": 775,
+      "w": 149,
+      "h": 151
+    },
+    "p1_slide_left_0": {
+      "x": 0,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_1": {
+      "x": 186,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_2": {
+      "x": 372,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_3": {
+      "x": 558,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_4": {
+      "x": 744,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_5": {
+      "x": 930,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_6": {
+      "x": 1116,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_left_7": {
+      "x": 1302,
+      "y": 926,
+      "w": 186,
+      "h": 234
+    },
+    "p1_slide_right_0": {
+      "x": 0,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_1": {
+      "x": 198,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_2": {
+      "x": 396,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_3": {
+      "x": 594,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_4": {
+      "x": 792,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_5": {
+      "x": 990,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_6": {
+      "x": 1188,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_slide_right_7": {
+      "x": 1386,
+      "y": 1160,
+      "w": 198,
+      "h": 228
+    },
+    "p1_hit_0": {
+      "x": 0,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_hit_1": {
+      "x": 214,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_hit_2": {
+      "x": 428,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_hit_3": {
+      "x": 642,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_hit_4": {
+      "x": 856,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_hit_5": {
+      "x": 1070,
+      "y": 1388,
+      "w": 214,
+      "h": 296
+    },
+    "p1_death_0": {
+      "x": 0,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_1": {
+      "x": 232,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_2": {
+      "x": 464,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_3": {
+      "x": 696,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_4": {
+      "x": 928,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_5": {
+      "x": 1160,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_6": {
+      "x": 1392,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_7": {
+      "x": 1624,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_8": {
+      "x": 1856,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_death_9": {
+      "x": 2088,
+      "y": 1684,
+      "w": 232,
+      "h": 300
+    },
+    "p1_win_0": {
+      "x": 0,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_1": {
+      "x": 161,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_2": {
+      "x": 322,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_3": {
+      "x": 483,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_4": {
+      "x": 644,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_5": {
+      "x": 805,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_6": {
+      "x": 966,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    },
+    "p1_win_7": {
+      "x": 1127,
+      "y": 1984,
+      "w": 161,
+      "h": 366
+    }
+  },
+  "credit": "\"Realistic Paintball Player (animated)\" by Jungle Jim (https://sketchfab.com/jungle_jim), CC BY 4.0. Animations: Mixamo."
+}
