@@ -104,7 +104,7 @@ const List<LobbyGame> lobbyGames = [
     id: 'paintball',
     title: 'Paintball',
     tagline: "Slide, duck, and tag your rival.",
-    pitch: 'Five lanes, three stances, and ninety seconds. First to three hits wins the duel.',
+    pitch: 'Five lanes, three stances, best of three rounds. Land three hits to take a round.',
     heroLabel: 'New duel',
     accent: Color(0xFF38BDF8),
     image: 'assets/lobby/paintball.webp',
