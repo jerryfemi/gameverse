@@ -16,6 +16,8 @@ import 'package:b_ball/paintball/components/player_sprite.dart';
 import 'package:b_ball/paintball/components/reticle.dart';
 import 'package:b_ball/paintball/components/paintball.dart';
 import 'package:b_ball/paintball/components/splat.dart';
+import 'package:b_ball/paintball/net/paintball_net_link.dart';
+import 'package:b_ball/paintball/net/paintball_protocol.dart';
 
 /// Flame game engine for Paintball 1v1 duels.
 ///
@@ -68,9 +70,37 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   double _cachedWidth = 0.0;
   double _cachedHeight = 0.0;
 
-  PaintballGame({int? botSeed}) {
+  PaintballGame({int? botSeed, this.online = false}) {
     botBrain = PaintballBotBrain(seed: botSeed);
   }
+
+  // ─── Live 1v1 (RTDB) ──────────────────────────────────────────────────────
+  // Online, the opponent is driven by network events instead of the bot. The
+  // target decides every hit; your own shots wait for their verdict.
+
+  /// True for a live 1v1. The match waits (no intro) until [startOnline].
+  final bool online;
+
+  /// Set by the session once connected.
+  PaintballNetLink? net;
+
+  /// Online: true until both players are in and the shared start is known.
+  bool waitingForOpponent = true;
+
+  bool _matchOverSent = false;
+  final Set<String> _resolvedShots = <String>{};
+  final Map<String, double> _myShotAim = <String, double>{};
+  double? _pendingStartElapsed;
+  int _pendingStartAtMs = 0;
+
+  // Last state sent, so writes happen only on change (never per frame).
+  int _sentLane = -1, _sentFrom = -2, _sentStance = -1, _sentAmmo = -1;
+  int _sentHits = -1, _sentAim = 9, _aimBucket = 0;
+
+  /// Opponent's upper-body pose from the network (-1, 0, 1).
+  int remoteAimBucket = 0;
+
+  int get aimBucket => _aimBucket;
 
   @override
   Future<void> onLoad() async {
@@ -120,9 +150,19 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     reticle = ReticleComponent();
     await add(reticle);
 
-    match.startMatch();
+    if (!online) {
+      match.startMatch();
+      waitingForOpponent = false;
+    }
 
     _isReady = true;
+
+    final pending = _pendingStartElapsed;
+    if (pending != null) {
+      _pendingStartElapsed = null;
+      startOnline(pending +
+          (DateTime.now().millisecondsSinceEpoch - _pendingStartAtMs) / 1000.0);
+    }
 
     if (_cachedWidth > 0 && _cachedHeight > 0) {
       _layoutScene(_cachedWidth, _cachedHeight);
@@ -361,11 +401,133 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     match.startMatch();
     _endPosesApplied = false;
     gameOverSeconds = 0.0;
+    _matchOverSent = false;
+    _resolvedShots.clear();
+    _myShotAim.clear();
+    _sentLane = -1;
+    remoteAimBucket = 0;
     playerComponent.resetVisual();
     opponentComponent.resetVisual();
     if (_cachedWidth > 0 && _cachedHeight > 0) {
       _layoutScene(_cachedWidth, _cachedHeight);
     }
+  }
+
+  /// Online: both players are in. [elapsedSeconds] is the time since the
+  /// shared start (server clock); a late joiner fast-forwards to stay in sync.
+  /// The intro always plays from the shared start.
+  void startOnline(double elapsedSeconds) {
+    if (!_isReady) {
+      _pendingStartElapsed = elapsedSeconds;
+      _pendingStartAtMs = DateTime.now().millisecondsSinceEpoch;
+      return;
+    }
+    resetMatch();
+    waitingForOpponent = false;
+    var left = elapsedSeconds.clamp(0.0, 30.0);
+    while (left > 0) {
+      final step = left > 0.05 ? 0.05 : left;
+      match.tick(step);
+      left -= step;
+    }
+  }
+
+  /// Online: [opponent]'s lane, stance and ammo arrived. Slides and stance
+  /// changes play through the same timers as local moves; never a teleport.
+  void applyRemoteState(PaintballNetPlayerState st) {
+    final opp = match.opponent;
+    opp.ammo = st.ammo;
+    remoteAimBucket = st.aimBucket;
+    // Trust the target's own hit count if it is ahead of ours.
+    if (st.hitsTaken > opp.hitsTaken) opp.hitsTaken = st.hitsTaken;
+
+    final to = st.lane;
+    if (st.slideFromLane >= 0 && st.slideFromLane != to) {
+      if (!(opp.isSliding && opp.slideToLane == to)) {
+        opp.isSliding = false;
+        opp.lane = st.slideFromLane;
+        opp.trySlide(to > st.slideFromLane ? 1 : -1);
+      }
+    } else if (!opp.isSliding && opp.lane != to) {
+      opp.lane = to;
+      opp.slideFromLane = to;
+      opp.slideToLane = to;
+    }
+    if (st.stanceEnum != opp.stance) opp.tryChangeStance(st.stanceEnum);
+  }
+
+  /// Online: the opponent fired. [elapsedSeconds] since they fired, so a late
+  /// packet starts the ball part-way through its flight.
+  void applyRemoteShot(String shotId, double aimX, double aimY, double elapsedSeconds) {
+    if (!canAct) return;
+    match.opponent.shotsFired++;
+    _launchOpponentBall(aimX, aimY, shotId: shotId, elapsed: elapsedSeconds);
+  }
+
+  /// Online: the opponent judged one of your shots. Applied once per shot.
+  void applyRemoteResult(PaintballNetShotResult r) {
+    if (!_resolvedShots.add(r.shotId)) return;
+    if (match.phase == PaintballMatchPhase.gameOver) return;
+    final opp = match.opponent;
+    switch (r.outcome) {
+      case PaintballNetHitOutcome.hit:
+        if (!opp.applyDamage() && !opp.isEliminated) opp.hitsTaken++;
+        match.you.shotsHit++;
+        opponentComponent.addBodySplat(r.dx, r.aimY, blue: false);
+        AudioEngine.playPaintballHitOpponent();
+      case PaintballNetHitOutcome.invulnerable:
+        opponentComponent.addBodySplat(r.dx, r.aimY, blue: false);
+        AudioEngine.playPaintballSplat(near: false);
+      case PaintballNetHitOutcome.tyre:
+        // Splat on their tyre where your aim was (unshifted far-layer coords).
+        if (_cachedWidth > 0 && _cachedHeight > 0) {
+          final farStep = _farStep(_cachedWidth, _cachedHeight);
+          final x = _cachedWidth * 0.5 + (_myShotAim[r.shotId] ?? 0.0) * farStep * 2.0;
+          final y = _cachedHeight * PaintballK.farGroundY -
+              r.aimY * _cachedHeight * PaintballK.oppStandHeight;
+          AudioEngine.playPaintballSplat(near: false);
+          splatCanvas.addSplat(
+            x: x,
+            y: y,
+            color: const Color(0xFFEC4899),
+            radius: 8.0,
+          );
+        }
+      case PaintballNetHitOutcome.miss:
+        opp.timesDodged++;
+    }
+  }
+
+  /// Online: the match was decided elsewhere (opponent forfeited or left).
+  void forceEnd({required bool youWin}) {
+    if (match.phase == PaintballMatchPhase.gameOver) return;
+    match.winner = youWin ? PaintballWinner.you : PaintballWinner.opponent;
+    match.phase = PaintballMatchPhase.gameOver;
+    _matchOverSent = true; // decided remotely: nothing more to publish
+  }
+
+  void _syncNetState() {
+    final link = net;
+    if (link == null || waitingForOpponent) return;
+    final you = match.you;
+    final lane = you.isSliding ? you.slideToLane : you.lane;
+    final from = you.isSliding ? you.slideFromLane : -1;
+    _aimBucket = computeAimBucket(playerComponent.aimTurn, _aimBucket);
+    if (lane == _sentLane &&
+        from == _sentFrom &&
+        you.stance.index == _sentStance &&
+        you.ammo == _sentAmmo &&
+        you.hitsTaken == _sentHits &&
+        _aimBucket == _sentAim) {
+      return;
+    }
+    _sentLane = lane;
+    _sentFrom = from;
+    _sentStance = you.stance.index;
+    _sentAmmo = you.ammo;
+    _sentHits = you.hitsTaken;
+    _sentAim = _aimBucket;
+    link.sendState();
   }
 
   // ─── Arena intro (cinematic) ──────────────────────────────────────────────
@@ -560,8 +722,11 @@ class PaintballGame extends FlameGame with KeyboardEvents {
 
     final targetX = reticle.position.x;
     final targetY = reticle.position.y;
+    final shotId = net?.sendShot(reticle.aimX, reticle.aimY);
+    if (shotId != null) _myShotAim[shotId] = reticle.aimX;
 
     _spawnBall(
+      shotId: shotId,
       startX: startX,
       startY: startY,
       targetX: targetX,
@@ -579,7 +744,15 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   void fireBotShot(double aimX, double aimY) {
     if (!canAct) return;
     if (!match.opponent.tryFire()) return;
+    _launchOpponentBall(aimX, aimY);
+  }
 
+  void _launchOpponentBall(
+    double aimX,
+    double aimY, {
+    String? shotId,
+    double elapsed = 0.0,
+  }) {
     AudioEngine.playPaintballShot(opponent: true);
 
     // Launch from bot's gun barrel (accounting for far parallax)
@@ -611,6 +784,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       aimX: aimX,
       aimY: aimY,
       isFiredByPlayer: false,
+      shotId: shotId,
+      elapsed: elapsed,
     );
   }
 
@@ -623,6 +798,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     required double aimX,
     required double aimY,
     required bool isFiredByPlayer,
+    String? shotId,
+    double elapsed = 0.0,
   }) {
     for (final ball in _ballPool) {
       if (!ball.isActive) {
@@ -642,6 +819,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
           endScale: isFiredByPlayer
               ? PaintballK.ballEndScale
               : PaintballK.ballStartScale,
+          shotId: shotId,
+          elapsed: elapsed,
         );
 
         if (isFiredByPlayer) {
@@ -703,6 +882,9 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     // A ball still landing after the match ended changes nothing.
     if (!canAct) return;
 
+    // Online, your shots are judged by the opponent's device (applyRemoteResult).
+    if (online && ball.firedByYou) return;
+
     // Target-side check at landing, with the aim captured when the ball was
     // fired, against the target's real body outline in its current pose.
     final atOpponent = ball.firedByYou;
@@ -715,6 +897,17 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       aimY: ball.aimY,
     );
     final blue = ball.ballColor.b > ball.ballColor.r;
+
+    // Online: you were the target, so your verdict is the one that counts.
+    final id = ball.shotId;
+    if (online && id != null) {
+      net?.sendResult(
+        id,
+        result.outcome,
+        (ball.aimX - _seenByShooterAimX(target)) * 2.0 * _farLaneStands,
+        ball.aimY,
+      );
+    }
 
     if (result.isHit) {
       target.applyDamage();
@@ -771,9 +964,20 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   void update(double dt) {
     super.update(dt);
     if (!_isReady) return;
+    if (waitingForOpponent) {
+      if (_cachedWidth > 0 && _cachedHeight > 0) {
+        _updatePlayerPositions(_cachedWidth, _cachedHeight);
+      }
+      return;
+    }
 
     // 1. Advance Match Clock & State Machines
     match.tick(dt);
+
+    if (online && match.phase == PaintballMatchPhase.gameOver && !_matchOverSent) {
+      _matchOverSent = true;
+      net?.matchOver(match.winner);
+    }
 
     if (match.phase == PaintballMatchPhase.gameOver) gameOverSeconds += dt;
 
@@ -799,7 +1003,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     final oppTarget = PaintballK.laneToAimX(
       PaintballK.mirrorLane(match.you.lane),
     );
-    opponentComponent.aimTurn = -(oppTarget - oppFacing);
+    opponentComponent.aimTurn =
+        online ? remoteAimBucket * 0.6 : -(oppTarget - oppFacing);
 
     // 2. Refresh Camera Targets & Advance Dual-Axis Damped Springs
     if (match.phase == PaintballMatchPhase.intro) {
@@ -847,9 +1052,12 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       }
     }
 
-    // 4. Advance Bot Cognition
-    if (match.phase == PaintballMatchPhase.live ||
-        match.phase == PaintballMatchPhase.suddenDeath) {
+    _syncNetState();
+
+    // 4. Advance Bot Cognition (bot mode only)
+    if (!online &&
+        (match.phase == PaintballMatchPhase.live ||
+            match.phase == PaintballMatchPhase.suddenDeath)) {
       final botAction = botBrain.tick(
         dt: dt,
         bot: match.opponent,

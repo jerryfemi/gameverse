@@ -19,6 +19,9 @@ class FlyingPaintball extends Component {
   /// Shooter's aim across the field on the shooter's own screen, -1..1.
   double aimX = 0.0;
 
+  /// Online: the RTDB shot id this ball belongs to (null in bot mode).
+  String? shotId;
+
   /// Shooter's aim height, 0 (ground) .. 1 (head).
   double aimY = 0.65;
 
@@ -47,7 +50,10 @@ class FlyingPaintball extends Component {
     double endScale = PaintballK.ballEndScale,
     double baseRadius = 8.0,
     double arcHeight = 50.0,
+    String? shotId,
+    double elapsed = 0.0,
   }) {
+    this.shotId = shotId;
     ballColor = color;
     this.baseRadius = baseRadius;
     this.firedByYou = firedByYou;
@@ -64,6 +70,8 @@ class FlyingPaintball extends Component {
       startScale: startScale,
       endScale: endScale,
     );
+    // A shot that arrived late over the network starts part-way through.
+    if (elapsed > 0.0) trajectory.update(elapsed);
   }
 
   /// Removes the ball from play without resolving it (used on rematch).
