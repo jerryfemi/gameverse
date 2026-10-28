@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:b_ball/paintball/logic/ball_trajectory.dart';
+import 'package:b_ball/paintball/paintball_constants.dart';
 
 /// Active in-flight paintball component driven by [BallTrajectory].
 class FlyingPaintball extends Component {
@@ -10,6 +11,16 @@ class FlyingPaintball extends Component {
 
   bool isActive = false;
   void Function(FlyingPaintball ball)? onLanding;
+
+  // ─── Shot data captured at fire time (read by the target-side hit check) ──
+  /// True if the local player fired this ball, false if the opponent did.
+  bool firedByYou = true;
+
+  /// Shooter's aim across the field on the shooter's own screen, -1..1.
+  double aimX = 0.0;
+
+  /// Shooter's aim height, 0 (ground) .. 1 (head).
+  double aimY = 0.65;
 
   // ─── Pre-allocated Paints ─────────────────────────────────────────────────
   final Paint _ballPaint = Paint()..isAntiAlias = true;
@@ -29,13 +40,19 @@ class FlyingPaintball extends Component {
     required double targetX,
     required double targetY,
     required Color color,
+    required bool firedByYou,
+    required double aimX,
+    required double aimY,
+    double startScale = PaintballK.ballStartScale,
+    double endScale = PaintballK.ballEndScale,
     double baseRadius = 8.0,
     double arcHeight = 50.0,
-    void Function(FlyingPaintball ball)? onLanding,
   }) {
     ballColor = color;
     this.baseRadius = baseRadius;
-    this.onLanding = onLanding;
+    this.firedByYou = firedByYou;
+    this.aimX = aimX;
+    this.aimY = aimY;
     isActive = true;
 
     trajectory.setup(
@@ -44,7 +61,14 @@ class FlyingPaintball extends Component {
       targetX: targetX,
       targetY: targetY,
       arcHeight: arcHeight,
+      startScale: startScale,
+      endScale: endScale,
     );
+  }
+
+  /// Removes the ball from play without resolving it (used on rematch).
+  void cancel() {
+    isActive = false;
   }
 
   @override
