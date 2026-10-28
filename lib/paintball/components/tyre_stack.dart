@@ -13,6 +13,7 @@ class TyreStackComponent extends PositionComponent with HasGameReference {
   final int lane;
   final bool isNear;
   double cameraPanOffset = 0.0;
+  double cameraDipOffset = 0.0;
 
   // ─── Pre-allocated Paints ─────────────────────────────────────────────────
   final Paint _shadowPaint = Paint()
@@ -35,9 +36,10 @@ class TyreStackComponent extends PositionComponent with HasGameReference {
   @override
   void render(Canvas canvas) {
     final shiftX = cameraPanOffset * (isNear ? 1.0 : PaintballK.parallaxFarTires);
+    final shiftY = -cameraDipOffset * (isNear ? 1.0 : PaintballK.parallaxFarTiresY);
 
     canvas.save();
-    canvas.translate(shiftX, 0);
+    canvas.translate(shiftX, shiftY);
 
     final w = size.x;
     final h = size.y;
