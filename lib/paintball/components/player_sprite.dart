@@ -12,8 +12,14 @@ import 'package:b_ball/paintball/logic/match_state.dart';
 /// (see PAINTBALL_SPRITES.md). Names match the atlas JSON `clips` keys.
 enum PaintballClip {
   stand,
+  standL,
+  standR,
   fire,
+  fireL,
+  fireR,
   crouch,
+  crouchL,
+  crouchR,
   duck,
   slideLeft,
   slideRight,
@@ -22,6 +28,12 @@ enum PaintballClip {
   win;
 
   String get key => switch (this) {
+        PaintballClip.standL => 'stand_l',
+        PaintballClip.standR => 'stand_r',
+        PaintballClip.fireL => 'fire_l',
+        PaintballClip.fireR => 'fire_r',
+        PaintballClip.crouchL => 'crouch_l',
+        PaintballClip.crouchR => 'crouch_r',
         PaintballClip.slideLeft => 'slide_left',
         PaintballClip.slideRight => 'slide_right',
         _ => name,
@@ -135,6 +147,14 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   /// On-screen height of the standing pose, px.
   double standHeight = 100.0;
 
+  /// Upper-body aim direction, set by the game every frame.
+  /// Positive turns towards the character's own left, negative to their right;
+  /// 1.0 is two lanes off straight ahead. The _l / _r poses are ~26° turns.
+  double aimTurn = 0.0;
+
+  /// |aimTurn| beyond this picks the turned pose.
+  static const double _turnThreshold = 0.3;
+
   /// Set by the game when the match ends.
   bool showWin = false;
   bool showDeath = false;
@@ -222,11 +242,33 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
     _clipTime = 0.0;
   }
 
-  PaintballClip _stanceClip() => switch (state.stance) {
-        PaintballStance.stand => PaintballClip.stand,
-        PaintballStance.crouch => PaintballClip.crouch,
-        PaintballStance.duck => PaintballClip.duck,
-      };
+  /// -1 = own right, 0 = straight, +1 = own left.
+  int get _turnSide => aimTurn > _turnThreshold
+      ? 1
+      : (aimTurn < -_turnThreshold ? -1 : 0);
+
+  PaintballClip _stanceClip() {
+    final side = _turnSide;
+    return switch (state.stance) {
+      PaintballStance.stand => side > 0
+          ? PaintballClip.standL
+          : (side < 0 ? PaintballClip.standR : PaintballClip.stand),
+      PaintballStance.crouch => side > 0
+          ? PaintballClip.crouchL
+          : (side < 0 ? PaintballClip.crouchR : PaintballClip.crouch),
+      PaintballStance.duck => PaintballClip.duck,
+    };
+  }
+
+  PaintballClip _fireClip() {
+    final side = _turnSide;
+    return side > 0
+        ? PaintballClip.fireL
+        : (side < 0 ? PaintballClip.fireR : PaintballClip.fire);
+  }
+
+  static bool _isFire(PaintballClip c) =>
+      c == PaintballClip.fire || c == PaintballClip.fireL || c == PaintballClip.fireR;
 
   PaintballClip _slideClip() {
     // Your lanes run left→right on your screen. The opponent's lanes are
@@ -254,7 +296,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
 
     if (state.shotsFired > _lastShotsFired) {
       _fireTimer = _fireSeconds;
-      if (_clip == PaintballClip.fire) _clipTime = 0.0;
+      if (_isFire(_clip)) _clipTime = 0.0;
     }
     _lastShotsFired = state.shotsFired;
 
@@ -273,7 +315,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
       want = _slideClip();
     } else if (_fireTimer > 0.0 && state.stance != PaintballStance.duck) {
       // The fire clip is a standing pose; crouched shots keep the crouch pose.
-      want = state.stance == PaintballStance.stand ? PaintballClip.fire : _stanceClip();
+      want = state.stance == PaintballStance.stand ? _fireClip() : _stanceClip();
     } else {
       want = _stanceClip();
     }
@@ -285,11 +327,11 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
     final double fps = switch (_clip) {
       PaintballClip.slideLeft || PaintballClip.slideRight => _slideFps,
       PaintballClip.hit => c.frameCount / _hitSeconds,
-      PaintballClip.fire => c.frameCount / _fireSeconds,
+      PaintballClip.fire || PaintballClip.fireL || PaintballClip.fireR => c.frameCount / _fireSeconds,
       _ => c.fps,
     };
     final i = (_clipTime * fps).floor();
-    if (c.loop && _clip != PaintballClip.hit && _clip != PaintballClip.fire) {
+    if (c.loop && _clip != PaintballClip.hit && !_isFire(_clip)) {
       return i % c.frameCount;
     }
     return i < c.frameCount ? i : c.frameCount - 1; // one-shots hold the last frame
