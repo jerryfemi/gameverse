@@ -353,7 +353,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     _targetCameraPan = 0.0;
     cameraDipOffset = 0.0;
     _targetCameraDip = 0.0;
-    match.startMatch(skipIntro: true);
+    match.startMatch();
     _endPosesApplied = false;
     gameOverSeconds = 0.0;
     playerComponent.resetVisual();
