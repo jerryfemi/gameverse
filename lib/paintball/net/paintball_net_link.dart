@@ -13,6 +13,10 @@ abstract class PaintballNetLink {
   /// Your lane, stance, ammo, hits or aim pose changed.
   void sendState();
 
+  /// A round ended locally ([winner] from our side). The host announces the
+  /// next round's shared start; the guest waits for it.
+  void roundOver(int round, PaintballWinner? winner);
+
   /// The duel ended locally (3 hits, time, or forfeit).
   void matchOver(PaintballWinner? winner);
 }
