@@ -52,7 +52,7 @@ void main() {
         guestUid: 'guest456',
         status: PaintballMatchNetStatus.live,
         startAtMs: 1700000000000,
-        version: 1,
+        version: kPaintballProtocolVersion,
       );
 
       final map = meta.toMap();
@@ -60,7 +60,7 @@ void main() {
       expect(map['g'], 'guest456');
       expect(map['st'], 'l');
       expect(map['at'], 1700000000000);
-      expect(map['v'], 1);
+      expect(map['v'], kPaintballProtocolVersion);
 
       final restored = PaintballNetMeta.fromMap(map);
       expect(restored.hostUid, 'host123');

@@ -1,7 +1,10 @@
 import 'package:b_ball/paintball/paintball_constants.dart';
 
 /// Protocol version for Paintball RTDB network matches.
-const int kPaintballProtocolVersion = 1;
+/// v2: shots and results are filed per shooter (s/{uid}, r/{uid}) so each
+/// player downloads only the opponent's; player state is sent as changed
+/// fields only, without ammo.
+const int kPaintballProtocolVersion = 2;
 
 /// Rounding helper: rounds a double to [decimals] places.
 double roundTo(double val, int decimals) {
@@ -101,7 +104,7 @@ class PaintballNetMeta {
       guestUid: map['g'] as String?,
       status: PaintballMatchNetStatus.fromCode(map['st'] as String?),
       startAtMs: (map['at'] as num?)?.toInt(),
-      version: (map['v'] as num?)?.toInt() ?? 1,
+      version: (map['v'] as num?)?.toInt() ?? 0,
     );
   }
 }

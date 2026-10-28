@@ -14,20 +14,25 @@
           }
         },
         "s": {
-          "$id": {
-            ".write": "!data.exists() && newData.child('b').val() === auth.uid && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)",
-            ".validate": "newData.hasChildren(['b','t','x','y'])"
+          "$shooter": {
+            "$id": {
+              ".write": "!data.exists() && auth != null && auth.uid === $shooter && newData.child('b').val() === auth.uid && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['b','t','x','y'])"
+            }
           }
         },
         "r": {
-          "$id": {
-            ".write": "!data.exists() && root.child('paintball/'+$m+'/s/'+$id).exists() && auth.uid !== root.child('paintball/'+$m+'/s/'+$id+'/b').val() && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)"
+          "$shooter": {
+            "$id": {
+              ".write": "!data.exists() && auth != null && auth.uid !== $shooter && root.child('paintball/'+$m+'/s/'+$shooter+'/'+$id).exists() && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)",
+              ".validate": "newData.hasChildren(['k'])"
+            }
           }
         },
         "end": {
           ".write": "auth != null && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)"
         },
-        ".write": "auth != null && !newData.exists() && root.child('paintball/'+$m+'/meta/h').val() === auth.uid"
+        ".write": "auth != null && !newData.exists() && data.child('end').exists() && (data.child('meta/h').val() === auth.uid || data.child('meta/g').val() === auth.uid)"
       }
     }
   }
