@@ -1,9 +1,9 @@
 /// Player stance in the arena.
 enum PaintballStance {
-  /// Standing upright: fully exposed (height 0.35–1.0), can peek & shoot.
+  /// Standing upright: exposed above the tyre top (height 0.55–1.0), can shoot.
   stand,
 
-  /// Crouched behind tire stack: head & shoulders exposed (height 0.55–0.80), can peek & shoot.
+  /// Crouched behind tire stack: head & shoulders exposed (height 0.55–0.72), can peek & shoot.
   crouch,
 
   /// Ducked completely behind tire stack: immune (exposure 0.0), cannot shoot, auto-reloads.
@@ -85,17 +85,23 @@ abstract final class PaintballK {
 
   // ─── Stances & Exposure Ranges (normalized height 0.0 ground to 1.0 head) ──
 
-  /// Minimum exposed height for [PaintballStance.stand] (lower body covered by tires).
-  static const double standMinExposureY = 0.35;
+  /// Height of the tyre stack's top as a fraction of a standing player's height,
+  /// measured from the player's feet. Matches the baked sprites: the duck pose
+  /// tops out at ~0.48 (hidden), the crouch pose at ~0.70 (head and shoulders
+  /// peek out). See PAINTBALL_SPRITES.md.
+  static const double tyreCoverHeight = 0.55;
+
+  /// Minimum exposed height for [PaintballStance.stand] (below this the tyres cover you).
+  static const double standMinExposureY = tyreCoverHeight;
 
   /// Maximum exposed height for [PaintballStance.stand] (top of head).
   static const double standMaxExposureY = 1.00;
 
   /// Minimum exposed height for [PaintballStance.crouch] (peeking over top tire).
-  static const double crouchMinExposureY = 0.55;
+  static const double crouchMinExposureY = tyreCoverHeight;
 
-  /// Maximum exposed height for [PaintballStance.crouch] (head and shoulders).
-  static const double crouchMaxExposureY = 0.80;
+  /// Maximum exposed height for [PaintballStance.crouch] (top of the crouched head).
+  static const double crouchMaxExposureY = 0.72;
 
   /// Returns true if [heightY] (0.0–1.0) is exposed for the given [stance].
   ///
@@ -201,6 +207,20 @@ abstract final class PaintballK {
 
   /// Parallax shift multiplier for far tire & opponent layer (vertical dip).
   static const double parallaxFarTiresY = 0.65;
+
+  // ─── Screen layout (fractions of screen height) ───────────────────────────
+
+  /// Ground line under the opponent's feet.
+  static const double farGroundY = 0.52;
+
+  /// On-screen height of the standing opponent.
+  static const double oppStandHeight = 0.13;
+
+  /// Ground line under your own player's feet.
+  static const double nearGroundY = 0.97;
+
+  /// On-screen height of your standing player (over-the-shoulder, close).
+  static const double youStandHeight = 0.40;
 
   /// Reticle snap-assist radius in logical pixels.
   static const double reticleSnapRadiusPx = 20.0;
