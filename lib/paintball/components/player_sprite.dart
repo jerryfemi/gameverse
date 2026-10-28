@@ -16,6 +16,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   final PaintballPlayerState state;
 
   double cameraPanOffset = 0.0;
+  double cameraDipOffset = 0.0;
 
   // ─── Pre-allocated Paints ─────────────────────────────────────────────────
   final Paint _bodyPaint = Paint()..isAntiAlias = true;
@@ -36,9 +37,10 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   @override
   void render(Canvas canvas) {
     final shiftX = cameraPanOffset * (isOpponent ? PaintballK.parallaxFarTires : 1.0);
+    final shiftY = -cameraDipOffset * (isOpponent ? PaintballK.parallaxFarTiresY : 0.40);
 
     canvas.save();
-    canvas.translate(shiftX, 0);
+    canvas.translate(shiftX, shiftY);
 
     final w = size.x;
     final h = size.y;
