@@ -4,7 +4,7 @@
     ".write": false,
     "paintball": {
       "$m": {
-        ".read": "auth != null && (data.child('meta/h').val() === auth.uid || data.child('meta/g').val() === auth.uid || (data.child('meta').exists() && data.child('meta/g').val() === null))",
+        ".read": "auth != null && (!data.child('meta').exists() || data.child('meta/h').val() === auth.uid || data.child('meta/g').val() === auth.uid || data.child('meta/g').val() === null)",
         "meta": {
           ".write": "auth != null && ((!data.exists() && newData.child('h').val() === auth.uid) || data.child('h').val() === auth.uid || ((data.child('g').val() === null || data.child('g').val() === auth.uid) && newData.child('g').val() === auth.uid && newData.child('h').val() === data.child('h').val()))"
         },
