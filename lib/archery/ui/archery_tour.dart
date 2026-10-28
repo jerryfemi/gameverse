@@ -12,23 +12,27 @@ class ArcheryTour extends StatefulWidget {
   const ArcheryTour({
     super.key,
     required this.onDone,
-    required this.playFriendKey,
-    required this.matchesKey,
+    this.playFriendKey,
+    this.matchesKey,
+    this.steps,
   });
 
   final VoidCallback onDone;
-  final GlobalKey playFriendKey;
-  final GlobalKey matchesKey;
+  final GlobalKey? playFriendKey;
+  final GlobalKey? matchesKey;
+
+  /// Other games reuse this tour with their own steps (null: archery's).
+  final List<TourStep>? steps;
 
   static const String prefKey = 'archery_tour_seen_v1';
 
   /// True if this device hasn't seen the tour. Marks it seen right away so
   /// it never shows twice, even if the app closes mid-tour.
-  static Future<bool> shouldShow() async {
+  static Future<bool> shouldShow([String key = prefKey]) async {
     try {
       final p = await SharedPreferences.getInstance();
-      if (p.getBool(prefKey) ?? false) return false;
-      await p.setBool(prefKey, true);
+      if (p.getBool(key) ?? false) return false;
+      await p.setBool(key, true);
       return true;
     } catch (_) {
       return false;
@@ -39,8 +43,9 @@ class ArcheryTour extends StatefulWidget {
   State<ArcheryTour> createState() => _ArcheryTourState();
 }
 
-class _Step {
-  const _Step(this.icon, this.title, this.body, [this.target]);
+/// One step of a how-to-play tour; [target] spotlights a button.
+class TourStep {
+  const TourStep(this.icon, this.title, this.body, [this.target]);
   final IconData icon;
   final String title;
   final String body;
@@ -49,22 +54,22 @@ class _Step {
 
 class _ArcheryTourState extends State<ArcheryTour> {
   int _i = 0;
-  late final List<_Step> _steps;
+  late final List<TourStep> _steps;
 
   @override
   void initState() {
     super.initState();
-    _steps = [
-      const _Step(Icons.touch_app_rounded, 'Hold to aim',
+    _steps = widget.steps != null ? [...widget.steps!] : [
+      const TourStep(Icons.touch_app_rounded, 'Hold to aim',
           'Press and drag to draw the bow. Hold still and the sight ring settles. Let go to shoot.'),
-      const _Step(Icons.air_rounded, 'Read the wind',
+      const TourStep(Icons.air_rounded, 'Read the wind',
           'The pill above the target shows wind speed in mph and its direction. Aim against it. The farther the target, the more it pushes.'),
-      const _Step(Icons.emoji_events_rounded, 'Win the sets',
+      const TourStep(Icons.emoji_events_rounded, 'Win the sets',
           'Three arrows a set, and the bot shoots first. Win a set for 2 points, tie for 1. First to 6 wins.'),
-      _Step(Icons.people_alt_rounded, 'Play a friend',
+      TourStep(Icons.people_alt_rounded, 'Play a friend',
           'Share a match code, challenge a friend, or join with a code.',
           widget.playFriendKey),
-      _Step(Icons.person_rounded, 'You',
+      TourStep(Icons.person_rounded, 'You',
           'Invites, friends and your matches live here. A red count means something is waiting.',
           widget.matchesKey),
     ];
