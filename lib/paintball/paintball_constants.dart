@@ -165,7 +165,14 @@ abstract final class PaintballK {
   static const int hitsToWin = 3;
 
   /// Standard round duration in seconds.
-  static const int matchDurationSeconds = 90;
+  static const int matchDurationSeconds = 60;
+
+  /// Best of 3: first to 2 round wins takes the match.
+  static const int roundsToWin = 2;
+  static const int maxRounds = 3;
+
+  /// "ROUND 2" banner between rounds, before the 3-2-1 (seconds).
+  static const double roundBreakSeconds = 2.0;
 
   /// Sudden death round duration in seconds.
   static const int suddenDeathDurationSeconds = 30;
