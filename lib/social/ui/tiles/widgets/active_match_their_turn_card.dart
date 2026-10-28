@@ -5,18 +5,21 @@ import 'package:b_ball/game/ui/common/ui_font.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/social/ui/common/game_chip.dart';
 import 'package:b_ball/social/ui/tiles/widgets/active_match_score_row.dart';
+import 'package:b_ball/social/ui/tiles/widgets/active_match_your_turn_card.dart' show activeMatchLeaveButton;
 
 /// Card widget for active match in "THEIR TURN" state (Artboard 10 - middle card).
 class ActiveMatchTheirTurnCard extends StatelessWidget {
   final CloudMatch match;
   final String effectiveUid;
   final VoidCallback onWatchLive;
+  final VoidCallback? onLeave;
 
   const ActiveMatchTheirTurnCard({
     super.key,
     required this.match,
     required this.effectiveUid,
     required this.onWatchLive,
+    this.onLeave,
   });
 
   @override
@@ -99,7 +102,8 @@ class ActiveMatchTheirTurnCard extends StatelessWidget {
           const SizedBox(height: 12.0),
 
           // Row 4: Watch live Action Button
-          SizedBox(
+          Row(children: [
+          Expanded(child: SizedBox(
             height: 40.0,
             child: ElevatedButton(
               onPressed: onWatchLive,
@@ -120,7 +124,9 @@ class ActiveMatchTheirTurnCard extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+          )),
+          activeMatchLeaveButton(onLeave, height: 40.0),
+          ]),
         ],
       ),
     );
