@@ -38,6 +38,12 @@
             ".write": "auth != null && auth.uid === $uid && (root.child('paintball/'+$m+'/meta/h').val() === auth.uid || root.child('paintball/'+$m+'/meta/g').val() === auth.uid)",
             ".validate": "!newData.exists() || newData.isBoolean()"
           }
+        },
+        "rs": {
+          "$n": {
+            ".write": "auth != null && !data.exists() && root.child('paintball/'+$m+'/meta/h').val() === auth.uid",
+            ".validate": "newData.hasChildren(['w','at'])"
+          }
         }
       }
     }
