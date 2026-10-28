@@ -55,7 +55,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   // ─── Lifecycle & Layout Cache ─────────────────────────────────────────────
   bool _isReady = false;
   final Vector2 _muzzle = Vector2.zero();
-  bool _endPosesApplied = false;
+  int _roundSerialSeen = -1;
+  int _posesRound = 0;
 
   /// Seconds since the match ended. The results card waits for this so the
   /// death and win animations play first.
@@ -124,6 +125,9 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       match.countdownRemaining.ceil(),
       showResults,
       waitingForOpponent,
+      match.round,
+      match.youRounds,
+      match.opponentRounds,
     );
     if (sig != _uiSignature) {
       _uiSignature = sig;
@@ -442,6 +446,30 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   /// Whether the FIRE button should be enabled.
   bool get playerCanFire => canAct && match.you.canFire;
 
+  // ─── Rounds ───────────────────────────────────────────────────────────────
+
+  /// Between rounds: everyone back to the middle, paint and balls cleared.
+  void _resetRoundVisuals() {
+    for (final ball in _ballPool) {
+      ball.cancel();
+    }
+    _activeProjectiles.clear();
+    splatCanvas.clear();
+    playerComponent.clearBodySplats();
+    opponentComponent.clearBodySplats();
+    botBrain.reset();
+    _queuedSlide = 0;
+    _queuedStance = 0;
+    _aimOffset = 0.0;
+    reticle.aimY = 0.65;
+    _myShotAim.clear();
+    playerComponent.resetVisual();
+    opponentComponent.resetVisual();
+    if (_cachedWidth > 0 && _cachedHeight > 0) {
+      _updatePlayerPositions(_cachedWidth, _cachedHeight);
+    }
+  }
+
   // ─── Rematch ──────────────────────────────────────────────────────────────
 
   /// Resets everything for a fresh match: rules state, balls in flight,
@@ -464,7 +492,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     cameraDipOffset = 0.0;
     _targetCameraDip = 0.0;
     match.startMatch();
-    _endPosesApplied = false;
+    _posesRound = 0;
     gameOverSeconds = 0.0;
     _matchOverSent = false;
     _resolvedShots.clear();
@@ -490,6 +518,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       return;
     }
     resetMatch();
+    match.holdBetweenRounds = true; // the host's round start drives round 2/3
     waitingForOpponent = false;
     var left = elapsedSeconds.clamp(0.0, 30.0);
     while (left > 0) {
@@ -532,8 +561,10 @@ class PaintballGame extends FlameGame with KeyboardEvents {
 
   /// Online: the opponent judged one of your shots. Applied once per shot.
   void applyRemoteResult(PaintballNetShotResult r) {
+    // Only shots fired this round (the map is cleared between rounds).
+    if (!_myShotAim.containsKey(r.shotId)) return;
     if (!_resolvedShots.add(r.shotId)) return;
-    if (match.phase == PaintballMatchPhase.gameOver) return;
+    if (!canAct) return;
     final opp = match.opponent;
     switch (r.outcome) {
       case PaintballNetHitOutcome.hit:
@@ -567,8 +598,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   /// Online: the match was decided elsewhere (opponent forfeited or left).
   void forceEnd({required bool youWin}) {
     if (match.phase == PaintballMatchPhase.gameOver) return;
-    match.winner = youWin ? PaintballWinner.you : PaintballWinner.opponent;
-    match.phase = PaintballMatchPhase.gameOver;
+    match.endByForfeit(youWin: youWin);
     _matchOverSent = true; // decided remotely: nothing more to publish
   }
 
@@ -1049,13 +1079,26 @@ class PaintballGame extends FlameGame with KeyboardEvents {
 
     if (match.phase == PaintballMatchPhase.gameOver) gameOverSeconds += dt;
 
-    // Win / death poses once the match is decided.
-    if (match.phase == PaintballMatchPhase.gameOver && !_endPosesApplied) {
-      _endPosesApplied = true;
-      playerComponent.showWin = match.winner == PaintballWinner.you;
-      opponentComponent.showWin = match.winner == PaintballWinner.opponent;
+    // New round: clear paint, balls, poses and the bot's plans.
+    if (match.roundSerial != _roundSerialSeen) {
+      _roundSerialSeen = match.roundSerial;
+      _resetRoundVisuals();
+    }
+
+    // Win / death poses at the end of each round (and of the match).
+    final ended = match.phase == PaintballMatchPhase.roundOver ||
+        match.phase == PaintballMatchPhase.gameOver;
+    if (ended && _posesRound != match.round) {
+      _posesRound = match.round;
+      final w = match.phase == PaintballMatchPhase.gameOver ? match.winner : match.roundWinner;
+      playerComponent.showWin = w == PaintballWinner.you;
+      opponentComponent.showWin = w == PaintballWinner.opponent;
       playerComponent.showDeath = match.you.isEliminated;
       opponentComponent.showDeath = match.opponent.isEliminated;
+      // Online: the host announces the next round's shared start.
+      if (online && match.phase == PaintballMatchPhase.roundOver) {
+        net?.roundOver(match.round, match.roundWinner);
+      }
     }
 
     // Carry the aim with you while sliding (same angle from where you face).
