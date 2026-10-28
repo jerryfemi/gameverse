@@ -284,6 +284,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                               onRematch: _online ? _rematchOnline : game.resetMatch,
                               onPlayFriend: _firebaseReady ? _playFriend : null,
                               onLobby: GoRouter.maybeOf(context) != null ? _goToLobby : null,
+                              onlineMatchId: _online ? widget.match!.id : null,
                             ),
                           );
                         }
@@ -699,6 +700,44 @@ abstract final class PaintballChallenge {
     // Straight into the paintball ready room (code, presence, READY);
     // the turn-based lobby dialog doesn't fit a live duel.
     GoRouter.maybeOf(context)?.go('/match/${match.id}');
+  }
+
+  /// Sends (or joins, if they asked first) a rematch challenge.
+  static Future<({CloudMatch match, bool joined})> requestRematch({
+    required CloudMatch finished,
+    required String myUid,
+  }) async {
+    final opp = finished.opponentPlayer(myUid);
+    if (opp == null || opp.uid.isEmpty) throw StateError('Opponent not found');
+    final profile = await _me();
+    final cfg = config.copyWith(
+      player1Name: profile.displayName,
+      player1Avatar: profile.avatarEmoji,
+      player2Name: opp.displayName,
+      player2Avatar: opp.avatarEmoji,
+      player2Uid: opp.uid,
+      opponentFriend: FriendProfile(
+        uid: opp.uid,
+        displayName: opp.displayName,
+        avatarEmoji: opp.avatarEmoji,
+        addedAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    return FirestoreMatchService.instance.createOrJoinRematch(
+      finishedMatchId: finished.id,
+      config: cfg,
+      me: profile,
+    );
+  }
+
+  /// Withdraws a rematch request and closes its empty room.
+  static Future<void> cancelRematch({
+    required String matchId,
+    required String oppUid,
+    required String myUid,
+  }) async {
+    await FirestoreMatchService.instance.cancelMatchChallenge(friendUid: oppUid, matchId: matchId);
+    await FirestoreMatchService.instance.leaveOrDismissMatch(matchId: matchId, myUid: myUid);
   }
 
   /// Instant rematch with the same opponent: creates or joins their rematch.
