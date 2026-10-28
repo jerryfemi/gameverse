@@ -21,8 +21,8 @@ class PaintballResultsBody extends StatelessWidget {
     final oppPlayer = match.opponentPlayer(myUid);
 
     // Score in paintball represents total hits landed
-    final myHits = myPlayer?.score ?? 0;
-    final oppHits = oppPlayer?.score ?? 0;
+    final myHits = myPlayer?.totalScore ?? 0;
+    final oppHits = oppPlayer?.totalScore ?? 0;
 
     // Shots fired from player descriptors / summaries
     final myShots = myPlayer?.totalAttemptedShots ?? (myHits > 0 ? myHits * 3 : 0);
