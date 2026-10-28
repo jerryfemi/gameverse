@@ -102,6 +102,9 @@ class PaintballGame extends FlameGame with KeyboardEvents {
   /// ammo, stance, lane, phase, whole clock seconds). The Flutter overlays
   /// listen to this instead of rebuilding on a timer.
   final ValueNotifier<int> uiVersion = ValueNotifier<int>(0);
+
+  /// 0..1 while the arena loads (shown by the screen's loading card).
+  final ValueNotifier<double> loadProgress = ValueNotifier<double>(0.0);
   int _uiSignature = 0;
 
   void _publishUi() {
@@ -140,6 +143,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     // 1. Backdrop (Priority 0)
     backdrop = PaintballBackdrop();
     await add(backdrop);
+    loadProgress.value = 0.35;
 
     // 2. Far Tires & Near Tires
     for (int lane = 0; lane < PaintballK.laneCount; lane++) {
@@ -158,6 +162,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       state: match.opponent,
     );
     await add(opponentComponent);
+    loadProgress.value = 0.7;
 
     // 4. Splat Canvas (Priority 45)
     splatCanvas = SplatCanvasComponent();
@@ -176,10 +181,12 @@ class PaintballGame extends FlameGame with KeyboardEvents {
       state: match.you,
     );
     await add(playerComponent);
+    loadProgress.value = 0.95;
 
     // 7. Reticle (Priority 70)
     reticle = ReticleComponent();
     await add(reticle);
+    loadProgress.value = 1.0;
 
     if (!online) {
       match.startMatch();
@@ -390,14 +397,41 @@ class PaintballGame extends FlameGame with KeyboardEvents {
           match.phase == PaintballMatchPhase.suddenDeath);
 
   /// Slides the local player one lane (-1 left, +1 right). Ignored outside live play.
+  /// Taps during a slide aren't dropped: the latest one is queued and
+  /// plays the moment the current slide lands (fast double-taps work).
+  int _queuedSlide = 0;
+  int _queuedStance = 0;
+
   bool playerSlide(int direction) {
     if (!canAct) return false;
+    if (match.you.isSliding) {
+      _queuedSlide = direction;
+      _queuedStance = 0;
+      return true;
+    }
     return match.you.trySlide(direction);
+  }
+
+  void _runQueuedInput() {
+    if (!canAct || match.you.isSliding) return;
+    if (_queuedSlide != 0) {
+      final d = _queuedSlide;
+      _queuedSlide = 0;
+      match.you.trySlide(d);
+    } else if (_queuedStance != 0) {
+      final st = _queuedStance;
+      _queuedStance = 0;
+      playerStanceStep(st);
+    }
   }
 
   /// Moves the local player one stance up (+1) or down (-1). Ignored outside live play.
   bool playerStanceStep(int step) {
-    if (!canAct || match.you.isSliding) return false;
+    if (!canAct) return false;
+    if (match.you.isSliding) {
+      _queuedStance = step;
+      return true;
+    }
     final i = (match.you.stance.index - step).clamp(
       0,
       PaintballStance.values.length - 1,
@@ -436,6 +470,8 @@ class PaintballGame extends FlameGame with KeyboardEvents {
     _resolvedShots.clear();
     _myShotAim.clear();
     _sentLane = -1;
+    _queuedSlide = 0;
+    _queuedStance = 0;
     remoteAimBucket = 0;
     playerComponent.resetVisual();
     opponentComponent.resetVisual();
@@ -1004,6 +1040,7 @@ class PaintballGame extends FlameGame with KeyboardEvents {
 
     // 1. Advance Match Clock & State Machines
     match.tick(dt);
+    _runQueuedInput();
 
     if (online && match.phase == PaintballMatchPhase.gameOver && !_matchOverSent) {
       _matchOverSent = true;
