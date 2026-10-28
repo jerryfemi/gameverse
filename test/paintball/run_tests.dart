@@ -68,16 +68,21 @@ void main() {
   });
 
   runTest('isHeightExposed calculates stand, crouch, duck bounds correctly', () {
-    // Stand: 0.35..1.0
+    // Stand: 0.55..1.0
     expectFalse(PaintballK.isHeightExposed(PaintballStance.stand, 0.20));
-    expectTrue(PaintballK.isHeightExposed(PaintballStance.stand, 0.35));
+    expectFalse(PaintballK.isHeightExposed(PaintballStance.stand, 0.35));
+    expectFalse(PaintballK.isHeightExposed(PaintballStance.stand, 0.54));
+    expectTrue(PaintballK.isHeightExposed(PaintballStance.stand, 0.55));
     expectTrue(PaintballK.isHeightExposed(PaintballStance.stand, 0.70));
     expectTrue(PaintballK.isHeightExposed(PaintballStance.stand, 1.00));
     expectFalse(PaintballK.isHeightExposed(PaintballStance.stand, 1.05));
 
-    // Crouch: 0.55..0.80
+    // Crouch: 0.55..0.72
     expectFalse(PaintballK.isHeightExposed(PaintballStance.crouch, 0.40));
+    expectTrue(PaintballK.isHeightExposed(PaintballStance.crouch, 0.55));
     expectTrue(PaintballK.isHeightExposed(PaintballStance.crouch, 0.65));
+    expectTrue(PaintballK.isHeightExposed(PaintballStance.crouch, 0.72));
+    expectFalse(PaintballK.isHeightExposed(PaintballStance.crouch, 0.80));
     expectFalse(PaintballK.isHeightExposed(PaintballStance.crouch, 0.90));
 
     // Duck: 100% immune
