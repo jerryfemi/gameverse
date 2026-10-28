@@ -42,6 +42,7 @@ class PaintballSession implements PaintballNetLink {
       'https://game-arcade-bball-default-rtdb.firebaseio.com';
 
   /// Seconds the opponent may be gone before it counts as a forfeit.
+
   /// 25 s accommodates mobile cellular network handoffs and battery throttling.
   static const int forfeitAfterSeconds = 25;
 
@@ -51,8 +52,9 @@ class PaintballSession implements PaintballNetLink {
   final bool isHost;
 
   final PaintballClock clock = PaintballClock();
-  final ValueNotifier<PaintballSessionStatus> status =
-      ValueNotifier(PaintballSessionStatus.connecting);
+  final ValueNotifier<PaintballSessionStatus> status = ValueNotifier(
+    PaintballSessionStatus.connecting,
+  );
 
   /// The opponent's uid once known (the host learns it when the guest joins).
   final ValueNotifier<String?> opponentUid = ValueNotifier(null);
@@ -121,7 +123,9 @@ class PaintballSession implements PaintballNetLink {
 
       // Whoever arrives first creates the meta node; the other fills in.
       await _root.child('meta').runTransaction((cur) {
-        final m = cur is Map ? Map<String, dynamic>.from(cur) : <String, dynamic>{};
+        final m = cur is Map
+            ? Map<String, dynamic>.from(cur)
+            : <String, dynamic>{};
         m['v'] = kPaintballProtocolVersion;
         m['h'] = _hostUid;
         m['st'] ??= PaintballMatchNetStatus.waiting.code;
@@ -206,14 +210,18 @@ class PaintballSession implements PaintballNetLink {
     if (!isHost || _started || _disposed) return;
     final both = meReady.value && opponentReady.value && opponentHere.value;
     final meta = _meta;
-    final counting = meta?.status == PaintballMatchNetStatus.live && meta?.startAtMs != null;
+    final counting =
+        meta?.status == PaintballMatchNetStatus.live && meta?.startAtMs != null;
     if (both && !counting) {
       _root.child('meta').update({
         'st': PaintballMatchNetStatus.live.code,
         'at': clock.serverNowMs + 3500,
       });
     } else if (!both && counting && (meta!.startAtMs! > clock.serverNowMs)) {
-      _root.child('meta').update({'st': PaintballMatchNetStatus.ready.code, 'at': null});
+      _root.child('meta').update({
+        'st': PaintballMatchNetStatus.ready.code,
+        'at': null,
+      });
     }
   }
 
@@ -253,8 +261,11 @@ class PaintballSession implements PaintballNetLink {
           _started = true;
           _roundStartMs = at;
           status.value = PaintballSessionStatus.live;
-          game.startOnline(((clock.serverNowMs - at) / 1000.0).clamp(0.0, 30.0));
+          game.startOnline(
+            ((clock.serverNowMs - at) / 1000.0).clamp(0.0, 30.0),
+          );
         }
+
         if (wait <= 0) {
           go();
         } else {
@@ -278,7 +289,10 @@ class PaintballSession implements PaintballNetLink {
     if (!st.connected) {
       if (_started && !_finished) {
         status.value = PaintballSessionStatus.opponentReconnecting;
-        _forfeitTimer ??= Timer(const Duration(seconds: forfeitAfterSeconds), _claimForfeit);
+        _forfeitTimer ??= Timer(
+          const Duration(seconds: forfeitAfterSeconds),
+          _claimForfeit,
+        );
       }
       return;
     }
@@ -301,8 +315,10 @@ class PaintballSession implements PaintballNetLink {
     // Catch up on network lag, but never skip more than a third of the
     // flight: a ball that arrives late still visibly flies at you (the
     // target judges it where it lands, so nobody loses a dodge to lag).
-    final elapsed = ((clock.serverNowMs - shot.serverMs) / 1000.0)
-        .clamp(0.0, PaintballK.ballFlightSeconds / 3);
+    final elapsed = ((clock.serverNowMs - shot.serverMs) / 1000.0).clamp(
+      0.0,
+      PaintballK.ballFlightSeconds / 3,
+    );
     game.applyRemoteShot(id, shot.aimX, shot.aimY, elapsed);
   }
 
@@ -361,30 +377,43 @@ class PaintballSession implements PaintballNetLink {
     _myShots.add(id);
     _seenShots.add(id);
     ref
-        .set(PaintballNetShot(
-          id: id,
-          shooterUid: myUid,
-          serverMs: clock.serverNowMs,
-          aimX: aimX,
-          aimY: aimY,
-        ).toMap())
-        .catchError((Object e) => debugPrint('[PaintballSession] shot failed: $e'));
+        .set(
+          PaintballNetShot(
+            id: id,
+            shooterUid: myUid,
+            serverMs: clock.serverNowMs,
+            aimX: aimX,
+            aimY: aimY,
+          ).toMap(),
+        )
+        .catchError(
+          (Object e) => debugPrint('[PaintballSession] shot failed: $e'),
+        );
     return id;
   }
 
   @override
-  void sendResult(String shotId, PaintballHitOutcome outcome, double dx, double aimY) {
+  void sendResult(
+    String shotId,
+    PaintballHitOutcome outcome,
+    double dx,
+    double aimY,
+  ) {
     final shooter = opponentUid.value;
     if (shooter == null) return;
     _root
         .child('r/$shooter/$shotId')
-        .set(PaintballNetShotResult(
-          shotId: shotId,
-          outcome: PaintballNetHitOutcome.fromDomain(outcome),
-          dx: dx,
-          aimY: aimY,
-        ).toMap())
-        .catchError((Object e) => debugPrint('[PaintballSession] result failed: $e'));
+        .set(
+          PaintballNetShotResult(
+            shotId: shotId,
+            outcome: PaintballNetHitOutcome.fromDomain(outcome),
+            dx: dx,
+            aimY: aimY,
+          ).toMap(),
+        )
+        .catchError(
+          (Object e) => debugPrint('[PaintballSession] result failed: $e'),
+        );
   }
 
   @override
@@ -405,7 +434,9 @@ class PaintballSession implements PaintballNetLink {
         ? PaintballEndReason.time
         : PaintballEndReason.hits;
     if (isHost) {
-      _root.child('end').set(PaintballNetEnd(winnerUid: w, reason: reason).toMap());
+      _root
+          .child('end')
+          .set(PaintballNetEnd(winnerUid: w, reason: reason).toMap());
     }
     _finish();
   }
@@ -417,8 +448,13 @@ class PaintballSession implements PaintballNetLink {
     if (opp == null) return;
     _finished = true;
     try {
-      await _root.child('end').set(
-            PaintballNetEnd(winnerUid: opp, reason: PaintballEndReason.forfeit).toMap(),
+      await _root
+          .child('end')
+          .set(
+            PaintballNetEnd(
+              winnerUid: opp,
+              reason: PaintballEndReason.forfeit,
+            ).toMap(),
           );
     } catch (_) {}
     await FirestoreMatchService.instance.forfeitMatch(
@@ -433,8 +469,13 @@ class PaintballSession implements PaintballNetLink {
     final opp = opponentUid.value;
     if (_finished || opp == null) return;
     game.forceEnd(youWin: true);
-    _root.child('end').set(
-          PaintballNetEnd(winnerUid: myUid, reason: PaintballEndReason.forfeit).toMap(),
+    _root
+        .child('end')
+        .set(
+          PaintballNetEnd(
+            winnerUid: myUid,
+            reason: PaintballEndReason.forfeit,
+          ).toMap(),
         );
     FirestoreMatchService.instance.claimForfeitVictory(
       matchId: match.id,
@@ -449,10 +490,10 @@ class PaintballSession implements PaintballNetLink {
       : (w == 'tie' ? PaintballWinner.tie : PaintballWinner.opponent);
 
   String _toUid(PaintballWinner? w) => switch (w) {
-        PaintballWinner.you => myUid,
-        PaintballWinner.opponent => opponentUid.value ?? 'tie',
-        _ => 'tie',
-      };
+    PaintballWinner.you => myUid,
+    PaintballWinner.opponent => opponentUid.value ?? 'tie',
+    _ => 'tie',
+  };
 
   // ─── Rounds ───────────────────────────────────────────────────────────────
 
@@ -465,10 +506,16 @@ class PaintballSession implements PaintballNetLink {
   void roundOver(int round, PaintballWinner? winner) {
     if (!isHost || _disposed) return;
     // Banner, then 3-2-1, then live for both at the same server moment.
-    final at = clock.serverNowMs +
+    final at =
+        clock.serverNowMs +
         ((PaintballK.roundBreakSeconds + 3.0) * 1000).round();
-    _root.child('rs/$round').set({'w': _toUid(winner), 'at': at}).catchError(
-        (Object e) => debugPrint('[PaintballSession] round start write failed: $e'));
+    _root
+        .child('rs/$round')
+        .set({'w': _toUid(winner), 'at': at})
+        .catchError(
+          (Object e) =>
+              debugPrint('[PaintballSession] round start write failed: $e'),
+        );
   }
 
   void _onRoundStart(DatabaseEvent e) {
@@ -488,6 +535,7 @@ class PaintballSession implements PaintballNetLink {
         result: result,
       );
     }
+
     if (wait <= 0) {
       go();
     } else {
