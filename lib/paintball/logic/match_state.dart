@@ -241,8 +241,10 @@ class PaintballPlayerState {
 class PaintballMatchState {
   PaintballMatchPhase phase = PaintballMatchPhase.intro;
 
-  /// Total duration of the intro sequence (4.0 s: 2.5s arena pan + 1.5s walk-in).
-  static const double introDurationSeconds = 4.0;
+  /// Intro length: close-up on the opponent (0–1.5 s), pull-back sweep across
+  /// the arena (1.5–3.0 s), you walk in (3.0–4.2 s), hold (to 4.5 s).
+  /// Plays on every match, rematch included; a tap skips it.
+  static const double introDurationSeconds = 4.5;
 
   /// Elapsed time within intro phase.
   double introElapsed = 0.0;

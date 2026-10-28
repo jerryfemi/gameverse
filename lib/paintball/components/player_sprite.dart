@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:ui';
 
@@ -138,6 +139,68 @@ class PaintballPlayerAtlas {
   }
 }
 
+/// Coarse body outlines for every frame of every pose, from the FRONT view
+/// (`assets/paintball/paintball_front_mask.json`, 8 px blocks). Hits are judged
+/// the way the shooter sees the target: from the front.
+class PaintballBodyMask {
+  final PaintballPlayerAtlas front;
+  final int block;
+  final List<int> _cols; // per clip
+  final List<int> _rows; // per clip
+  /// [clip][frame][row] bitmask, bit i = block column i.
+  final List<List<List<int>>> _bits;
+
+  PaintballBodyMask._(this.front, this.block, this._cols, this._rows, this._bits);
+
+  static Future<PaintballBodyMask>? _future;
+  static Future<PaintballBodyMask> load() => _future ??= _load();
+
+  static Future<PaintballBodyMask> _load() async {
+    final front = await PaintballPlayerAtlas.load('paintball_front');
+    final j = jsonDecode(
+      await rootBundle.loadString('assets/paintball/paintball_front_mask.json'),
+    ) as Map<String, dynamic>;
+    final clips = j['clips'] as Map<String, dynamic>;
+    final cols = <int>[], rows = <int>[];
+    final bits = <List<List<int>>>[];
+    for (final c in PaintballClip.values) {
+      var cj = clips[c.key] as Map<String, dynamic>?;
+      if (cj == null && c == PaintballClip.walk) cj = clips[PaintballClip.slideLeft.key] as Map<String, dynamic>?;
+      if (cj == null) throw StateError('Missing mask clip: ${c.key}');
+      cols.add((cj['cols'] as num).toInt());
+      rows.add((cj['rows'] as num).toInt());
+      bits.add(List.unmodifiable((cj['frames'] as List).map((f) => List<int>.unmodifiable(
+            (f as List).map((r) => int.parse(r as String, radix: 16))))));
+    }
+    return PaintballBodyMask._(front, (j['block'] as num).toInt(), cols, rows, List.unmodifiable(bits));
+  }
+
+  /// True if the point ([dx], [y]) in standing heights from the feet
+  /// (dx > 0 = right as the shooter sees it, y up) is on the body in
+  /// [clip] / [frame]. Allocation-free.
+  bool test(PaintballClip clip, int frame, double dx, double y) {
+    final c = front.clip(clip);
+    final f = _bits[clip.index];
+    if (f.isEmpty) return false;
+    final fr = f[frame.clamp(0, f.length - 1)];
+    final stand = front.standHeightPx;
+    final px = -c.dst.left + dx * stand;
+    final py = -c.dst.top - y * stand;
+    if (px < 0 || py < 0) return false;
+    final col = px ~/ block, row = py ~/ block;
+    if (col >= _cols[clip.index] || row >= _rows[clip.index]) return false;
+    return (fr[row] >> col) & 1 == 1;
+  }
+}
+
+/// One paint mark stuck on a player's body (front-view stand units).
+class _BodySplat {
+  double dx = 0, y = 0, age = 0;
+  int cell = 0;
+  bool flip = false;
+  bool active = false;
+}
+
 /// Renders the local player (back view, foreground) or the opponent
 /// (front view, far side) from the pre-rendered atlases.
 ///
@@ -174,6 +237,69 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
   bool isWalking = false;
 
   PaintballPlayerAtlas? _atlas;
+  PaintballBodyMask? _mask;
+
+  // ─── Paint stuck on the body (hits) ───────────────────────────────────────
+  static const int _maxBodySplats = 4;
+  static const double _bodySplatSeconds = 3.0;
+  static const double _bodySplatFade = 1.0;
+  /// Blob radius of a body mark, in standing heights.
+  static const double _bodySplatRadius = 0.075;
+  final List<_BodySplat> _bodySplats = List.generate(_maxBodySplats, (_) => _BodySplat(), growable: false);
+  int _nextBodySplat = 0;
+  int _activeBodySplats = 0;
+  static final Images _fxImages = Images(prefix: 'assets/');
+  Image? _splatSheet;
+  // Blob part of each splat cell (no drips): 128 x 104 from the 128 x 176 cell.
+  final List<Rect> _blobSrc = List.generate(
+    8,
+    (i) => Rect.fromLTWH((i % 4) * 128.0, (i ~/ 4) * 176.0, 128, 104),
+    growable: false,
+  );
+  static const Rect _blobDst = Rect.fromLTWH(-64, -62, 128, 104);
+  final Paint _layerPaint = Paint();
+  static const Color _opaque = Color(0xFFFFFFFF);
+  final Paint _bodySplatPaint = Paint()
+    ..blendMode = BlendMode.srcATop
+    ..filterQuality = FilterQuality.medium;
+  final math.Random _rng = math.Random();
+
+  /// Current pose and frame (what the body outline test uses).
+  PaintballClip get currentClip => _clip;
+  int get currentFrame {
+    final a = _atlas;
+    return a == null ? 0 : _frameIndex(a.clip(_clip));
+  }
+
+  /// Is front-view point ([dx], [y]) (standing heights from the feet) on this
+  /// player's body right now? False until the outlines have loaded.
+  bool bodyAt(double dx, double y) => _mask?.test(_clip, currentFrame, dx, y) ?? false;
+
+  /// Same test for a standing pose (for the "times dodged" stat).
+  bool standingBodyAt(double dx, double y) => _mask?.test(PaintballClip.stand, 0, dx, y) ?? false;
+
+  /// Sticks a paint mark on the body at front-view ([dx], [y]). It moves with
+  /// the player, only shows on their pixels, and fades after 3 s.
+  /// [blue] picks the blue paint row, otherwise pink.
+  void addBodySplat(double dx, double y, {required bool blue}) {
+    final s = _bodySplats[_nextBodySplat];
+    if (!s.active) _activeBodySplats++;
+    s
+      ..dx = dx
+      ..y = y
+      ..age = 0
+      ..flip = _rng.nextBool()
+      ..cell = (blue ? 4 : 0) + _rng.nextInt(4)
+      ..active = true;
+    _nextBodySplat = (_nextBodySplat + 1) % _maxBodySplats;
+  }
+
+  void clearBodySplats() {
+    for (final s in _bodySplats) {
+      s.active = false;
+    }
+    _activeBodySplats = 0;
+  }
 
   PaintballClip _clip = PaintballClip.stand;
   double _clipTime = 0.0;
@@ -213,6 +339,8 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
       isOpponent ? 'paintball_front' : 'paintball_back',
     );
     _atlas = atlas;
+    _mask = await PaintballBodyMask.load();
+    _splatSheet = await _fxImages.load('paintball/paintball_splats.webp');
     final w = atlas.standHeightPx * 0.42;
     _shadowRect = Rect.fromCenter(
       center: Offset.zero,
@@ -232,6 +360,7 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
     _fireTimer = 0.0;
     _lastHitsTaken = state.hitsTaken;
     _lastShotsFired = state.shotsFired;
+    clearBodySplats();
     _setClip(PaintballClip.stand);
   }
 
@@ -338,6 +467,17 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
     }
     _setClip(want);
     _clipTime += dt;
+
+    if (_activeBodySplats > 0) {
+      for (final s in _bodySplats) {
+        if (!s.active) continue;
+        s.age += dt;
+        if (s.age >= _bodySplatSeconds) {
+          s.active = false;
+          _activeBodySplats--;
+        }
+      }
+    }
   }
 
   int _frameIndex(PaintballClipFrames c) {
@@ -376,7 +516,35 @@ class PaintballPlayerComponent extends PositionComponent with HasGameReference {
     if (_clip != PaintballClip.death) {
       canvas.drawOval(_shadowRect, _shadowPaint);
     }
-    canvas.drawImageRect(atlas.image, frame, c.dst, flashing ? _flashPaint : _spritePaint);
+    final sheet = _splatSheet;
+    if (_activeBodySplats > 0 && sheet != null) {
+      // Draw the sprite into a layer, then paint marks with srcATop so they
+      // only land on the player's own pixels.
+      canvas.saveLayer(c.dst, _layerPaint);
+      canvas.drawImageRect(atlas.image, frame, c.dst, flashing ? _flashPaint : _spritePaint);
+      final stand = atlas.standHeightPx;
+      final k = _bodySplatRadius * stand / 26.0; // 26 px = blob radius in the sheet
+      // Marks are stored as the shooter sees them (front). Seen from behind,
+      // left and right swap.
+      final xSign = isOpponent ? 1.0 : -1.0;
+      for (final s in _bodySplats) {
+        if (!s.active) continue;
+        final left = _bodySplatSeconds - s.age;
+        if (left < _bodySplatFade) {
+          _bodySplatPaint.color = Color.fromRGBO(255, 255, 255, left / _bodySplatFade);
+        } else if (_bodySplatPaint.color != _opaque) {
+          _bodySplatPaint.color = _opaque;
+        }
+        canvas.save();
+        canvas.translate(xSign * s.dx * stand, -s.y * stand);
+        canvas.scale(s.flip ? -k : k, k);
+        canvas.drawImageRect(sheet, _blobSrc[s.cell], _blobDst, _bodySplatPaint);
+        canvas.restore();
+      }
+      canvas.restore();
+    } else {
+      canvas.drawImageRect(atlas.image, frame, c.dst, flashing ? _flashPaint : _spritePaint);
+    }
     canvas.restore();
   }
 }

@@ -261,4 +261,63 @@ void main() {
       });
     }
   });
+
+  group('Body-accurate resolution (resolveBody)', () {
+    // Fake body: a column 0.3 stands wide centred on the feet, up to [top].
+    bool Function(double, double) body(double top) =>
+        (dx, y) => dx.abs() <= 0.15 && y >= 0 && y <= top;
+    const lane = 0.77; // one far lane in stands
+
+    HitResult shoot(double aimX, double aimY, {double top = 1.0, bool inv = false}) =>
+        HitResolver.resolveBody(
+          shooterAimX: aimX,
+          aimY: aimY,
+          targetAimX: 0.0,
+          targetInvulnerable: inv,
+          laneWidthStands: lane,
+          isBody: body(top),
+          isBodyStanding: body(1.0),
+        );
+
+    test('on the body above the tyre lip is a hit', () {
+      expect(shoot(0.0, 0.7).isHit, isTrue);
+    });
+
+    test('beside the body in the same lane misses and flies past', () {
+      final r = shoot(0.15, 0.8); // 0.23 stands right of centre
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.missedLane);
+    });
+
+    test('on the body but below the lip is blocked by the tyre', () {
+      final r = shoot(0.0, 0.4);
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.hitTire);
+    });
+
+    test('a ducked pose (top below the lip) is never hit', () {
+      for (var y = 0.0; y <= 1.0; y += 0.05) {
+        expect(shoot(0.0, y, top: 0.48).isHit, isFalse, reason: 'y=$y');
+      }
+    });
+
+    test('a crouched pose is hit only between the lip and its head', () {
+      expect(shoot(0.0, 0.62, top: 0.70).isHit, isTrue);
+      expect(shoot(0.0, 0.85, top: 0.70).isHit, isFalse);
+    });
+
+    test('a shot over a crouched head counts as dodged', () {
+      expect(shoot(0.0, 0.85, top: 0.70).isDodged, isTrue);
+    });
+
+    test('invulnerable target is touched but not hit', () {
+      final r = shoot(0.0, 0.7, inv: true);
+      expect(r.isHit, isFalse);
+      expect(r.outcome, PaintballHitOutcome.invulnerable);
+    });
+
+    test('below the lip at another lane splats that lane\'s tyre', () {
+      expect(shoot(0.5, 0.3).outcome, PaintballHitOutcome.hitTire);
+    });
+  });
 }

@@ -73,7 +73,7 @@ class _PaintballGameScreenState extends State<PaintballGameScreen> {
                   stream: Stream.periodic(const Duration(milliseconds: 100)),
                   builder: (context, _) {
                     if (game.match.phase == PaintballMatchPhase.intro) {
-                      return const SizedBox.shrink();
+                      return _IntroOverlay(game: game);
                     }
                     return PaintballHudOverlay(match: game.match);
                   },
@@ -225,4 +225,109 @@ class _ResultRevealState extends State<_ResultReveal>
       },
     );
   }
+}
+
+/// Cinematic dressing for the arena intro: letterbox bars, the two name
+/// cards and a "FIRST TO 3 HITS" caption. Reads the intro clock every frame
+/// (only while the intro runs) so it stays locked to the camera moves.
+class _IntroOverlay extends StatefulWidget {
+  final PaintballGame game;
+  const _IntroOverlay({required this.game});
+
+  @override
+  State<_IntroOverlay> createState() => _IntroOverlayState();
+}
+
+class _IntroOverlayState extends State<_IntroOverlay> with SingleTickerProviderStateMixin {
+  late final AnimationController _tick =
+      AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+
+  @override
+  void dispose() {
+    _tick.dispose();
+    super.dispose();
+  }
+
+  // Smootherstep, clamped.
+  static double _e(double x) {
+    final t = x.clamp(0.0, 1.0);
+    return t * t * t * (t * (t * 6 - 15) + 10);
+  }
+
+  // 0 -> 1 between a and b, then 1 -> 0 between c and d.
+  static double _window(double t, double a, double b, double c, double d) =>
+      _e((t - a) / (b - a)) * (1 - _e((t - c) / (d - c)));
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _tick,
+        builder: (context, _) {
+          final t = widget.game.match.introElapsed;
+          final size = MediaQuery.sizeOf(context);
+          final bars = _window(t, 0.0, 0.35, 3.9, 4.35);
+          final cards = _window(t, 1.6, 2.1, 3.4, 3.8);
+          final caption = _window(t, 3.0, 3.5, 4.15, 4.45);
+          final barH = size.height * 0.085 * bars;
+          return Stack(
+            children: [
+              // Letterbox.
+              Positioned(top: 0, left: 0, right: 0, height: barH,
+                  child: const ColoredBox(color: Color(0xFF05070D))),
+              Positioned(bottom: 0, left: 0, right: 0, height: barH,
+                  child: const ColoredBox(color: Color(0xFF05070D))),
+              // Name cards slide in from each side during the sweep.
+              Positioned(
+                top: size.height * 0.12,
+                left: 16 - 180 * (1 - cards),
+                child: Opacity(opacity: cards, child: _card('YOU', const Color(0xFF38BDF8))),
+              ),
+              Positioned(
+                top: size.height * 0.12,
+                right: 16 - 180 * (1 - cards),
+                child: Opacity(opacity: cards, child: _card('BOT', const Color(0xFFF59E0B))),
+              ),
+              // Caption above the bottom bar.
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: size.height * 0.12 + 12 * (1 - caption),
+                child: Opacity(
+                  opacity: caption,
+                  child: Center(
+                    child: Text(
+                      'FIRST TO 3 HITS',
+                      style: UiFont.style(size: 15, weight: 800, color: Colors.white, letterSpacing: 2.4),
+                    ),
+                  ),
+                ),
+              ),
+              // Skip hint, bottom right inside the bar.
+              Positioned(
+                right: 16,
+                bottom: (barH - 16).clamp(0.0, double.infinity) / 2,
+                child: Opacity(
+                  opacity: bars * 0.7,
+                  child: Text('TAP TO SKIP',
+                      style: UiFont.style(size: 10, weight: 700, color: const Color(0xFF94A3B8), letterSpacing: 1.4)),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _card(String label, Color accent) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xCC0A0E1A),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: accent.withValues(alpha: 0.85), width: 1.5),
+        ),
+        child: Text(label,
+            style: UiFont.style(size: 14, weight: 900, color: accent, letterSpacing: 1.6)),
+      );
 }

@@ -179,4 +179,60 @@ abstract final class HitResolver {
       isDodged: isDodge,
     );
   }
+
+  // ─── Body-accurate resolution ─────────────────────────────────────────────
+
+  /// Resolves a shot against the target's real body outline.
+  ///
+  /// Everything is measured the way the **shooter sees the target**: front
+  /// view, far-row lane spacing, in units of the target's standing height
+  /// ("stands"), from the target's feet. The tyre in front hides everything
+  /// below [PaintballK.tyreCoverHeight].
+  ///
+  /// - [shooterAimX]: where the shot was aimed on the shooter's screen (-1..1).
+  /// - [targetAimX]: the target's current (continuous, mid-slide) position on
+  ///   the shooter's screen, same units.
+  /// - [laneWidthStands]: one far lane in stands (farStep / oppStandHeight).
+  /// - [isBody]: true if (dx, y) in stands is on the target's visible body in
+  ///   its current pose (dx > 0 = right on the shooter's screen, y up).
+  /// - [isBodyStanding]: the same test for a standing pose, for the
+  ///   "times dodged" stat. Optional.
+  static HitResult resolveBody({
+    required double shooterAimX,
+    required double aimY,
+    required double targetAimX,
+    required bool targetInvulnerable,
+    required double laneWidthStands,
+    required bool Function(double dx, double y) isBody,
+    bool Function(double dx, double y)? isBodyStanding,
+    double tyreHalfWidthStands = 0.34,
+  }) {
+    final dx = (shooterAimX - targetAimX) * 2.0 * laneWidthStands;
+    final y = aimY.clamp(0.0, 1.5);
+    final lane = PaintballK.mirrorLane(PaintballK.aimXToLane(shooterAimX));
+    final aboveLip = y >= PaintballK.tyreCoverHeight;
+
+    if (aboveLip && isBody(dx, y)) {
+      return HitResult(
+        isHit: !targetInvulnerable,
+        outcome: targetInvulnerable ? PaintballHitOutcome.invulnerable : PaintballHitOutcome.hitBody,
+        targetLane: lane,
+        hitHeightY: y,
+      );
+    }
+
+    final dodged = aboveLip && (isBodyStanding?.call(dx, y) ?? false);
+    // Below the lip and within a tyre (every lane has one): the tyre took it.
+    // Otherwise it flew past (no splat on a tyre).
+    final nearestLaneAimX = (shooterAimX * 2.0).roundToDouble() / 2.0;
+    final tyreDx = (shooterAimX - nearestLaneAimX) * 2.0 * laneWidthStands;
+    final onTyre = !aboveLip && tyreDx.abs() <= tyreHalfWidthStands;
+    return HitResult(
+      isHit: false,
+      outcome: onTyre ? PaintballHitOutcome.hitTire : PaintballHitOutcome.missedLane,
+      targetLane: lane,
+      hitHeightY: y,
+      isDodged: dodged,
+    );
+  }
 }
