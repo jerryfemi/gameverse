@@ -167,19 +167,76 @@ void main() {
       expect(match.countdownRemaining, 0.0);
     });
 
-    test('first to 3 hits wins immediately', () {
-      match.phase = PaintballMatchPhase.live;
+    void eliminate(PaintballPlayerState p) {
+      for (var i = 0; i < PaintballK.hitsToWin; i++) {
+        p.applyDamage();
+        p.tick(PaintballK.hitInvulnerabilitySeconds);
+      }
+    }
 
-      // Opponent takes 3 hits
-      match.opponent.applyDamage();
-      match.opponent.tick(PaintballK.hitInvulnerabilitySeconds);
-      match.opponent.applyDamage();
-      match.opponent.tick(PaintballK.hitInvulnerabilitySeconds);
-      match.opponent.applyDamage();
+    test('3 hits wins the round, then a break, then round 2', () {
+      match.phase = PaintballMatchPhase.live;
+      eliminate(match.opponent);
 
       match.tick(0.016);
+      expect(match.phase, PaintballMatchPhase.roundOver);
+      expect(match.roundWinner, PaintballWinner.you);
+      expect(match.youRounds, 1);
+      expect(match.roundHits.single, (3, 0));
+
+      match.tick(PaintballK.roundBreakSeconds + 0.01);
+      expect(match.phase, PaintballMatchPhase.countdown);
+      expect(match.round, 2);
+      expect(match.opponent.hitsTaken, 0); // fresh round
+    });
+
+    test('winning 2 rounds ends the match 2-0 (no round 3)', () {
+      for (var r = 0; r < 2; r++) {
+        match.phase = PaintballMatchPhase.live;
+        eliminate(match.opponent);
+        match.tick(0.016);
+        if (match.phase == PaintballMatchPhase.roundOver) {
+          match.tick(PaintballK.roundBreakSeconds + 0.01);
+        }
+      }
       expect(match.phase, PaintballMatchPhase.gameOver);
       expect(match.winner, PaintballWinner.you);
+      expect(match.youRounds, 2);
+      expect(match.round, 2);
+    });
+
+    test('1-1 goes to a deciding round 3', () {
+      match.phase = PaintballMatchPhase.live;
+      eliminate(match.opponent);
+      match.tick(0.016);
+      match.tick(PaintballK.roundBreakSeconds + 0.01);
+      match.phase = PaintballMatchPhase.live;
+      eliminate(match.you);
+      match.tick(0.016);
+      expect(match.phase, PaintballMatchPhase.roundOver);
+      match.tick(PaintballK.roundBreakSeconds + 0.01);
+      expect(match.round, 3);
+      expect(match.isFinalRound, isTrue);
+      match.phase = PaintballMatchPhase.live;
+      eliminate(match.you);
+      match.tick(0.016);
+      expect(match.phase, PaintballMatchPhase.gameOver);
+      expect(match.winner, PaintballWinner.opponent);
+    });
+
+    test('online: holds at the break until the host starts the next round', () {
+      match.holdBetweenRounds = true;
+      match.phase = PaintballMatchPhase.live;
+      eliminate(match.opponent);
+      match.tick(0.016);
+      match.tick(10);
+      expect(match.phase, PaintballMatchPhase.roundOver);
+      // Host says it was actually the opponent's round.
+      match.beginNextRound(countdownSeconds: 2.0, result: PaintballWinner.opponent);
+      expect(match.round, 2);
+      expect(match.youRounds, 0);
+      expect(match.opponentRounds, 1);
+      expect(match.countdownRemaining, 2.0);
     });
 
     test('timer expiration triggers sudden death if tied', () {
@@ -205,8 +262,8 @@ void main() {
       match.opponent.applyDamage();
 
       match.tick(0.6);
-      expect(match.phase, PaintballMatchPhase.gameOver);
-      expect(match.winner, PaintballWinner.you); // Fewer hits taken = winner!
+      expect(match.phase, PaintballMatchPhase.roundOver);
+      expect(match.roundWinner, PaintballWinner.you); // Fewer hits taken wins the round
     });
   });
 }
