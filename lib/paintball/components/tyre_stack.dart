@@ -1,32 +1,90 @@
+import 'dart:convert';
 import 'dart:ui';
+
+import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/services.dart' show rootBundle;
+
 import 'package:b_ball/paintball/paintball_constants.dart';
 
-/// One 4-tire defensive stack positioned in a specific lane.
+/// One view of the pre-rendered 4-tyre stack (`assets/paintball/paintball_tyres_*.webp`).
+class TyreStackSprite {
+  final Image image;
+  final Rect src;
+
+  /// Image-pixel y of the top-front lip of the stack (the cover line).
+  final double coverY;
+
+  /// Image-pixel y where the front of the bottom tyre meets the ground.
+  final double groundY;
+
+  /// Image-pixel x of the stack's centre.
+  final double centerX;
+
+  const TyreStackSprite(this.image, this.src, this.coverY, this.groundY, this.centerX);
+
+  double get width => src.width;
+}
+
+/// Loads both tyre-stack views once.
+class TyreStackSprites {
+  final TyreStackSprite near;
+  final TyreStackSprite far;
+  const TyreStackSprites(this.near, this.far);
+
+  static final Images _images = Images(prefix: 'assets/');
+  static Future<TyreStackSprites>? _future;
+
+  static Future<TyreStackSprites> load() => _future ??= _load();
+
+  static Future<TyreStackSprites> _load() async {
+    final json = jsonDecode(
+      await rootBundle.loadString('assets/paintball/paintball_tyres.json'),
+    ) as Map<String, dynamic>;
+    Future<TyreStackSprite> view(String key) async {
+      final j = json[key] as Map<String, dynamic>;
+      final img = await _images.load('paintball/${j['image']}');
+      return TyreStackSprite(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        (j['coverY'] as num).toDouble(),
+        (j['groundY'] as num).toDouble(),
+        (j['centerX'] as num).toDouble(),
+      );
+    }
+
+    return TyreStackSprites(await view('near'), await view('far'));
+  }
+}
+
+/// One 4-tyre defensive stack positioned in a specific lane.
 ///
-/// Follows Paintball Plan §4 & §7:
-/// - Near variant (priority 50): Foreground cover stack in front of the player.
-/// - Far variant (priority 10 / 30): Distance cover stacks across the far row.
-/// - Parallax: Far tires shift horizontally by [cameraPanOffset] * [PaintballK.parallaxFarTires] (0.80x).
-/// - 4 stacked black matte tires with rubber specular rim and drop shadow.
+/// Layout contract (set by [PaintballGame]): the component's box is
+/// `position` (top-left) + `size`.
+/// - **Far** stacks: the box top is the cover line and the box bottom is the
+///   ground. The sprite is scaled so its top-front lip lands exactly on the
+///   cover line, which is what [PaintballK.tyreCoverHeight] and the hit rules
+///   assume.
+/// - **Near** stacks: same contract; the visible top surface draws a little
+///   above the box.
+///
+/// Odd lanes are mirrored so the five stacks don't look copy-pasted.
 class TyreStackComponent extends PositionComponent with HasGameReference {
   final int lane;
   final bool isNear;
   double cameraPanOffset = 0.0;
   double cameraDipOffset = 0.0;
 
-  // ─── Pre-allocated Paints ─────────────────────────────────────────────────
-  final Paint _shadowPaint = Paint()
-    ..color = const Color(0x55000000)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+  TyreStackSprite? _sprite;
 
-  final Paint _tireBasePaint = Paint()..color = const Color(0xFF18181B); // deep rubber black
-  final Paint _tireRimPaint = Paint()..color = const Color(0xFF27272A);  // tire side highlight
-  final Paint _tireTopTreadPaint = Paint()..color = const Color(0xFF09090B); // dark center hole
-  final Paint _rimHighlightPaint = Paint()
-    ..color = const Color(0xFF3F3F46)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 2.0;
+  // Destination rect, recomputed only when the box size changes.
+  Rect _dst = Rect.zero;
+  double _lastW = -1;
+  double _lastH = -1;
+
+  final Paint _paint = Paint()..filterQuality = FilterQuality.medium;
+  final Paint _shadowPaint = Paint()..color = const Color(0x38000000);
+  Rect _shadow = Rect.zero;
 
   TyreStackComponent({
     required this.lane,
@@ -34,69 +92,46 @@ class TyreStackComponent extends PositionComponent with HasGameReference {
   }) : super(priority: isNear ? 50 : 25);
 
   @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    final sprites = await TyreStackSprites.load();
+    _sprite = isNear ? sprites.near : sprites.far;
+  }
+
+  void _layout(TyreStackSprite s) {
+    final w = size.x, h = size.y;
+    _lastW = w;
+    _lastH = h;
+    final double scale;
+    final double top;
+    // Both views: the box top is the cover line and the box bottom is the
+    // ground, so the stack is sized by height and never by lane width.
+    scale = h / (s.groundY - s.coverY);
+    top = -s.coverY * scale;
+    final left = w * 0.5 - s.centerX * scale;
+    _dst = Rect.fromLTWH(left, top, s.width * scale, s.src.height * scale);
+    final sw = s.width * scale * 0.95;
+    _shadow = Rect.fromCenter(center: Offset(w * 0.5, h), width: sw, height: sw * 0.16);
+  }
+
+  @override
   void render(Canvas canvas) {
+    final s = _sprite;
+    if (s == null) return;
+    if (size.x != _lastW || size.y != _lastH) _layout(s);
+
     final shiftX = cameraPanOffset * (isNear ? 1.0 : PaintballK.parallaxFarTires);
     final shiftY = -cameraDipOffset * (isNear ? 1.0 : PaintballK.parallaxFarTiresY);
 
     canvas.save();
     canvas.translate(shiftX, shiftY);
-
-    final w = size.x;
-    final h = size.y;
-
-    // 1. Contact shadow under bottom tire
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.5, h * 0.98),
-        width: w * 0.95,
-        height: h * 0.18,
-      ),
-      _shadowPaint,
-    );
-
-    // 2. 4 stacked tires (bottom to top)
-    final tireH = h * 0.28;
-    final overlap = h * 0.06;
-
-    for (int i = 3; i >= 0; i--) {
-      final cy = h * 0.85 - (i * (tireH - overlap));
-      _drawSingleTire(canvas, w * 0.5, cy, w, tireH, i == 0);
+    canvas.drawOval(_shadow, _shadowPaint);
+    if (lane.isOdd) {
+      // Mirror around the box centre for variety.
+      canvas.translate(size.x, 0);
+      canvas.scale(-1, 1);
     }
-
+    canvas.drawImageRect(s.image, s.src, _dst, _paint);
     canvas.restore();
-  }
-
-  void _drawSingleTire(
-    Canvas canvas,
-    double cx,
-    double cy,
-    double w,
-    double h,
-    bool isTopTire,
-  ) {
-    final rect = Rect.fromCenter(center: Offset(cx, cy), width: w, height: h);
-    final rrect = RRect.fromRectAndRadius(rect, Radius.circular(h * 0.45));
-
-    // Outer tire body
-    canvas.drawRRect(rrect, _tireBasePaint);
-
-    // Tread highlight ring
-    canvas.drawRRect(rrect, _rimHighlightPaint);
-
-    // Inner rim depth
-    final innerW = w * 0.65;
-    final innerH = h * 0.55;
-    final innerRect = Rect.fromCenter(center: Offset(cx, cy), width: innerW, height: innerH);
-    canvas.drawOval(innerRect, _tireRimPaint);
-
-    if (isTopTire) {
-      // Hollow center hole on the very top tire
-      final holeRect = Rect.fromCenter(
-        center: Offset(cx, cy),
-        width: innerW * 0.65,
-        height: innerH * 0.65,
-      );
-      canvas.drawOval(holeRect, _tireTopTreadPaint);
-    }
   }
 }
