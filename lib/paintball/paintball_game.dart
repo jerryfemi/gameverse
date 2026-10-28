@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+import 'package:flame/events.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/widgets.dart' show KeyEventResult;
 import 'package:flutter/services.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/paintball/paintball_constants.dart';
@@ -20,7 +22,7 @@ import 'package:b_ball/paintball/components/splat.dart';
 /// - 5-lane 2.5D world projection with camera pan spring damping.
 /// - Autonomous Bot AI integration ([PaintballBotBrain]).
 /// - Deterministic ballistic trajectory arcs and target-side hit resolution.
-class PaintballGame extends FlameGame {
+class PaintballGame extends FlameGame with KeyboardEvents {
   final PaintballMatchState match = PaintballMatchState();
   late final PaintballBotBrain botBrain;
 
@@ -49,6 +51,17 @@ class PaintballGame extends FlameGame {
   bool _isReady = false;
   final Vector2 _muzzle = Vector2.zero();
   bool _endPosesApplied = false;
+
+  /// Seconds since the match ended. The results card waits for this so the
+  /// death and win animations play first.
+  double gameOverSeconds = 0.0;
+
+  /// How long the results card waits after the match ends (the death clip
+  /// runs ~2.8 s).
+  static const double resultsDelaySeconds = 2.6;
+
+  bool get showResults =>
+      match.phase == PaintballMatchPhase.gameOver && gameOverSeconds >= resultsDelaySeconds;
   double _cachedWidth = 0.0;
   double _cachedHeight = 0.0;
 
@@ -128,9 +141,38 @@ class PaintballGame extends FlameGame {
     }
   }
 
+  // ─── Stage geometry ───────────────────────────────────────────────────────
+  // Everything is laid out on a fixed 9:16 stage centred on screen, so a wide
+  // window gets the same tyre layout (plus more scenery at the sides).
+
+  double _stageWidth(double w, double h) => math.min(w, h * PaintballK.stageAspect);
+
+  /// Lane spacing of your own row (near tyres, your player).
+  double _nearStep(double w, double h) => _stageWidth(w, h) / PaintballK.visibleLanes;
+
+  /// Lane spacing of the opponent's row: compact, so all five lanes are on screen.
+  double _farStep(double w, double h) => _nearStep(w, h) * PaintballK.farLaneScale;
+
+  /// Your lane as a continuous value while sliding (0..4).
+  double get _youContinuousLane => match.you.isSliding
+      ? match.you.slideFromLane +
+          (match.you.slideToLane - match.you.slideFromLane) * match.you.slideProgress
+      : match.you.lane.toDouble();
+
+  // ─── Body-relative aim ────────────────────────────────────────────────────
+  // The drag sets an angle relative to where you face (_aimOffset). Sliding
+  // carries the reticle with you at the same angle. reticle.aimX is the
+  // resulting field position (-1..1), which the hit check and network use.
+  double _aimOffset = 0.0;
+
+  void _syncAimFromOffset() {
+    final facing = (_youContinuousLane - 2.0) * 0.5; // laneToAimX, continuous
+    reticle.aimX = (facing + _aimOffset).clamp(-1.0, 1.0);
+  }
+
   void _layoutScene(double w, double h) {
-    // Zoomed in: only ~2.8 lanes fit in the viewport at once
-    final laneStep = w / PaintballK.visibleLanes;
+    final laneStep = _nearStep(w, h);
+    final farStep = _farStep(w, h);
     final centerX = w * 0.5;
 
     // Position Far Tires (at y ≈ 36% - 48%)
@@ -139,12 +181,12 @@ class PaintballGame extends FlameGame {
     // ducked opponent is hidden and a crouched one peeks out (matches HitResolver).
     final oppH = h * PaintballK.oppStandHeight;
     final farGround = h * PaintballK.farGroundY;
-    final farTireW = laneStep * 0.55;
+    final farTireW = farStep;
     final farY = farGround - oppH * PaintballK.tyreCoverHeight;
     final farTireH = (farGround + h * 0.012) - farY;
 
     for (int i = 0; i < farTires.length; i++) {
-      final cx = centerX + ((i - 2) * laneStep);
+      final cx = centerX + ((i - 2) * farStep);
       farTires[i].size.setValues(farTireW, farTireH);
       farTires[i].position.setValues(cx - farTireW * 0.5, farY);
     }
@@ -175,7 +217,8 @@ class PaintballGame extends FlameGame {
   }
 
   void _updatePlayerPositions(double w, double h) {
-    final laneStep = w / PaintballK.visibleLanes;
+    final laneStep = _nearStep(w, h);
+    final farStep = _farStep(w, h);
     final centerX = w * 0.5;
 
     // 1. Local Player (Swat)
@@ -201,11 +244,11 @@ class PaintballGame extends FlameGame {
     if (match.opponent.isSliding) {
       final oppFromScreen = PaintballK.mirrorLane(match.opponent.slideFromLane);
       final oppToScreen = PaintballK.mirrorLane(match.opponent.slideToLane);
-      final fromX = centerX + ((oppFromScreen - 2) * laneStep);
-      final toX = centerX + ((oppToScreen - 2) * laneStep);
+      final fromX = centerX + ((oppFromScreen - 2) * farStep);
+      final toX = centerX + ((oppToScreen - 2) * farStep);
       oppLaneX = fromX + (toX - fromX) * match.opponent.slideProgress;
     } else {
-      oppLaneX = centerX + ((oppScreenLane - 2) * laneStep);
+      oppLaneX = centerX + ((oppScreenLane - 2) * farStep);
     }
 
     opponentComponent.position.setValues(
@@ -219,22 +262,17 @@ class PaintballGame extends FlameGame {
   void _updateCameraTarget() {
     if (_cachedWidth <= 0 || _cachedHeight <= 0) return;
 
-    final laneStep = _cachedWidth / PaintballK.visibleLanes;
+    final laneStep = _nearStep(_cachedWidth, _cachedHeight);
+    final stageW = _stageWidth(_cachedWidth, _cachedHeight);
 
-    // 1. Horizontal Tracking:
-    // Anchor to player's current continuous lane so player remains on screen
-    double playerContinuousLane;
-    if (match.you.isSliding) {
-      playerContinuousLane = match.you.slideFromLane +
-          (match.you.slideToLane - match.you.slideFromLane) * match.you.slideProgress;
-    } else {
-      playerContinuousLane = match.you.lane.toDouble();
-    }
-    final playerLaneDelta = playerContinuousLane - 2.0; // [-2.0, 2.0]
+    // 1. Horizontal tracking: follow your lane so you stay on screen.
+    final playerLaneDelta = _youContinuousLane - 2.0; // [-2.0, 2.0]
     final laneTrackOffset = -playerLaneDelta * (laneStep * 0.65);
 
-    // Additive look-ahead aim pan (±28% screen width)
-    final aimPanOffset = -reticle.aimX * (_cachedWidth * PaintballK.cameraMaxPanFraction);
+    // 2. Look-ahead pan from the aim angle (relative to where you face).
+    final facing = playerLaneDelta * 0.5;
+    final aimAngle = reticle.aimX - facing;
+    final aimPanOffset = -aimAngle * stageW * PaintballK.aimPanFraction;
 
     _targetCameraPan = laneTrackOffset + aimPanOffset;
 
@@ -281,6 +319,7 @@ class PaintballGame extends FlameGame {
     _activeProjectiles.clear();
     splatCanvas.clear();
     botBrain.reset();
+    _aimOffset = 0.0;
     reticle.aimX = 0.0;
     reticle.aimY = 0.65;
     reticle.isLockedOn = false;
@@ -290,11 +329,36 @@ class PaintballGame extends FlameGame {
     _targetCameraDip = 0.0;
     match.startMatch();
     _endPosesApplied = false;
+    gameOverSeconds = 0.0;
     playerComponent.resetVisual();
     opponentComponent.resetVisual();
     if (_cachedWidth > 0 && _cachedHeight > 0) {
       _layoutScene(_cachedWidth, _cachedHeight);
     }
+  }
+
+  // ─── Keyboard (PC) ────────────────────────────────────────────────────────
+  // ← → or A D slide, ↑ ↓ or W S change stance, Space fires.
+  // Aim stays on the mouse: dragging on the right half works like a trackpad.
+
+  @override
+  KeyEventResult onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored; // no auto-repeat
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowLeft || key == LogicalKeyboardKey.keyA) {
+      playerSlide(-1);
+    } else if (key == LogicalKeyboardKey.arrowRight || key == LogicalKeyboardKey.keyD) {
+      playerSlide(1);
+    } else if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.keyW) {
+      playerStanceStep(1);
+    } else if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.keyS) {
+      playerStanceStep(-1);
+    } else if (key == LogicalKeyboardKey.space) {
+      if (playerCanFire) firePlayerShot();
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
   }
 
   // ─── Input & Aiming ───────────────────────────────────────────────────────
@@ -303,8 +367,16 @@ class PaintballGame extends FlameGame {
   void onAimDrag(double deltaX, double deltaY) {
     if (!_isReady || _cachedWidth <= 0 || _cachedHeight <= 0) return;
 
-    // Relative sensitivity
-    reticle.aimX = (reticle.aimX + (deltaX / (_cachedWidth * 0.35))).clamp(-1.0, 1.0);
+    // Relative drag sets the aim angle from where you face (Option A: the
+    // angle is kept exactly when you slide).
+    final stageW = _stageWidth(_cachedWidth, _cachedHeight);
+    final facing = (_youContinuousLane - 2.0) * 0.5;
+    _aimOffset = (_aimOffset + (deltaX / (stageW * 0.35)))
+        .clamp(-PaintballK.maxAimOffset, PaintballK.maxAimOffset)
+        // Don't let the stored angle run past the field edge, or dragging
+        // back would feel dead.
+        .clamp(-1.0 - facing, 1.0 - facing);
+    _syncAimFromOffset();
     reticle.aimY = (reticle.aimY - (deltaY / (_cachedHeight * 0.25))).clamp(0.0, 1.0);
 
     _updateCameraTarget();
@@ -314,13 +386,13 @@ class PaintballGame extends FlameGame {
   void _updateReticlePosition() {
     if (!_isReady || _cachedWidth <= 0 || _cachedHeight <= 0) return;
 
-    final laneStep = _cachedWidth / PaintballK.visibleLanes;
+    final farStep = _farStep(_cachedWidth, _cachedHeight);
     final centerX = _cachedWidth * 0.5;
 
     // aimY is a fraction of a standing opponent's height above their feet,
     // the same scale HitResolver uses for exposure.
     final farGround = (_cachedHeight * PaintballK.farGroundY) - (cameraDipOffset * PaintballK.parallaxFarTiresY);
-    final targetX = centerX + (reticle.aimX * (laneStep * 2.0)) + (cameraPanOffset * PaintballK.parallaxFarTires);
+    final targetX = centerX + (reticle.aimX * (farStep * 2.0)) + (cameraPanOffset * PaintballK.parallaxFarTires);
     final targetY = farGround - (reticle.aimY * (_cachedHeight * PaintballK.oppStandHeight));
 
     reticle.position.setValues(targetX, targetY);
@@ -381,7 +453,7 @@ class PaintballGame extends FlameGame {
 
     // Calculate target coordinate on player's screen
     final laneOnPlayerScreen = PaintballK.mirrorLane(PaintballK.aimXToLane(aimX));
-    final laneStep = _cachedWidth / PaintballK.visibleLanes;
+    final laneStep = _nearStep(_cachedWidth, _cachedHeight);
     final centerX = _cachedWidth * 0.5;
     final targetX = centerX + ((laneOnPlayerScreen - 2) * laneStep) + (cameraPanOffset * 1.0);
     final targetY = (_cachedHeight * PaintballK.nearGroundY) -
@@ -449,8 +521,11 @@ class PaintballGame extends FlameGame {
     final landY = ball.trajectory.targetY;
 
     // Unshift for splat canvas which applies parallax translation in render()
-    final unshiftedX = landX - (cameraPanOffset * PaintballK.parallaxFarTires);
-    final unshiftedY = landY - (-cameraDipOffset * PaintballK.parallaxFarTiresY);
+    // Splats live on a parallax layer: far (opponent side) for your shots,
+    // near (your side) for the opponent's. Store them unshifted.
+    final near = !ball.firedByYou;
+    final unshiftedX = landX - cameraPanOffset * (near ? 1.0 : PaintballK.parallaxFarTires);
+    final unshiftedY = landY + cameraDipOffset * (near ? 1.0 : PaintballK.parallaxFarTiresY);
 
     // Target-side check using the aim captured when the ball was fired.
     // The shooter's aim is on the shooter's screen; resolveFromShooterAim
@@ -471,10 +546,17 @@ class PaintballGame extends FlameGame {
       target.timesDodged++;
     }
 
+    // Blob radius on screen: small on the far row, big up close on your side.
     final radius = ball.firedByYou
-        ? (result.isHit ? 14.0 : 10.0)
-        : (result.isHit ? 16.0 : 12.0);
-    splatCanvas.addSplat(x: unshiftedX, y: unshiftedY, color: ball.ballColor, radius: radius);
+        ? (result.isHit ? 9.0 : 8.0)
+        : (result.isHit ? 26.0 : 22.0);
+    splatCanvas.addSplat(
+      x: unshiftedX,
+      y: unshiftedY,
+      color: ball.ballColor,
+      radius: radius,
+      near: near,
+    );
   }
 
   // ─── Game Loop ────────────────────────────────────────────────────────────
@@ -487,6 +569,8 @@ class PaintballGame extends FlameGame {
     // 1. Advance Match Clock & State Machines
     match.tick(dt);
 
+    if (match.phase == PaintballMatchPhase.gameOver) gameOverSeconds += dt;
+
     // Win / death poses once the match is decided.
     if (match.phase == PaintballMatchPhase.gameOver && !_endPosesApplied) {
       _endPosesApplied = true;
@@ -495,6 +579,18 @@ class PaintballGame extends FlameGame {
       playerComponent.showDeath = match.you.isEliminated;
       opponentComponent.showDeath = match.opponent.isEliminated;
     }
+
+    // Carry the aim with you while sliding (same angle from where you face).
+    _syncAimFromOffset();
+
+    // Upper-body aim poses. aimTurn > 0 turns towards the character's own left.
+    // Your aim angle: negative (screen-left) is your own left.
+    playerComponent.aimTurn = -(reticle.aimX - (_youContinuousLane - 2.0) * 0.5);
+    // The opponent looks towards your lane, measured on their own screen
+    // (from behind them, screen-left is their own left).
+    final oppFacing = PaintballK.laneToAimX(match.opponent.lane);
+    final oppTarget = PaintballK.laneToAimX(PaintballK.mirrorLane(match.you.lane));
+    opponentComponent.aimTurn = -(oppTarget - oppFacing);
 
     // 2. Refresh Camera Targets & Advance Dual-Axis Damped Springs
     _updateCameraTarget();
