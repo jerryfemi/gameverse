@@ -1,0 +1,32 @@
+{
+  "name": "paintball_env_field",
+  "refHeight": 1000,
+  "width": 3200,
+  "horizonY": 303,
+  "camera": {
+    "heightM": 3.08,
+    "focalPx": 1200,
+    "note": "Matches PaintballK layout: opponent feet 0.52h / 0.13h tall, you 0.97h / 0.40h tall."
+  },
+  "sky": {
+    "image": "paintball_env_sky.webp",
+    "y": 0
+  },
+  "ground": {
+    "image": "paintball_env_ground.webp",
+    "y": 303,
+    "note": "Rendered past the bottom edge (to 1150) so ducking never shows a gap."
+  },
+  "props": {
+    "image": "paintball_env_props.webp",
+    "y": 332,
+    "groundY": 0.465,
+    "note": "Netting, barrels, sandbags, pallets at 19-28 m."
+  },
+  "credits": [
+    "\"Fishing net (Rede de pesca)\" by Alex Martire, CC BY 4.0",
+    "\"Oil Barrel\" by _Alexandr, CC BY 4.0",
+    "\"equipment_b from FPS creator classic\" by Garbage Raccoon, CC BY 4.0",
+    "\"Old Wooden Pallet\" by Luka Feric, Sketchfab Standard licence"
+  ]
+}
