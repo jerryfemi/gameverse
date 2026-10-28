@@ -12,8 +12,11 @@ enum PaintballMatchPhase {
   /// Active duel within standard 90-second round clock.
   live,
 
-  /// Overtime sudden death: triggered if tied after 90 s. Next hit wins.
+  /// Overtime sudden death: triggered if tied after the round clock. Next hit wins.
   suddenDeath,
+
+  /// Between rounds: the "ROUND 2" banner (then the 3-2-1 countdown).
+  roundOver,
 
   /// Match concluded: 3 hits reached or sudden death settled.
   gameOver,
@@ -215,7 +218,25 @@ class PaintballPlayerState {
     }
   }
 
-  /// Resets state for a new round.
+  /// New round: position, stance, ammo and hits reset; match stats
+  /// (shots, accuracy, dodges, longest alive) carry on.
+  void resetForRound({int startLane = PaintballK.defaultStartLane}) {
+    lane = startLane;
+    stance = PaintballStance.stand;
+    ammo = PaintballK.initialAmmo;
+    hitsTaken = 0;
+    isSliding = false;
+    slideFromLane = startLane;
+    slideToLane = startLane;
+    slideTimer = 0.0;
+    isStanceChanging = false;
+    stanceChangeTimer = 0.0;
+    reloadTimer = 0.0;
+    invulnerableTimer = 0.0;
+    currentSurvivalSeconds = 0.0;
+  }
+
+  /// Resets everything for a new match.
   void reset({int startLane = PaintballK.defaultStartLane}) {
     lane = startLane;
     stance = PaintballStance.stand;
@@ -264,7 +285,39 @@ class PaintballMatchState {
   /// The opponent state (bot or remote / Worker).
   final PaintballPlayerState opponent = PaintballPlayerState();
 
+  /// Match winner (set at gameOver, decided on rounds).
   PaintballWinner? winner;
+
+  // ─── Rounds (best of 3) ───────────────────────────────────────────────────
+  int round = 1;
+  int youRounds = 0;
+  int opponentRounds = 0;
+
+  /// Who took the round that just ended (shown on the break banner).
+  PaintballWinner? roundWinner;
+
+  /// Hits landed per finished round: (you, opponent).
+  final List<(int, int)> roundHits = [];
+
+  double roundBreakRemaining = 0.0;
+
+  /// Online: wait at the break for the host's next-round start instead of
+  /// running into it on the local clock ([beginNextRound]).
+  bool holdBetweenRounds = false;
+
+  /// Bumped each time a new round begins, so the game can clear paint,
+  /// balls and poses.
+  int roundSerial = 0;
+
+  /// Total hits each player landed across the match.
+  bool get _inRound =>
+      phase == PaintballMatchPhase.live || phase == PaintballMatchPhase.suddenDeath;
+  int get youHitsLanded =>
+      roundHits.fold(0, (a, r) => a + r.$1) + (_inRound ? opponent.hitsTaken : 0);
+  int get opponentHitsLanded =>
+      roundHits.fold(0, (a, r) => a + r.$2) + (_inRound ? you.hitsTaken : 0);
+
+  bool get isFinalRound => round >= PaintballK.maxRounds;
 
   /// Starts or restarts a match.
   void startMatch({bool skipIntro = false}) {
@@ -279,9 +332,64 @@ class PaintballMatchState {
     timeRemaining = PaintballK.matchDurationSeconds.toDouble();
     suddenDeathRemaining = PaintballK.suddenDeathDurationSeconds.toDouble();
     winner = null;
+    round = 1;
+    youRounds = 0;
+    opponentRounds = 0;
+    roundWinner = null;
+    roundHits.clear();
+    roundBreakRemaining = 0.0;
+    roundSerial++;
 
     you.reset(startLane: PaintballK.defaultStartLane);
     opponent.reset(startLane: PaintballK.defaultStartLane);
+  }
+
+  /// Starts the next round now, with [countdownSeconds] of 3-2-1 left (online
+  /// passes the time until the shared start). Optional [result] lets the host
+  /// settle the round that just ended, so both sides agree on the score.
+  void beginNextRound({double countdownSeconds = 3.0, PaintballWinner? result}) {
+    if (phase == PaintballMatchPhase.gameOver) {
+      // We thought it was over; the host's verdict says another round.
+      if (result != null && result != roundWinner) _rescore(result);
+      if (phase == PaintballMatchPhase.gameOver) return;
+    } else if (phase == PaintballMatchPhase.live || phase == PaintballMatchPhase.suddenDeath) {
+      _endRound(forced: result); // the host ended it before we did
+      if (phase == PaintballMatchPhase.gameOver) return;
+    } else if (result != null && result != roundWinner) {
+      _rescore(result);
+      if (phase == PaintballMatchPhase.gameOver) return;
+    }
+    round++;
+    roundSerial++;
+    phase = PaintballMatchPhase.countdown;
+    countdownRemaining = countdownSeconds.clamp(0.3, 6.0);
+    timeRemaining = PaintballK.matchDurationSeconds.toDouble();
+    suddenDeathRemaining = PaintballK.suddenDeathDurationSeconds.toDouble();
+    you.resetForRound();
+    opponent.resetForRound();
+  }
+
+  /// Host's verdict differs from ours (a hit landed right at the buzzer).
+  void _rescore(PaintballWinner result) {
+    if (roundWinner == PaintballWinner.you) youRounds--;
+    if (roundWinner == PaintballWinner.opponent) opponentRounds--;
+    roundWinner = result;
+    if (result == PaintballWinner.you) youRounds++;
+    if (result == PaintballWinner.opponent) opponentRounds++;
+    if (phase == PaintballMatchPhase.gameOver) {
+      phase = PaintballMatchPhase.roundOver; // re-decide below
+      winner = null;
+    }
+    _maybeEndMatch();
+  }
+
+  /// Online: the host ended the match (final round) with [result].
+  void settleFinalRound(PaintballWinner result) {
+    if (phase == PaintballMatchPhase.live || phase == PaintballMatchPhase.suddenDeath) {
+      _endRound(forced: result);
+    } else if (result != roundWinner && phase != PaintballMatchPhase.gameOver) {
+      _rescore(result);
+    }
   }
 
   /// Skips the intro sequence and jumps straight to countdown.
@@ -317,19 +425,15 @@ class PaintballMatchState {
 
         // Check 3-hit win condition
         if (opponent.isEliminated || you.isEliminated) {
-          _endMatch();
+          _endRound();
           return;
         }
 
         // Timer expiration
         if (timeRemaining <= 0.0) {
           timeRemaining = 0.0;
-          if (you.hitsTaken < opponent.hitsTaken) {
-            winner = PaintballWinner.you;
-            phase = PaintballMatchPhase.gameOver;
-          } else if (opponent.hitsTaken < you.hitsTaken) {
-            winner = PaintballWinner.opponent;
-            phase = PaintballMatchPhase.gameOver;
+          if (you.hitsTaken != opponent.hitsTaken) {
+            _endRound();
           } else {
             // Tied: enter sudden death
             phase = PaintballMatchPhase.suddenDeath;
@@ -344,15 +448,20 @@ class PaintballMatchState {
 
         // Next hit wins
         if (opponent.isEliminated || you.isEliminated || you.hitsTaken != opponent.hitsTaken) {
-          _endMatch();
+          _endRound();
           return;
         }
 
         if (suddenDeathRemaining <= 0.0) {
           suddenDeathRemaining = 0.0;
-          winner = PaintballWinner.tie;
-          phase = PaintballMatchPhase.gameOver;
+          _endRound(); // tied round: nobody scores it
         }
+        return;
+
+      case PaintballMatchPhase.roundOver:
+        if (holdBetweenRounds) return; // online: the host's start drives it
+        roundBreakRemaining -= dt;
+        if (roundBreakRemaining <= 0.0) beginNextRound();
         return;
 
       case PaintballMatchPhase.gameOver:
@@ -360,14 +469,42 @@ class PaintballMatchState {
     }
   }
 
-  void _endMatch() {
-    phase = PaintballMatchPhase.gameOver;
-    if (opponent.hitsTaken > you.hitsTaken) {
-      winner = PaintballWinner.you;
-    } else if (you.hitsTaken > opponent.hitsTaken) {
-      winner = PaintballWinner.opponent;
-    } else {
-      winner = PaintballWinner.tie;
+  /// Forfeit / opponent left: the match ends now, keeping this round's hits.
+  void endByForfeit({required bool youWin}) {
+    if (phase == PaintballMatchPhase.gameOver) return;
+    if (phase == PaintballMatchPhase.live || phase == PaintballMatchPhase.suddenDeath) {
+      roundHits.add((opponent.hitsTaken, you.hitsTaken));
     }
+    winner = youWin ? PaintballWinner.you : PaintballWinner.opponent;
+    phase = PaintballMatchPhase.gameOver;
+  }
+
+  void _endRound({PaintballWinner? forced}) {
+    final w = forced ??
+        (opponent.hitsTaken > you.hitsTaken
+            ? PaintballWinner.you
+            : you.hitsTaken > opponent.hitsTaken
+                ? PaintballWinner.opponent
+                : PaintballWinner.tie);
+    roundWinner = w;
+    if (w == PaintballWinner.you) youRounds++;
+    if (w == PaintballWinner.opponent) opponentRounds++;
+    roundHits.add((opponent.hitsTaken, you.hitsTaken));
+    phase = PaintballMatchPhase.roundOver;
+    roundBreakRemaining = PaintballK.roundBreakSeconds;
+    _maybeEndMatch();
+  }
+
+  void _maybeEndMatch() {
+    final decided = youRounds >= PaintballK.roundsToWin ||
+        opponentRounds >= PaintballK.roundsToWin ||
+        round >= PaintballK.maxRounds;
+    if (!decided) return;
+    phase = PaintballMatchPhase.gameOver;
+    winner = youRounds > opponentRounds
+        ? PaintballWinner.you
+        : opponentRounds > youRounds
+            ? PaintballWinner.opponent
+            : PaintballWinner.tie;
   }
 }
