@@ -911,13 +911,16 @@ class FirestoreMatchService {
   /// Purges all ephemeral live telemetry documents (`live_shots` and `live_reactions`)
   /// for a match, ensuring no ephemeral shot or event documents linger in Firestore
   /// once a match has concluded or been forfeited across Basketball, Archery, and Darts.
-  /// Paintball (live over RTDB): records one player's result once, at the end
-  /// of the duel. [hitsLanded] (0-3) is the score. Whoever writes second marks
-  /// the match completed; completed matches are permanent history.
+  /// Paintball (live over RTDB, best of 3): records one player's result once,
+  /// at the end of the duel. The score is rounds won (0-2), so the match
+  /// outcome compares rounds, not total hits; [rounds] keeps the hits landed
+  /// each round. Whoever writes second marks the match completed; completed
+  /// matches are permanent history.
   Future<void> submitPaintballResult({
     required String matchId,
     required String uid,
-    required RoundSummaryStats stats,
+    required int roundsWon,
+    required List<RoundSummaryStats> rounds,
   }) async {
     final docRef = _matchesRef.doc(matchId.trim().toUpperCase());
     try {
@@ -937,8 +940,8 @@ class FirestoreMatchService {
           'activeTurnPlayerUid': '',
           'updatedAt': DateTime.now().millisecondsSinceEpoch,
           if (done) 'expireAt': FieldValue.delete(),
-          '$key.roundScores': [stats.score],
-          '$key.roundSummaries': [stats.toMap()],
+          '$key.roundScores': [roundsWon],
+          '$key.roundSummaries': rounds.map((r) => r.toMap()).toList(),
         });
       });
     } catch (e) {
