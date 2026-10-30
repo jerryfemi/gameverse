@@ -31,6 +31,9 @@ class ArcheryPauseMenu extends StatelessWidget {
   final VoidCallback? onCycleTrack;
   final String? credit;
 
+  /// Optional extra button shown above the main actions (e.g. darts Practice).
+  final Widget? extraAction;
+
   const ArcheryPauseMenu({
     super.key,
     required this.online,
@@ -52,6 +55,7 @@ class ArcheryPauseMenu extends StatelessWidget {
     this.trackName = 'Forest',
     this.onCycleTrack,
     this.credit,
+    this.extraAction,
   });
 
   @override
@@ -161,6 +165,11 @@ class ArcheryPauseMenu extends StatelessWidget {
                         onCycleTrack: onCycleTrack,
                       ),
                       const SizedBox(height: 20.0),
+
+                      if (extraAction != null) ...[
+                        extraAction!,
+                        const SizedBox(height: 10.0),
+                      ],
 
                       // Action Buttons: Resume / (Restart or Forfeit) / Lobby
                       PauseActionButtons(
