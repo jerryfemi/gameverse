@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show ValueNotifier;
+
 import 'package:flame/game.dart';
 
 import 'package:b_ball/darts/audio/darts_audio.dart';
@@ -68,6 +70,37 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   /// the next turn ([beginOnlineTurn]).
   bool _awaitingOnlineTurn = false;
 
+  // ─── Practice (free throws) ────────────────────────────────────────────────
+  // Entered from the pause menu in solo play. Darts score but never touch the
+  // match state, so leaving practice puts the match back exactly as it was.
+  // Nothing is saved anywhere.
+  bool _practice = false;
+  int _practiceDartsInSet = 0;
+  double _practiceClearIn = -1.0; // counts down in update(); < 0 = idle
+  final List<StuckDart> _stashedMatchDarts = [];
+
+  /// Points scored so far in the current practice set of 3.
+  final ValueNotifier<int> practiceSetPoints = ValueNotifier<int>(0);
+
+  /// Darts thrown in the current practice set (0–3).
+  final ValueNotifier<int> practiceSetDarts = ValueNotifier<int>(0);
+
+  /// Best completed set and darts thrown this practice session (not saved).
+  final ValueNotifier<int> practiceBestSet = ValueNotifier<int>(0);
+  final ValueNotifier<int> practiceTotalDarts = ValueNotifier<int>(0);
+
+  bool get isPractice => _practice;
+
+  /// Practice can start from solo play, on your throw, with nothing in flight.
+  bool get canStartPractice =>
+      online == null &&
+      !_practice &&
+      !events.isMatchOver &&
+      events.isMyTurn &&
+      !_turnTransitioning &&
+      !_isBotTurnActive &&
+      !flyingDart.isFlying;
+
   DartsGame({required this.events, this.online});
 
   @override
@@ -110,7 +143,7 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
           sy,
         ),
         playerIndex: 0,
-        onLanded: _onLocalDartLanded,
+        onLanded: _onDartLanded,
         startXm: sx,
         startYm: sy,
         handPitch: restingDart.pitch,
@@ -151,6 +184,10 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   }
 
   void _updateCheckoutGlow() {
+    if (_practice) {
+      dartboard.clearCheckoutTarget();
+      return;
+    }
     final bool canThrow =
         events.isMyTurn &&
         !events.isMatchOver &&
@@ -164,6 +201,110 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     } else {
       dartboard.clearCheckoutTarget();
     }
+  }
+
+  void _onDartLanded(DartHit hit) {
+    if (_practice) {
+      _onPracticeDartLanded(hit);
+    } else {
+      _onLocalDartLanded(hit);
+    }
+  }
+
+  // ─── Practice ──────────────────────────────────────────────────────────────
+
+  /// Switches the board to free throwing. The match darts already on the
+  /// board are put aside (not pulled) and come back on [exitPractice].
+  void enterPractice() {
+    if (!canStartPractice) return;
+    _practice = true;
+    DartsAudio.cancelTicks();
+    flickController.onPointerCancel();
+    for (final d in stuckDarts) {
+      remove(d);
+    }
+    _stashedMatchDarts
+      ..clear()
+      ..addAll(stuckDarts);
+    stuckDarts.clear();
+    _practiceDartsInSet = 0;
+    _practiceClearIn = -1.0;
+    practiceSetPoints.value = 0;
+    practiceSetDarts.value = 0;
+    practiceBestSet.value = 0;
+    practiceTotalDarts.value = 0;
+    dartboard.clearCheckoutTarget();
+    restingDart.playerIndex = 0;
+    restingDart.visible = true;
+    _setupCurrentDart();
+  }
+
+  /// Back to the match exactly where it was: practice darts are removed and
+  /// the match darts that were on the board are put back.
+  void exitPractice() {
+    if (!_practice) return;
+    _practice = false;
+    _practiceClearIn = -1.0;
+    DartsAudio.cancelTicks();
+    flickController.onPointerCancel();
+    for (final d in stuckDarts) {
+      remove(d);
+    }
+    stuckDarts.clear();
+    for (final d in _stashedMatchDarts) {
+      stuckDarts.add(d);
+      add(d);
+    }
+    _stashedMatchDarts.clear();
+    restingDart.playerIndex = 0;
+    restingDart.visible = !flyingDart.isFlying;
+    _setupCurrentDart();
+  }
+
+  void _onPracticeDartLanded(DartHit hit) {
+    // Practice was left while this dart was in the air: just hand back the dart.
+    if (!_practice) {
+      restingDart.visible = true;
+      _setupCurrentDart();
+      return;
+    }
+    dartboard.flashArea(hit);
+    _stickFlyingDart(hit);
+    if (!hit.isMiss) {
+      DartsAudio.playHit(isBull: hit.isBull);
+    } else {
+      DartsAudio.playMiss();
+    }
+    hitPopup.showHit(hit);
+    if (!hit.isMiss && !hit.isBull) DartsAudio.playScoreTicks(hit.points);
+
+    _practiceDartsInSet++;
+    practiceSetDarts.value = _practiceDartsInSet;
+    practiceSetPoints.value += hit.points;
+    practiceTotalDarts.value += 1;
+
+    if (_practiceDartsInSet >= DartsK.dartsPerTurn) {
+      if (practiceSetPoints.value > practiceBestSet.value) {
+        practiceBestSet.value = practiceSetPoints.value;
+      }
+      // Let the grouping be seen, then clear (see update()).
+      flickController.inputEnabled = false;
+      restingDart.visible = false;
+      _practiceClearIn = DartsK.turnEndPauseSec;
+    } else {
+      restingDart.visible = true;
+      _setupCurrentDart();
+    }
+  }
+
+  void _clearPracticeSet() {
+    _practiceClearIn = -1.0;
+    pullDarts();
+    _practiceDartsInSet = 0;
+    practiceSetDarts.value = 0;
+    practiceSetPoints.value = 0;
+    restingDart.visible = true;
+    _setupCurrentDart();
   }
 
   /// [launched] is false for a shot-clock timeout: the dart counts as a miss
@@ -418,6 +559,13 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
         !flyingDart.isFlying &&
         !_turnTransitioning) {
       _launchRemoteDart(_remoteQueue.removeAt(0));
+    }
+
+    // Practice: clear the board a moment after the 3rd dart lands. A field
+    // counted down here (not a Future) so pausing the game pauses it too.
+    if (_practiceClearIn >= 0.0) {
+      _practiceClearIn -= clampedDt;
+      if (_practiceClearIn <= 0.0 && _practice) _clearPracticeSet();
     }
 
     _updateCheckoutGlow();
