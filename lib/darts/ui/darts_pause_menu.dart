@@ -50,23 +50,24 @@ class DartsPauseMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A plain text link, only when it can be used (solo, on your throw).
     Widget? extra;
-    if (!online) {
-      extra = inPractice
-          ? _PracticeButton(
-              icon: Icons.sports_score_rounded,
-              label: 'BACK TO MATCH',
-              hint: 'Your match continues where you left it',
-              onTap: onExitPractice,
-            )
-          : _PracticeButton(
-              icon: Icons.gps_fixed_rounded,
-              label: 'PRACTICE THROWS',
-              hint: onPractice == null
-                  ? 'Available on your turn'
-                  : 'Free throws, unlimited darts. Your match waits.',
-              onTap: onPractice,
-            );
+    final VoidCallback? tap = inPractice ? onExitPractice : onPractice;
+    if (!online && tap != null) {
+      extra = Center(
+        child: TextButton.icon(
+          onPressed: tap,
+          style: TextButton.styleFrom(foregroundColor: _accent),
+          icon: Icon(
+            inPractice ? Icons.sports_score_rounded : Icons.gps_fixed_rounded,
+            size: 18.0,
+          ),
+          label: Text(
+            inPractice ? 'Back to match' : 'Practice mode',
+            style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w800),
+          ),
+        ),
+      );
     }
 
     return ArcheryPauseMenu(
@@ -88,75 +89,6 @@ class DartsPauseMenu extends StatelessWidget {
       accentColor: _accent,
       trackName: 'Pub Ambience',
       extraAction: extra,
-    );
-  }
-}
-
-class _PracticeButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String hint;
-  final VoidCallback? onTap;
-
-  const _PracticeButton({
-    required this.icon,
-    required this.label,
-    required this.hint,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bool enabled = onTap != null;
-    return Opacity(
-      opacity: enabled ? 1.0 : 0.45,
-      child: Material(
-        color: const Color(0xFF1E2638),
-        borderRadius: BorderRadius.circular(14.0),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14.0),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14.0),
-              border: Border.all(color: const Color(0x5938BDF8)),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: 20.0, color: const Color(0xFF38BDF8)),
-                const SizedBox(width: 12.0),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.0,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                      const SizedBox(height: 2.0),
-                      Text(
-                        hint,
-                        style: const TextStyle(
-                          color: Color(0xFF94A3B8),
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -76,7 +76,6 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   // Nothing is saved anywhere.
   bool _practice = false;
   int _practiceDartsInSet = 0;
-  double _practiceClearIn = -1.0; // counts down in update(); < 0 = idle
   final List<StuckDart> _stashedMatchDarts = [];
 
   /// Points scored so far in the current practice set of 3.
@@ -128,6 +127,13 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     };
 
     flickController.onThrow = (targetMmX, targetMmY) {
+      // Practice: throwing the 4th dart clears the last three off the board.
+      if (_practice && _practiceDartsInSet >= DartsK.dartsPerTurn) {
+        pullDarts();
+        _practiceDartsInSet = 0;
+        practiceSetDarts.value = 0;
+        practiceSetPoints.value = 0;
+      }
       DartsAudio.playThrow();
       flickController.inputEnabled = false;
 
@@ -228,7 +234,6 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
       ..addAll(stuckDarts);
     stuckDarts.clear();
     _practiceDartsInSet = 0;
-    _practiceClearIn = -1.0;
     practiceSetPoints.value = 0;
     practiceSetDarts.value = 0;
     practiceBestSet.value = 0;
@@ -244,7 +249,6 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
   void exitPractice() {
     if (!_practice) return;
     _practice = false;
-    _practiceClearIn = -1.0;
     DartsAudio.cancelTicks();
     flickController.onPointerCancel();
     for (final d in stuckDarts) {
@@ -283,26 +287,11 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
     practiceSetPoints.value += hit.points;
     practiceTotalDarts.value += 1;
 
-    if (_practiceDartsInSet >= DartsK.dartsPerTurn) {
-      if (practiceSetPoints.value > practiceBestSet.value) {
-        practiceBestSet.value = practiceSetPoints.value;
-      }
-      // Let the grouping be seen, then clear (see update()).
-      flickController.inputEnabled = false;
-      restingDart.visible = false;
-      _practiceClearIn = DartsK.turnEndPauseSec;
-    } else {
-      restingDart.visible = true;
-      _setupCurrentDart();
+    if (_practiceDartsInSet >= DartsK.dartsPerTurn &&
+        practiceSetPoints.value > practiceBestSet.value) {
+      practiceBestSet.value = practiceSetPoints.value;
     }
-  }
-
-  void _clearPracticeSet() {
-    _practiceClearIn = -1.0;
-    pullDarts();
-    _practiceDartsInSet = 0;
-    practiceSetDarts.value = 0;
-    practiceSetPoints.value = 0;
+    // Never stops: the next dart is in your hand straight away.
     restingDart.visible = true;
     _setupCurrentDart();
   }
@@ -559,13 +548,6 @@ class DartsGame extends FlameGame implements DartsOnlineGame {
         !flyingDart.isFlying &&
         !_turnTransitioning) {
       _launchRemoteDart(_remoteQueue.removeAt(0));
-    }
-
-    // Practice: clear the board a moment after the 3rd dart lands. A field
-    // counted down here (not a Future) so pausing the game pauses it too.
-    if (_practiceClearIn >= 0.0) {
-      _practiceClearIn -= clampedDt;
-      if (_practiceClearIn <= 0.0 && _practice) _clearPracticeSet();
     }
 
     _updateCheckoutGlow();
