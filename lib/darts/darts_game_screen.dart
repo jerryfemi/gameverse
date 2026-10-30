@@ -28,6 +28,7 @@ import 'package:b_ball/darts/state/darts_players.dart';
 import 'package:b_ball/darts/state/darts_rules.dart';
 import 'package:b_ball/darts/ui/darts_hud.dart';
 import 'package:b_ball/darts/ui/darts_pause_menu.dart';
+import 'package:b_ball/darts/ui/darts_practice_bar.dart';
 import 'package:b_ball/darts/ui/darts_result_card.dart';
 import 'package:b_ball/darts/ui/darts_tour.dart';
 import 'package:b_ball/darts/ui/darts_turn_banner.dart';
@@ -50,6 +51,7 @@ class DartsGameScreen extends HookConsumerWidget {
     final game = useState<DartsGame?>(null);
     final paused = useState(false);
     final showTour = useState(false);
+    final practicing = useState(false);
     final audioOwner = useRef<Object?>(null);
     final online = useRef<DartsOnlineController?>(null);
     final dartsState = ref.watch(dartsMatchProvider);
@@ -289,13 +291,17 @@ class DartsGameScreen extends HookConsumerWidget {
                     child: GameWidget(game: g),
                   ),
 
-                  // 2. Translucent Glass HUD (Remaining scores, Round, Darts Left, Live Status, Pause)
-                  DartsHud(
-                    onOpenPause: openPause,
-                    online: online.value,
-                    onPauseEngine: () => g.pauseEngine(),
-                    onResumeEngine: () => g.resumeEngine(),
-                  ),
+                  // 2. Translucent Glass HUD (Remaining scores, Round, Darts Left, Live Status, Pause).
+                  //    In practice a slim PRACTICE bar replaces it.
+                  if (practicing.value)
+                    DartsPracticeBar(game: g, onOpenPause: openPause)
+                  else
+                    DartsHud(
+                      onOpenPause: openPause,
+                      online: online.value,
+                      onPauseEngine: () => g.pauseEngine(),
+                      onResumeEngine: () => g.resumeEngine(),
+                    ),
 
                   // 3. Quick Lobby Navigation Pill under Top Bar (hidden during modals)
                   if (!isModalActive)
@@ -348,9 +354,10 @@ class DartsGameScreen extends HookConsumerWidget {
                     ),
 
                   // 4. Turn Banner Overlay (YOUR TURN / BOT'S TURN / LAST CHANCE)
-                  const Positioned.fill(
-                    child: DartsTurnBanner(),
-                  ),
+                  if (!practicing.value)
+                    const Positioned.fill(
+                      child: DartsTurnBanner(),
+                    ),
 
                   // 5. Match Result Card (Victory / Defeat / Draw with Rematch)
                   Positioned.fill(
@@ -382,15 +389,36 @@ class DartsGameScreen extends HookConsumerWidget {
                     Positioned.fill(
                       child: DartsPauseMenu(
                         online: isOnline,
-                        subtitle: isOnline
-                            ? '1v1 vs ${dartsPlayers.opponent.name} · round ${dartsState.round}'
-                            : 'Solo · 301 countdown',
-                        stat1Label: 'REMAINING',
-                        stat1Value: '${dartsState.yourRemaining}',
-                        stat2Label: 'ROUND',
-                        stat2Value: '${dartsState.round} of 20',
-                        stat3Label: 'DARTS',
-                        stat3Value: '${3 - dartsState.turnDarts.length} left',
+                        subtitle: practicing.value
+                            ? 'Practice · free throws, nothing is saved'
+                            : isOnline
+                                ? '1v1 vs ${dartsPlayers.opponent.name} · round ${dartsState.round}'
+                                : 'Solo · 301 countdown',
+                        stat1Label: practicing.value ? 'THIS SET' : 'REMAINING',
+                        stat1Value: practicing.value
+                            ? '${g.practiceSetPoints.value}'
+                            : '${dartsState.yourRemaining}',
+                        stat2Label: practicing.value ? 'BEST SET' : 'ROUND',
+                        stat2Value: practicing.value
+                            ? '${g.practiceBestSet.value}'
+                            : '${dartsState.round} of 20',
+                        stat3Label: practicing.value ? 'THROWN' : 'DARTS',
+                        stat3Value: practicing.value
+                            ? '${g.practiceTotalDarts.value}'
+                            : '${3 - dartsState.turnDarts.length} left',
+                        inPractice: practicing.value,
+                        onPractice: !isOnline && g.canStartPractice
+                            ? () {
+                                g.enterPractice();
+                                practicing.value = true;
+                                resume();
+                              }
+                            : null,
+                        onExitPractice: () {
+                          g.exitPractice();
+                          practicing.value = false;
+                          resume();
+                        },
                         onResume: resume,
                         onHowToPlay: () {
                           paused.value = false;
