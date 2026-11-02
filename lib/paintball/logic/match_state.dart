@@ -1,5 +1,6 @@
 import 'package:b_ball/paintball/paintball_constants.dart';
 import 'package:b_ball/paintball/logic/hit_resolver.dart';
+import 'package:b_ball/services/stats_service.dart';
 
 /// Current stage of a paintball duel.
 enum PaintballMatchPhase {
@@ -500,6 +501,10 @@ class PaintballMatchState {
         opponentRounds >= PaintballK.roundsToWin ||
         round >= PaintballK.maxRounds;
     if (!decided) return;
+    // Admin dashboard: a finished match vs bots counts as a solo round.
+    if (phase != PaintballMatchPhase.gameOver && !holdBetweenRounds) {
+      StatsService.instance.soloRoundFinished();
+    }
     phase = PaintballMatchPhase.gameOver;
     winner = youRounds > opponentRounds
         ? PaintballWinner.you
