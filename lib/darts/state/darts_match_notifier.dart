@@ -6,6 +6,7 @@ import 'package:b_ball/darts/physics/dart_scoring.dart';
 import 'package:b_ball/darts/state/darts_bot.dart';
 import 'package:b_ball/darts/state/darts_match_state.dart';
 import 'package:b_ball/darts/state/darts_rules.dart';
+import 'package:b_ball/services/stats_service.dart';
 
 /// Events and state access required by the Flame game and UI layers.
 abstract interface class DartsGameEvents {
@@ -227,6 +228,9 @@ class DartsMatchNotifier extends Notifier<DartsMatchState>
     );
 
     if (over) {
+      if (!state.online) {
+        StatsService.instance.soloRoundFinished();
+      }
       state = state.copyWith(
         theirTurns: newTheirTurns,
         theirLastDarts: theirLastDarts,
