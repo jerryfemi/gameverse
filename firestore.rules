@@ -12,6 +12,23 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Today's UTC date as 'yyyy-MM-dd' (matches StatsService.todayKey()).
+    function pad2(n) {
+      return n < 10 ? '0' + string(n) : string(n);
+    }
+    function todayKey() {
+      return string(request.time.year()) + '-' + pad2(request.time.month()) +
+        '-' + pad2(request.time.day());
+    }
+
+    // Admin dashboard: the one Google account allowed to read the stats.
+    // TODO: replace with your real Google email before deploying.
+    function isAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email == 'jeremiaholuwafemi16@gmail.com' &&
+        request.auth.token.email_verified == true;
+    }
+
     // User profile documents
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -89,6 +106,63 @@ service cloud.firestore {
     }
 
     // Match documents keyed by 6-character joinCode
+    // ── Admin dashboard stats ──────────────────────────────────────────
+    // Each player's last active day: they may only write their own, and the
+    // day they write must be today (UTC), so it can't be replayed.
+    match /user_activity/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow create, update: if isUser(userId) &&
+        request.resource.data.keys().hasOnly(['lastActiveDay', 'firstSeenDay']) &&
+        request.resource.data.lastActiveDay == todayKey();
+      allow delete: if false;
+    }
+
+    // Daily counters. Players can only add exactly 1 to known counters.
+    // activePlayers may only go up in the same batch that moves the
+    // player's own user_activity day to this day for the first time, so
+    // each player counts once per day.
+    match /stats_daily/{day} {
+      function counters() {
+        return ['activePlayers', 'newPlayers', 'matchesStarted',
+                'matchesCompleted', 'matchesForfeited', 'soloRounds'];
+      }
+      function prev(field) {
+        return resource == null ? 0 : resource.data.get(field, 0);
+      }
+      function next(field) {
+        return request.resource.data.get(field, 0);
+      }
+      function bumpedByOneOrUnchanged(field) {
+        return next(field) == prev(field) || next(field) == prev(field) + 1;
+      }
+      function changed() {
+        return resource == null
+          ? request.resource.data.keys()
+          : request.resource.data.diff(resource.data).affectedKeys();
+      }
+      function activityMovedToToday() {
+        return getAfter(/databases/$(database)/documents/user_activity/$(request.auth.uid)).data.lastActiveDay == day &&
+          (!exists(/databases/$(database)/documents/user_activity/$(request.auth.uid)) ||
+            get(/databases/$(database)/documents/user_activity/$(request.auth.uid)).data.lastActiveDay != day);
+      }
+
+      allow read: if isAdmin();
+      allow create, update: if isAuthenticated() &&
+        day == todayKey() &&
+        changed().hasOnly(counters().concat(['updatedAt'])) &&
+        request.resource.data.updatedAt == request.time &&
+        bumpedByOneOrUnchanged('activePlayers') &&
+        bumpedByOneOrUnchanged('newPlayers') &&
+        bumpedByOneOrUnchanged('matchesStarted') &&
+        bumpedByOneOrUnchanged('matchesCompleted') &&
+        bumpedByOneOrUnchanged('matchesForfeited') &&
+        bumpedByOneOrUnchanged('soloRounds') &&
+        ((next('activePlayers') == prev('activePlayers') &&
+          next('newPlayers') == prev('newPlayers')) ||
+         activityMovedToToday());
+      allow delete: if false;
+    }
+
     match /matches/{matchId} {
 
       function isParticipant() {
