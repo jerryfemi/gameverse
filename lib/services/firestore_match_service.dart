@@ -15,6 +15,7 @@ import 'package:b_ball/models/live_reaction_event.dart';
 import 'package:b_ball/models/match_invite.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/friends_service.dart';
+import 'package:b_ball/services/stats_service.dart';
 import 'package:b_ball/services/update/update_platform.dart';
 
 /// Exception thrown when no match document exists for the requested join code.
@@ -330,7 +331,7 @@ class FirestoreMatchService {
     final cleanCode = joinCode.trim().toUpperCase();
     final docRef = _matchesRef.doc(cleanCode);
 
-    return await _firestore.runTransaction<CloudMatch>((transaction) async {
+    final joined = await _firestore.runTransaction<CloudMatch>((transaction) async {
       final snapshot = await transaction.get(docRef);
 
       if (!snapshot.exists) {
@@ -391,6 +392,8 @@ class FirestoreMatchService {
         updatedAt: now,
       );
     });
+    StatsService.instance.matchStarted();
+    return joined;
   }
 
   /// Dispatches a real-time match challenge to [friend]'s incoming invites subcollection.
@@ -666,6 +669,7 @@ class FirestoreMatchService {
 
     if (matchConcluding) {
       unawaited(purgeMatchTelemetry(matchId));
+      StatsService.instance.matchCompleted();
     }
 
     // Write optional chat message to lightweight subcollection (outside transaction for efficiency)
@@ -814,6 +818,7 @@ class FirestoreMatchService {
           'expireAt': FieldValue.delete(),
         });
         unawaited(purgeMatchTelemetry(clean));
+        StatsService.instance.matchForfeited();
       }
       _cachedUserMatches.forEach((key, list) {
         list.removeWhere((m) => m.id == clean);
@@ -865,6 +870,7 @@ class FirestoreMatchService {
         'expireAt': FieldValue.delete(),
       });
       unawaited(purgeMatchTelemetry(clean));
+      StatsService.instance.matchForfeited();
       debugPrint('[FirestoreMatchService] Forfeit victory claimed for $clean by $winnerUid');
     } catch (e) {
       debugPrint('[FirestoreMatchService] Error claiming forfeit victory for $clean: $e');
@@ -900,6 +906,7 @@ class FirestoreMatchService {
         'expireAt': FieldValue.delete(),
       });
       unawaited(purgeMatchTelemetry(clean));
+      StatsService.instance.matchForfeited();
       debugPrint(
         '[FirestoreMatchService] Match $clean forfeited by $forfeiterUid; winner: $winnerUid',
       );
@@ -923,6 +930,7 @@ class FirestoreMatchService {
     required List<RoundSummaryStats> rounds,
   }) async {
     final docRef = _matchesRef.doc(matchId.trim().toUpperCase());
+    var concluded = false;
     try {
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(docRef);
@@ -943,7 +951,9 @@ class FirestoreMatchService {
           '$key.roundScores': [roundsWon],
           '$key.roundSummaries': rounds.map((r) => r.toMap()).toList(),
         });
+        if (done) concluded = true;
       });
+      if (concluded) StatsService.instance.matchCompleted();
     } catch (e) {
       debugPrint('[FirestoreMatchService] Paintball result for $matchId failed: $e');
     }
@@ -1530,6 +1540,7 @@ extension ArcheryMatchService on FirestoreMatchService {
 
     if (matchConcluding) {
       unawaited(purgeMatchTelemetry(matchId));
+      StatsService.instance.matchCompleted();
     }
   }
 }
@@ -1729,6 +1740,7 @@ extension DartsMatchService on FirestoreMatchService {
 
     if (matchConcluding) {
       unawaited(purgeMatchTelemetry(matchId));
+      StatsService.instance.matchCompleted();
     }
   }
 }
