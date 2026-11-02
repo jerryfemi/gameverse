@@ -5,6 +5,7 @@ import 'package:b_ball/archery/camera/camera_rig.dart';
 import 'package:b_ball/archery/physics/target_scoring.dart';
 import 'package:b_ball/archery/state/archery_match_state.dart';
 import 'package:b_ball/archery/state/archery_rules.dart';
+import 'package:b_ball/services/stats_service.dart';
 
 /// What the Flame game needs from the match: the seed and arrow position for
 /// deterministic wind/sway, and somewhere to report events.
@@ -116,6 +117,9 @@ class ArcheryMatchNotifier extends Notifier<ArcheryMatchState>
       setOver: true,
       matchOver: ArcheryRules.isMatchOver(you, them),
     );
+    if (ArcheryRules.isMatchOver(you, them) && !state.online) {
+      StatsService.instance.soloRoundFinished();
+    }
     return true;
   }
 
