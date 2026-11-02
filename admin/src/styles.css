@@ -107,6 +107,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 0; color: var(--text); }
 .live-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .live-item:last-child { border-bottom: 0; }
 .live-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.live-value.active-val { color: var(--sky); }
+.live-value.completed-val { color: var(--cyan); }
+.live-value.forfeited-val { color: var(--amber); }
 .foot { margin-top: 18px; }
 
 /* ── Loading ────────────────────────────────────────── */
