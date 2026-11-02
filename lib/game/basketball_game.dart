@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:b_ball/models/cloud_match.dart';
 import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/services/firestore_match_service.dart';
+import 'package:b_ball/services/stats_service.dart';
 import 'package:b_ball/services/update/update_platform.dart';
 import 'package:b_ball/services/vatar/vatar_bridge.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
@@ -812,6 +813,7 @@ class BasketballGame extends Forge2DGame {
     } else {
       gameStateNotifier.value = GameModeState.gameOver;
       _compileStats();
+      StatsService.instance.soloRoundFinished();
     }
   }
 
