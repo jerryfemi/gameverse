@@ -142,20 +142,16 @@ function LiveNow() {
   const load = useCallback(async () => {
     try {
       const m = collection(db, 'matches');
-      const [players, waiting, active, completed, forfeited] = await Promise.all([
+      const [players, waiting, active] = await Promise.all([
         getCountFromServer(collection(db, 'users')),
         getCountFromServer(query(m, where('status', '==', 'waitingForOpponent'))),
         getCountFromServer(query(m, where('status', '==', 'active'))),
-        getCountFromServer(query(m, where('status', '==', 'completed'))),
-        getCountFromServer(query(m, where('status', '==', 'forfeited'))),
       ]);
       setState({
         loading: false,
         players: players.data().count,
         waiting: waiting.data().count,
         active: active.data().count,
-        completed: completed.data().count,
-        forfeited: forfeited.data().count,
         at: new Date(),
       });
     } catch (e) {
@@ -170,7 +166,7 @@ function LiveNow() {
 
   return (
     <Card
-      title="Live overview"
+      title="Right now"
       right={state.at && <span className="muted">Updated {state.at.toLocaleTimeString()}</span>}
     >
       {state.error ? (
@@ -178,19 +174,13 @@ function LiveNow() {
       ) : (
         <div className="live">
           {[
-            ['Total players', state.players, ''],
-            ['Open waiting rooms', state.waiting, ''],
-            ['Active matches', state.active, 'active-val'],
-            ['Completed matches', state.completed, 'completed-val'],
-            ['Forfeited matches', state.forfeited, 'forfeited-val'],
-          ].map(([l, v, cls]) => (
+            ['Total players', state.players],
+            ['Open waiting rooms', state.waiting],
+            ['Active matches', state.active],
+          ].map(([l, v]) => (
             <div key={l} className="live-item">
               <span className="tile-label">{l}</span>
-              {state.loading ? (
-                <span className="skeleton" />
-              ) : (
-                <span className={`live-value ${cls}`}>{v}</span>
-              )}
+              {state.loading ? <span className="skeleton" /> : <span className="live-value">{v}</span>}
             </div>
           ))}
         </div>
