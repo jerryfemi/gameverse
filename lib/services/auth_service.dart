@@ -11,6 +11,7 @@ import 'package:b_ball/firebase_options.dart';
 import 'package:b_ball/models/player_descriptor.dart';
 import 'package:b_ball/services/friends_service.dart';
 import 'package:b_ball/services/vatar/vatar_bridge.dart';
+import 'package:b_ball/services/stats_service.dart';
 
 /// Exception thrown when an online feature is attempted without valid Firebase authentication.
 class AuthRequiredException implements Exception {
@@ -288,6 +289,8 @@ class AuthService {
           activeUid = user.uid;
           isAnon = user.isAnonymous;
           isVerified = true;
+          // Admin dashboard: count this player once per day (fire-and-forget).
+          unawaited(StatsService.instance.markActiveToday(user));
 
           // If the user signed in with Google, use their Google display name
           if (user.displayName != null && user.displayName!.isNotEmpty && user.displayName != 'Baller') {
