@@ -10,6 +10,9 @@ class TeamStats {
   int offsides = 0;
   int saves = 0;
 
+  /// Passes that found a disc playing a part in a combination pattern.
+  int patternRuns = 0;
+
   /// 0..100, rounded.
   int passAccuracy() =>
       passesTried == 0 ? 0 : (passesCompleted * 100 / passesTried).round();
