@@ -19,21 +19,22 @@ abstract final class T {
   static const double discRadius = 0.7;
   static const double ballRadius = 0.3;
 
+  // Playtest 2: "too fast" — speeds and accel cut by about 25%.
   // ── Disc movement ─────────────────────────────────────────────────────
-  static const double runSpeed = 5.0;
-  static const double sprintSpeed = 7.0;
+  static const double runSpeed = 3.8;
+  static const double sprintSpeed = 5.4;
 
   /// Carrying the ball at normal pace.
-  static const double carrySpeed = 4.4;
+  static const double carrySpeed = 3.4;
 
   /// Carrying the ball while holding DASH (heavy touches).
-  static const double carryDashSpeed = 6.4;
+  static const double carryDashSpeed = 4.9;
 
   /// How fast a disc can change velocity (m/s²). Higher = snappier turns.
-  static const double accel = 18.0;
+  static const double accel = 12.0;
 
   /// Lower accel while dashing with the ball = wider turning circle.
-  static const double accelDashCarry = 8.0;
+  static const double accelDashCarry = 6.0;
 
   /// Distance at which a disc starts slowing down for its target.
   static const double arriveRadius = 1.6;
@@ -104,12 +105,12 @@ abstract final class T {
   static const double deflectKeep = 0.85;
   static const double deflectMaxDeg = 8.0;
 
-  static const double pickupCooldownAfterPass = 0.25;
+  static const double pickupCooldownAfterPass = 0.35;
   static const double pickupCooldownAfterTouch = 0.18;
 
   // ── Passing ───────────────────────────────────────────────────────────
   static const double passMinSpeed = 6.0;
-  static const double passMaxSpeed = 22.0;
+  static const double passMaxSpeed = 19.0;
 
   /// Extra roll-on distance so a pass arrives with some pace.
   static const double passArriveExtra = 1.5;
