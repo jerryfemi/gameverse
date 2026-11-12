@@ -13,7 +13,7 @@ class BoardGeometry {
   late final double scale;
   late final Offset origin;
 
-  static const double margin = 2.0; // metres of board around the lines
+  static const double margin = 3.2; // board around the lines (room for labels)
 
   BoardGeometry(this.mode, this.size) {
     final w = mode.length + margin * 2;
@@ -94,6 +94,42 @@ abstract final class BoardPaint {
         _chalk,
       );
     }
+  }
+
+  /// "YOUR GOAL" / "THEIR GOAL" by the goals and "ATTACKING →" under the
+  /// pitch, so there's never a doubt which way the team plays. Menu boards
+  /// always show your team attacking to the right.
+  static void directionLabels(Canvas c, BoardGeometry g) {
+    final hl = g.mode.halfLength;
+    final hw = g.mode.halfWidth;
+    final size = (g.px(1.15)).clamp(9.0, 13.0).toDouble();
+    final yours = _caption('YOUR GOAL', size, const Color(0xB3E8F0EA));
+    final theirs = _caption('THEIR GOAL', size, const Color(0xB3F59E0B));
+    final attack = _caption('ATTACKING  →', size, TikiPalette.cyan);
+    final top = g.at(0, -hw - 0.5).dy - yours.height - 2;
+    yours.paint(c, Offset(g.at(-hl, 0).dx, top));
+    theirs.paint(c, Offset(g.at(hl, 0).dx - theirs.width, top));
+    final under = g.at(0, hw + 0.5).dy + 2;
+    attack.paint(c, Offset(g.at(0, 0).dx - attack.width / 2, under));
+  }
+
+  static TextPainter _caption(String text, double size, Color color) {
+    final key = 'cap|$text|$size';
+    return _labels.putIfAbsent(key, () {
+      return TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(
+            fontFamily: 'Archivo',
+            fontWeight: FontWeight.w800,
+            fontSize: size,
+            letterSpacing: 1.4,
+            color: color,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+    });
   }
 
   /// A magnet disc with a number. [ours] = bone, else amber.
