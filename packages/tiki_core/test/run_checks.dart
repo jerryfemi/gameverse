@@ -6,6 +6,7 @@ import 'harness.dart';
 import 'offside_checks.dart';
 import 'passing_checks.dart';
 import 'restarts_checks.dart';
+import 'tactics_checks.dart';
 
 /// Runs every engine check. From packages/tiki_core:
 ///
@@ -19,6 +20,8 @@ void main() {
   restartsChecks();
   print('Offside');
   offsideChecks();
+  print('Tactics, shape, patterns');
+  tacticsChecks();
   print('Full matches (bots)');
   fullMatchChecks();
   exitCode = report() == 0 ? 0 : 1;
