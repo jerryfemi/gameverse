@@ -6,7 +6,10 @@ import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/model/side.dart';
 import 'package:tiki_core/sim/match_setup.dart';
 import 'package:tiki_core/sim/match_sim.dart';
+import 'package:tiki_core/tactics/formation.dart';
 import 'package:tiki_core/tactics/formations.dart';
+import 'package:tiki_core/tactics/presets.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
 /// Runs one whole match tick, in this order:
 ///
@@ -24,8 +27,8 @@ class MatchRunner {
   final TeamController awayController;
   final SwitchSelector _homeSwitch = SwitchSelector();
   final SwitchSelector _awaySwitch = SwitchSelector();
-  final TeamBrain _homeBrain = TeamBrain(Side.home);
-  final TeamBrain _awayBrain = TeamBrain(Side.away);
+  final TeamBrain homeBrain = TeamBrain(Side.home);
+  final TeamBrain awayBrain = TeamBrain(Side.away);
 
   MatchRunner._(this.state, this.sim, this.homeController, this.awayController);
 
@@ -33,13 +36,18 @@ class MatchRunner {
     required GameMode mode,
     required TeamController home,
     required TeamController away,
+    Formation? homeFormation,
+    Formation? awayFormation,
+    TeamPlan homePlan = Presets.balanced,
+    TeamPlan awayPlan = Presets.balanced,
     int seed = 1,
   }) {
-    final formation = Formations.defaultFor(mode);
     final state = MatchSetup.create(
       mode: mode,
-      homeFormation: formation,
-      awayFormation: formation,
+      homeFormation: homeFormation ?? Formations.defaultFor(mode),
+      awayFormation: awayFormation ?? Formations.defaultFor(mode),
+      homePlan: homePlan,
+      awayPlan: awayPlan,
     );
     final sim = MatchSim(state, seed: seed);
     return MatchRunner._(state, sim, home, away);
@@ -51,8 +59,8 @@ class MatchRunner {
       awayController.fill(state, state.away, dt);
       _homeSwitch.update(state, state.home, dt);
       _awaySwitch.update(state, state.away, dt);
-      _homeBrain.update(state, dt);
-      _awayBrain.update(state, dt);
+      homeBrain.update(state, dt);
+      awayBrain.update(state, dt);
     }
     sim.step(dt);
   }
