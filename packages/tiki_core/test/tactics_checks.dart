@@ -5,11 +5,13 @@ import 'package:tiki_core/brain/phase.dart';
 import 'package:tiki_core/core/vec2.dart';
 import 'package:tiki_core/model/game_mode.dart';
 import 'package:tiki_core/model/side.dart';
+import 'package:tiki_core/preview/plan_preview.dart';
 import 'package:tiki_core/sim/match_setup.dart';
 import 'package:tiki_core/sim/rules/ball_control.dart';
 import 'package:tiki_core/tactics/formations.dart';
 import 'package:tiki_core/tactics/position.dart';
 import 'package:tiki_core/tactics/presets.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
 import 'harness.dart';
 
@@ -71,5 +73,55 @@ void tacticsChecks() {
     final c = director.candidateFor(fullBack);
     expectThat(c != null, 'full back has an overlap move');
     expectThat(c!.x > carrier.pos.x, 'overlap run goes past the carrier');
+  });
+
+  check('game plan previews work for every style and moment', () {
+    for (final mode in GameMode.values) {
+      for (final plan in Presets.all) {
+        for (final m in PreviewMoment.values) {
+          final scene = PlanPreview.build(
+            mode: mode,
+            formation: Formations.defaultFor(mode),
+            plan: plan,
+            moment: m,
+          );
+          expectEqual(scene.discs.length, mode.teamSize * 2, 'disc count');
+          for (final d in scene.discs) {
+            expectThat(d.x.isFinite && d.tx.isFinite, '${plan.name} ${m.label}');
+          }
+        }
+      }
+    }
+  });
+
+  check('counter-press sends more players at the ball than dropping off', () {
+    int chasers(TeamPlan plan) {
+      final scene = PlanPreview.build(
+        mode: GameMode.sevenASide,
+        formation: Formations.sevenA231,
+        plan: plan,
+        moment: PreviewMoment.losingPossession,
+      );
+      var n = 0;
+      for (final d in scene.discs) {
+        if (!d.ours) continue;
+        final before = (d.x - scene.ballX).abs() + (d.y - scene.ballY).abs();
+        final after = (d.tx - scene.ballX).abs() + (d.ty - scene.ballY).abs();
+        if (after < before - 2.0) n++;
+      }
+      return n;
+    }
+
+    final press = chasers(Presets.gegenpress);
+    final drop = chasers(Presets.lowBlock);
+    expectThat(press > drop, 'gegenpress $press vs low block $drop');
+  });
+
+  check('a plan survives saving and loading', () {
+    final p = Presets.gegenpress.copyWith(name: 'Custom', width: 0.3);
+    final back = TeamPlan.fromJson(p.toJson());
+    expectEqual(back.attack, p.attack, 'attack');
+    expectEqual(back.width, 0.3, 'width');
+    expectEqual(back.name, 'Custom', 'name');
   });
 }
