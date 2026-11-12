@@ -2,9 +2,6 @@ import 'dart:ui';
 
 import 'package:flame/game.dart';
 
-import 'package:b_ball/tiki_counter/control/human_input.dart';
-import 'package:b_ball/tiki_counter/core/tunables.dart';
-import 'package:b_ball/tiki_counter/model/team_state.dart';
 import 'package:b_ball/tiki_counter/render/components/ball_component.dart';
 import 'package:b_ball/tiki_counter/render/components/cursor_component.dart';
 import 'package:b_ball/tiki_counter/render/components/debug_component.dart';
@@ -12,8 +9,12 @@ import 'package:b_ball/tiki_counter/render/components/discs_component.dart';
 import 'package:b_ball/tiki_counter/render/components/pitch_component.dart';
 import 'package:b_ball/tiki_counter/render/hud_model.dart';
 import 'package:b_ball/tiki_counter/render/pitch_view.dart';
-import 'package:b_ball/tiki_counter/runner/match_runner.dart';
+import 'package:b_ball/tiki_counter/render/tiki_sounds.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/control/human_input.dart';
+import 'package:tiki_core/core/tunables.dart';
+import 'package:tiki_core/model/team_state.dart';
+import 'package:tiki_core/runner/match_runner.dart';
 
 /// The Flame side of Tiki Counter: a fixed-step loop around [MatchRunner]
 /// plus the components that draw it. It never changes the match itself.
@@ -30,6 +31,7 @@ class TikiFlameGame extends FlameGame {
   final bool humanPlays;
 
   final PitchView view = PitchView();
+  final TikiSounds _sounds = TikiSounds();
   bool showDebug = false;
   double _acc = 0.0;
 
@@ -75,6 +77,7 @@ class TikiFlameGame extends FlameGame {
       runner.step(T.fixedDt);
       _acc -= T.fixedDt;
       hud.onEvents(runner.state.events);
+      _sounds.onEvents(runner.state);
     }
     hud.refresh(runner.state);
   }

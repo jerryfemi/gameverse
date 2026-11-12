@@ -2,9 +2,9 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
-import 'package:b_ball/tiki_counter/core/tunables.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/core/tunables.dart';
 
 /// The white pellet. In the air it rises, grows a little, and leaves its
 /// shadow on the grass so you can read lobs.

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/control/human_input.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/control/human_input.dart';
 
 /// Joystick that appears where your thumb lands (left side of the screen).
 /// Writes a −1..1 direction into [HumanInput.stickX]/[HumanInput.stickY].

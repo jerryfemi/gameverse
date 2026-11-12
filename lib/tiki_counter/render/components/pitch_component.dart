@@ -2,10 +2,10 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
-import 'package:b_ball/tiki_counter/model/game_mode.dart';
 import 'package:b_ball/tiki_counter/render/pitch_view.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/model/game_mode.dart';
 
 /// The board and chalk lines. They never change during a match, so they're
 /// recorded once into a [Picture] and replayed every frame (re-recorded

@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:b_ball/tiki_counter/model/match_event.dart';
-import 'package:b_ball/tiki_counter/model/match_state.dart';
-import 'package:b_ball/tiki_counter/model/side.dart';
+import 'package:tiki_core/model/match_event.dart';
+import 'package:tiki_core/model/match_state.dart';
+import 'package:tiki_core/model/side.dart';
 
 /// What the Flutter HUD shows. Immutable; compared by value so widgets
 /// only rebuild when something visible changed (not 60 times a second).

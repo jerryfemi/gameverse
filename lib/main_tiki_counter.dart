@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:b_ball/game/audio/audio_engine.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_counter_screen.dart';
 
@@ -10,6 +13,7 @@ import 'package:b_ball/tiki_counter/ui/tiki_counter_screen.dart';
 ///   flutter run -d chrome -t lib/main_tiki_counter.dart
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(AudioEngine.init());
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
@@ -22,14 +26,20 @@ class TikiCounterDevApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Tiki Counter',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: TikiPalette.background,
+    // Browsers only allow sound after a user gesture.
+    return Listener(
+      onPointerDown: (_) => AudioEngine.unlockAudio(),
+      onPointerUp: (_) => AudioEngine.unlockAudio(),
+      behavior: HitTestBehavior.translucent,
+      child: MaterialApp(
+        title: 'Tiki Counter',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: TikiPalette.background,
+        ),
+        home: const TikiCounterScreen(),
       ),
-      home: const TikiCounterScreen(),
     );
   }
 }

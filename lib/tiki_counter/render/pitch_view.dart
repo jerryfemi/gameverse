@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:b_ball/tiki_counter/model/game_mode.dart';
+import 'package:tiki_core/model/game_mode.dart';
 
 /// Converts pitch metres to screen pixels.
 ///

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/model/match_state.dart';
-import 'package:b_ball/tiki_counter/model/match_stats.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
+import 'package:tiki_core/model/match_state.dart';
+import 'package:tiki_core/model/match_stats.dart';
 
 /// Home vs away numbers for the half-time and full-time cards.
 class StatsTable extends StatelessWidget {

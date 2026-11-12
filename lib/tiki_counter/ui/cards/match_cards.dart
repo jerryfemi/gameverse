@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/model/match_state.dart';
 import 'package:b_ball/tiki_counter/ui/cards/card_frame.dart';
 import 'package:b_ball/tiki_counter/ui/cards/stats_table.dart';
+import 'package:tiki_core/model/match_state.dart';
 
 /// Half-time: stats, then the second half.
 /// (Milestone 8 adds the quick tactics changes here.)

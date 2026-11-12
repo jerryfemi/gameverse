@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/control/human_input.dart';
-import 'package:b_ball/tiki_counter/model/intent.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/controls/action_button.dart';
 import 'package:b_ball/tiki_counter/ui/controls/switch_pad.dart';
+import 'package:tiki_core/control/human_input.dart';
+import 'package:tiki_core/model/intent.dart';
 
 /// Right-hand buttons. Same five positions in attack and defence; only the
 /// labels change with possession (eFootball layout):

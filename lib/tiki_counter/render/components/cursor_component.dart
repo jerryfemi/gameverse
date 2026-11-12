@@ -2,12 +2,12 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 
-import 'package:b_ball/tiki_counter/core/tunables.dart';
-import 'package:b_ball/tiki_counter/model/disc.dart';
-import 'package:b_ball/tiki_counter/model/team_state.dart';
 import 'package:b_ball/tiki_counter/render/pitch_view.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/core/tunables.dart';
+import 'package:tiki_core/model/disc.dart';
+import 'package:tiki_core/model/team_state.dart';
 
 /// Markers for the player's team (eFootball style):
 /// - cyan ring + triangle over the disc you control,

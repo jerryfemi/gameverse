@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/model/game_mode.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/cards/card_frame.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
+import 'package:tiki_core/model/game_mode.dart';
 
 typedef StartMatch = void Function(GameMode mode, {required bool watch});
 
@@ -55,10 +55,17 @@ class StartCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Joystick: move · PASS / THROUGH / LOB / SHOOT: hold for power, '
-            'release to kick, aim with the joystick · DASH with the ball '
-            'is faster but your touches get heavy · PRESS closes down · '
+            'Touch: joystick to move · PASS / THROUGH / LOB / SHOOT: hold for '
+            'power, release to kick, aim with the joystick · DASH with the '
+            'ball is faster but your touches get heavy · PRESS closes down · '
             'SWITCH: tap or swipe.',
+            style: TikiText.body(size: 11, color: TikiPalette.slate),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Keyboard: WASD / arrows move · J pass · K through · L shoot · '
+            'U lob (hold for power) · Space dash / press · defending: '
+            'J tackle · K switch · L 2nd man · Esc pause.',
             style: TikiText.body(size: 11, color: TikiPalette.slate),
           ),
           const SizedBox(height: 12),

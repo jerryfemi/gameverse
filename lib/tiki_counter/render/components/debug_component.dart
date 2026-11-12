@@ -1,10 +1,8 @@
-import 'dart:ui' hide TextStyle;
-
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart';
 
-import 'package:b_ball/tiki_counter/core/tunables.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
+import 'package:tiki_core/core/tunables.dart';
 
 /// Debug view (toggle with the DBG pill): for every disc the brain steers,
 /// a line to its target and the name of its current job. This is how you

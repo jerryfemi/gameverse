@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:b_ball/tiki_counter/model/intent.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
+import 'package:tiki_core/model/intent.dart';
 
 /// SWITCH: tap = jump to the suggested player (grey triangle);
 /// swipe up/down/left/right = the teammate in that direction.

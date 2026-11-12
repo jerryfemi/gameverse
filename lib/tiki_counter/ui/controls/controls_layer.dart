@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/control/human_input.dart';
 import 'package:b_ball/tiki_counter/ui/controls/control_cluster.dart';
 import 'package:b_ball/tiki_counter/ui/controls/floating_joystick.dart';
+import 'package:tiki_core/control/human_input.dart';
 
 /// Touch controls over the board: joystick area on the left, buttons on
 /// the right. Lets go of every input when it disappears (half-time, pause).

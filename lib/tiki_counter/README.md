@@ -16,9 +16,14 @@ flutter run -d chrome -t lib/main_tiki_counter.dart
 flutter run -d chrome
 
 # Checks
-flutter analyze lib/tiki_counter test/tiki_counter
-flutter test test/tiki_counter
+flutter analyze lib/tiki_counter packages/tiki_core
+cd packages/tiki_core
+dart run test/run_checks.dart      # engine checks, nothing to download
 ```
+
+Desktop: play with the keyboard (WASD/arrows, J pass, K through, L shoot,
+U lob, Space dash/press; defending J tackle, K switch, L 2nd man, Esc pause).
+The touch buttons hide once you press a key and come back on a touch.
 
 Tap **DBG** (top right) during a match to see every disc's target and job.
 
@@ -31,27 +36,39 @@ Tap **DBG** (top right) during a match to see every disc's target and job.
 | 2 | Interceptions, tackles, loose balls, throw-ins, corners, goal kicks, goals, kick-offs, offside (7v7), 7-minute clock with half-time, stats |
 | 3 | Floating joystick, eFootball-style buttons, PRESS/DASH (heavy touches on the ball), assisted + tap/swipe switching, bot opponent, watch-bots mode |
 
-The team brain is a **placeholder** (hold a home spot, receive, chase,
-keeper, 2nd man). Milestones 4–6 replace it with formations that shift,
+After the first playtest: keyboard controls, keeper dives further for
+shots and stands off his line, bots shoot less and from closer, shots are
+a little less accurate, two teammates come to offer a pass, and sounds
+(kick, whistle, net, thud).
+
+The team brain is a **placeholder** (hold a home spot, support the
+carrier, receive, chase, keeper, 2nd man). Milestones 4–6 replace it with formations that shift,
 scored behaviours and defensive dials.
 
-## Folder map (and what each may import)
+## Where the code lives
+
+The **engine** (rules, physics, AI, controllers) is its own pure-Dart
+package in the repo: `packages/tiki_core/` (imported as
+`package:tiki_core/...`). It has no Flutter and no `forge2d`, so its checks
+run with plain `dart` and no C compiler. This folder (`lib/tiki_counter/`)
+is only the **app side**: drawing, sounds, HUD and controls.
 
 | Folder | Job | May import |
 |---|---|---|
-| `core/` | Maths, seeded random, every tuning number (`tunables.dart`) | nothing in the game |
-| `model/` | Plain state: discs, ball, teams, intent, events. No logic | `core` |
-| `tactics/` | Formations (data) | `core`, `model` |
-| `sim/` | The rules of the world, one 1/60 s step | `core`, `model`, `tactics` |
-| `brain/` | Targets for the discs you're not controlling | `core`, `model`, `sim` (read-only helpers) |
-| `control/` | Who steers the controlled disc: human, bot; switching | `core`, `model`, `sim/rules/receivers` |
-| `runner/` | One full tick in the right order | everything above |
-| `render/` | Flame drawing + the HUD bridge (`hud_model.dart`). Reads state, never changes it | everything above |
-| `ui/` | Flutter screens, HUD, touch controls | everything |
+| `tiki_core/lib/core/` | Maths, seeded random, every tuning number (`tunables.dart`) | nothing in the game |
+| `tiki_core/lib/model/` | Plain state: discs, ball, teams, intent, events. No logic | `core` |
+| `tiki_core/lib/tactics/` | Formations (data) | `core`, `model` |
+| `tiki_core/lib/sim/` | The rules of the world, one 1/60 s step | `core`, `model`, `tactics` |
+| `tiki_core/lib/brain/` | Targets for the discs you're not controlling | `core`, `model`, `sim` (read-only helpers) |
+| `tiki_core/lib/control/` | Who steers the controlled disc: human, bot; switching | `core`, `model`, `sim/rules/receivers` |
+| `tiki_core/lib/runner/` | One full tick in the right order | everything above |
+| `render/` (app) | Flame drawing + the HUD bridge (`hud_model.dart`). Reads state, never changes it | everything above |
+| `ui/` (app) | Flutter screens, HUD, touch + keyboard controls | everything |
 | `theme/` | Colours | — |
 
-`core` → `ui` top to bottom: the first six folders are **pure Dart** (no
-Flutter, no Flame), so tests can play whole matches with no screen.
+The engine package can't import Flutter even by accident: it has no
+Flutter dependency. `render/tiki_sounds.dart` turns match events into
+sounds; the engine never knows audio exists.
 
 ## One tick, in order
 
@@ -88,5 +105,5 @@ Flutter, no Flame), so tests can play whole matches with no screen.
 - The ball passes through discs that fail to stop it (no deflection
   off bodies besides a small angle change).
 - Ends don't swap at half-time.
-- No audio yet; the lobby tile is marked "Coming soon".
+- The lobby tile is marked "Coming soon".
 - One formation per mode (5v5 2-1-1, 7v7 2-3-1) and one bot level.
