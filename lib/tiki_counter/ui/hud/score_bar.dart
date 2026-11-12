@@ -7,8 +7,15 @@ import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 /// Compact score bar, top-left: ● HOME 0  3:12  0 AWAY ●
 class ScoreBar extends StatelessWidget {
   final HudSnapshot snap;
+  final String homeCode;
+  final String awayCode;
 
-  const ScoreBar({super.key, required this.snap});
+  const ScoreBar({
+    super.key,
+    required this.snap,
+    this.homeCode = 'HOME',
+    this.awayCode = 'AWAY',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +34,7 @@ class ScoreBar extends StatelessWidget {
         children: [
           const _Dot(TikiPalette.homeFill),
           const SizedBox(width: 6),
-          Text('HOME', style: TikiText.display(size: 12, weight: 600)),
+          Text(homeCode, style: TikiText.display(size: 12, weight: 600)),
           const SizedBox(width: 10),
           Text('${snap.homeScore}', style: TikiText.display(size: 20)),
           const SizedBox(width: 12),
@@ -42,7 +49,7 @@ class ScoreBar extends StatelessWidget {
           const SizedBox(width: 12),
           Text('${snap.awayScore}', style: TikiText.display(size: 20)),
           const SizedBox(width: 10),
-          Text('AWAY', style: TikiText.display(size: 12, weight: 600)),
+          Text(awayCode, style: TikiText.display(size: 12, weight: 600)),
           const SizedBox(width: 6),
           const _Dot(TikiPalette.awayFill),
         ],
