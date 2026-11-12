@@ -1,24 +1,38 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import 'package:b_ball/firebase_options.dart';
 import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_counter_screen.dart';
 
-/// Standalone Tiki Counter (no Firebase, no lobby): the quickest way to
-/// work on the game.
+/// Standalone Tiki Counter (no lobby): the quickest way to work on the
+/// game. Firebase and sign-in start the same way as the full app, so your
+/// profile picture, profile sheet and record owner work here too. If
+/// Firebase can't start (offline), the game still runs without them.
 ///
 ///   flutter run -d chrome -t lib/main_tiki_counter.dart
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   unawaited(AudioEngine.init());
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
-  runApp(const TikiCounterDevApp());
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    }
+    unawaited(AuthService.instance.initialize());
+  } catch (e) {
+    debugPrint('[Tiki] Firebase not started: $e');
+  }
+  runApp(const ProviderScope(child: TikiCounterDevApp()));
 }
 
 class TikiCounterDevApp extends StatelessWidget {
