@@ -130,7 +130,7 @@ class Passing {
     final r = Receivers.inDirection(s, d, ax, ay, T.throughConeDeg);
     if (r == null) return _space(d, ax, ay, power, 10.0);
     // Lead the runner: mostly toward goal, partly the way they're running.
-    var lx = d.side.attackDir * 0.6;
+    var lx = s.dir(d.side) * 0.6;
     var ly = 0.0;
     final rs = r.vel.length;
     if (rs > 1.0) {
@@ -165,7 +165,7 @@ class Passing {
 
   _Plan _shoot(MatchState s, Disc d, double ay, double power) {
     final m = s.mode;
-    final gx = d.side.attackDir * m.halfLength;
+    final gx = s.dir(d.side) * m.halfLength;
     final post = m.goalWidth * 0.42;
     // Stick up/down picks the corner; centred stick goes far post.
     final gy = ay.abs() > 0.2
