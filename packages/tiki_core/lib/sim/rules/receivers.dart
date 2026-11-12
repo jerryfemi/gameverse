@@ -48,7 +48,7 @@ abstract final class Receivers {
   static Disc? bestOpen(MatchState s, Disc passer) {
     final team = s.team(passer.side);
     final opp = s.team(passer.side.other);
-    final dir = passer.side.attackDir;
+    final dir = s.dir(passer.side);
     Disc? best;
     var bestScore = -double.infinity;
     for (final m in team.discs) {
