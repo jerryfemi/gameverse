@@ -39,21 +39,8 @@ class _ClubScreenState extends State<ClubScreen> {
     super.dispose();
   }
 
-  /// "Lagos Tiki FC" → "LTF"; short names borrow their next letters.
-  static String initials(String name) {
-    final letter = RegExp('[A-Za-z]');
-    final firsts = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((w) => w.isNotEmpty && letter.hasMatch(w[0]))
-        .map((w) => w[0])
-        .join();
-    final all = (firsts + name.replaceAll(RegExp('[^A-Za-z]'), '')).toUpperCase();
-    return all.length >= 3 ? all.substring(0, 3) : all.padRight(3, 'X');
-  }
-
   void _nameChanged(String v) {
-    if (!_codeTouched) _code.text = initials(v);
+    if (!_codeTouched) _code.text = TikiSetup.codeFor(v);
     setState(() {});
   }
 
