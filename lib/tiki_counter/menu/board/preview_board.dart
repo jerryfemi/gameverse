@@ -87,6 +87,7 @@ class _PreviewPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final g = BoardGeometry(scene.mode, size);
     BoardPaint.pitch(canvas, g);
+    BoardPaint.directionLabels(canvas, g);
     final p = _progress();
     final ball = g.at(scene.ballX, scene.ballY);
 
