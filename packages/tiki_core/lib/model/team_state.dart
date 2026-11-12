@@ -3,11 +3,18 @@ import 'package:tiki_core/model/intent.dart';
 import 'package:tiki_core/model/match_stats.dart';
 import 'package:tiki_core/model/side.dart';
 import 'package:tiki_core/tactics/formation.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
 /// Everything about one team during a match.
 class TeamState {
   final Side side;
-  final Formation formation;
+
+  /// Can change at half-time (same number of spots, so discs keep slots).
+  Formation formation;
+
+  /// The game plan the brain reads. Can change at half-time.
+  TeamPlan plan;
+
   final List<Disc> discs;
 
   int score = 0;
@@ -32,6 +39,7 @@ class TeamState {
   TeamState({
     required this.side,
     required this.formation,
+    required this.plan,
     required this.discs,
     required this.cursorId,
   });
