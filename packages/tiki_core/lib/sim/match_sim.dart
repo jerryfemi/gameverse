@@ -71,6 +71,7 @@ class MatchSim {
   void startSecondHalf() {
     if (s.phase != MatchPhase.halfTime) return;
     s.phase = MatchPhase.secondHalf;
+    s.homeAttacksRight = !s.homeAttacksRight; // swap ends
     _kickOff(Side.away);
   }
 
