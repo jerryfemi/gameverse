@@ -158,7 +158,7 @@ class Possession {
 
   static bool inOwnBox(MatchState s, Disc d) {
     final m = s.mode;
-    final depth = d.pos.x * d.side.attackDir; // −halfLength at own goal line
+    final depth = d.pos.x * s.dir(d.side); // −halfLength at own goal line
     return depth < -(m.halfLength - m.boxDepth) &&
         d.pos.y.abs() < m.boxWidth / 2.0;
   }
