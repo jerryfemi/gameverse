@@ -27,7 +27,7 @@ abstract final class BotAttack {
     }
     if (_shoot(v, c, i, level, rng)) return;
     final pressure = v.space(c.pos.x, c.pos.y);
-    final hurry = pressure < 2.2 || holdTime > level.holdMax;
+    final hurry = pressure < 1.8 || holdTime > level.holdMax;
     if (_pass(v, c, i, level, rng, force: hurry)) return;
     _carry(v, c, i, pressure);
   }
@@ -37,10 +37,11 @@ abstract final class BotAttack {
     final gx = v.worldX(v.halfL);
     final dx = gx - c.pos.x;
     final dist = math.sqrt(dx * dx + c.pos.y * c.pos.y);
-    if (dist > m.shootRange) return false;
-    final angleOk = c.pos.y.abs() < m.goalWidth * 1.5 || dist < 8.0;
-    if (!angleOk) return false;
     final clear = _clearShot(v, c, gx);
+    // A clear sight of goal lets it try from a little further out.
+    if (dist > m.shootRange * (clear ? 1.25 : 1.0)) return false;
+    final angleOk = c.pos.y.abs() < m.goalWidth * 2.0 || dist < 9.0;
+    if (!angleOk) return false;
     final chance = level.shootChance * (clear ? 2.0 : 0.5);
     if (!rng.chance(chance)) return false;
 
@@ -94,7 +95,11 @@ abstract final class BotAttack {
       final through = _isRunning(m);
       var score = math.min(v.space(m.pos.x, m.pos.y), 6.0) * 0.5 +
           (v.teamX(m) - v.teamX(c)) * 0.12;
-      if (Receivers.laneBlocked(c.pos, m.pos, v.opp)) score -= 3.0;
+      if (Receivers.laneBlocked(c.pos, m.pos, v.opp)) score -= 6.0;
+      // Long balls are riskier; short ones are nearly free.
+      if (dist > 14.0) score -= (dist - 14.0) * 0.15;
+      // A receiver with an opponent on him is a risky target.
+      if (v.space(m.pos.x, m.pos.y) < 1.8) score -= 2.0;
       if (m.isKeeper) score -= 2.0;
       if (v.offsideOn && !through && v.teamX(m) > v.offsideLine) score -= 5.0;
       if (through) score += 1.5;
@@ -119,8 +124,13 @@ abstract final class BotAttack {
       pick = second;
       through = secondThrough;
     }
-    final great = bestScore > 3.5;
+    final great = bestScore > 4.0;
     if (!force && !great) return false;
+    // Forced but every option is bad: keep the ball (carry/shield) unless
+    // it is about to be taken.
+    if (force && bestScore < -2.0 && v.space(c.pos.x, c.pos.y) > 1.4) {
+      return false;
+    }
 
     var ax = pick.pos.x - c.pos.x;
     var ay = pick.pos.y - c.pos.y;
