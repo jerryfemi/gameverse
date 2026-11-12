@@ -43,7 +43,7 @@ class StatsTable extends StatelessWidget {
   Widget _header() => Row(
     children: [
       Expanded(
-        child: Text('HOME', style: TikiText.display(size: 12, weight: 600)),
+        child: Text(state.home.code, style: TikiText.display(size: 12, weight: 600)),
       ),
       Text(
         '${state.home.score} – ${state.away.score}',
@@ -51,7 +51,7 @@ class StatsTable extends StatelessWidget {
       ),
       Expanded(
         child: Text(
-          'AWAY',
+          state.away.code,
           textAlign: TextAlign.right,
           style: TikiText.display(
             size: 12,
