@@ -2,17 +2,22 @@ import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/menu/home/club_badge.dart';
 import 'package:b_ball/tiki_counter/menu/home/hub_tile.dart';
+import 'package:b_ball/tiki_counter/menu/home/profile_button.dart';
+import 'package:b_ball/tiki_counter/menu/home/record_strip.dart';
 import 'package:b_ball/tiki_counter/menu/home/tile_art.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
+import 'package:tiki_core/record/club_record.dart';
 
 /// Tiki Counter's home: your club at the top, then three big entries —
 /// Kick off, Game plan and Lab.
 class HomeHub extends StatefulWidget {
   final TikiSetup setup;
+  final ClubRecord record;
   final VoidCallback onKickOff;
+  final VoidCallback onRecord;
   final VoidCallback onGamePlan;
   final VoidCallback onLab;
   final VoidCallback onClub;
@@ -21,7 +26,9 @@ class HomeHub extends StatefulWidget {
   const HomeHub({
     super.key,
     required this.setup,
+    required this.record,
     required this.onKickOff,
+    required this.onRecord,
     required this.onGamePlan,
     required this.onLab,
     required this.onClub,
@@ -74,6 +81,8 @@ class _HomeHubState extends State<HomeHub> with SingleTickerProviderStateMixin {
                     letterSpacing: 2.6,
                   ),
                 ),
+                const SizedBox(width: 16),
+                const TikiProfileButton(),
               ],
             ),
             const SizedBox(height: 16),
@@ -122,6 +131,8 @@ class _HomeHubState extends State<HomeHub> with SingleTickerProviderStateMixin {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
+            RecordStrip(record: widget.record, onTap: widget.onRecord),
           ],
         ),
       ),
