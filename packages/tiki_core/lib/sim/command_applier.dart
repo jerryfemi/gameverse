@@ -63,7 +63,7 @@ class CommandApplier {
     double tx;
     double ty;
     if (carrier != null && carrier.side != team.side) {
-      final gx = -team.side.attackDir * s.mode.halfLength;
+      final gx = -s.dir(team.side) * s.mode.halfLength;
       var nx = gx - carrier.pos.x;
       var ny = -carrier.pos.y;
       final nl = math.sqrt(nx * nx + ny * ny);
