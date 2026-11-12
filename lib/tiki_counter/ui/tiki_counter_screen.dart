@@ -6,12 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/tiki_counter/menu/club/club_screen.dart';
+import 'package:b_ball/tiki_counter/menu/game_plan/game_plan_screen.dart';
+import 'package:b_ball/tiki_counter/menu/home/home_hub.dart';
+import 'package:b_ball/tiki_counter/menu/kick_off_sheet.dart';
+import 'package:b_ball/tiki_counter/menu/setup/setup_store.dart';
+import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/render/hud_model.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/cards/match_cards.dart';
 import 'package:b_ball/tiki_counter/ui/cards/match_choice.dart';
-import 'package:b_ball/tiki_counter/ui/cards/start_card.dart';
 import 'package:b_ball/tiki_counter/ui/controls/controls_layer.dart';
 import 'package:b_ball/tiki_counter/ui/controls/keyboard_controls.dart';
 import 'package:b_ball/tiki_counter/ui/hud/event_banner.dart';
@@ -28,8 +33,12 @@ import 'package:tiki_core/runner/match_runner.dart';
 import 'package:tiki_core/tactics/formations.dart';
 import 'package:tiki_core/tactics/presets.dart';
 
-/// Tiki Counter's screen: start card → match (board + HUD + controls) →
-/// half-time → full-time. Owns the game for one match at a time.
+/// Which menu page shows when no match is running.
+enum MenuPage { home, gamePlan, club }
+
+/// Tiki Counter's screen: menus (home hub, game plan, club, kick-off sheet)
+/// → match (board + HUD + controls) → half-time → full-time.
+/// Owns the saved setup and the game for one match at a time.
 class TikiCounterScreen extends StatefulWidget {
   const TikiCounterScreen({super.key});
 
@@ -48,14 +57,53 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   /// shows instead. A touch on the screen brings the buttons back.
   bool _keyboardMode = false;
 
+  /// Null until the saved setup has loaded (a few milliseconds).
+  TikiSetup? _setup;
+  MenuPage _page = MenuPage.home;
+  PlanTab _planTab = PlanTab.style;
+
+  /// The last match's choice, for PLAY AGAIN / RESTART.
+  MatchChoice? _lastChoice;
+
   @override
   void initState() {
     super.initState();
     // Decoded only when Tiki Counter opens, so other games never pay for it.
     unawaited(AudioEngine.loadTikiSfx());
+    unawaited(_loadSetup());
+  }
+
+  Future<void> _loadSetup() async {
+    final s = await SetupStore.load();
+    if (mounted) setState(() => _setup = s);
+  }
+
+  /// Every menu change goes through here: shown at once, saved quietly.
+  void _changeSetup(TikiSetup s) {
+    setState(() => _setup = s);
+    unawaited(SetupStore.save(s));
+  }
+
+  void _openKickOff({required bool watch}) {
+    final setup = _setup;
+    if (setup == null) return;
+    unawaited(
+      showKickOffSheet(
+        context,
+        setup: setup,
+        watch: watch,
+        onSetupChanged: _changeSetup,
+        onStart: _start,
+        onEditPlan: () => setState(() {
+          _planTab = PlanTab.style;
+          _page = MenuPage.gamePlan;
+        }),
+      ),
+    );
   }
 
   void _start(MatchChoice c) {
+    _lastChoice = c;
     _input.releaseAll();
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
     final pick = Rng(seed + 3);
@@ -72,6 +120,11 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
       awayPlan: c.awayPlan ?? Presets.all[pick.nextInt(Presets.all.length)],
       seed: seed,
     );
+    final st = runner.state;
+    st.home.name = c.homeName;
+    st.home.code = c.homeCode;
+    st.away.name = c.opponent.name;
+    st.away.code = c.opponent.code;
     final watch = c.watch;
     _hud.snapshot.value = HudSnapshot.initial;
     _hud.banner.value = null;
@@ -110,9 +163,17 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     setState(() => _paused = false);
   }
 
-  void _newMatch() => setState(() {
+  /// Same choice again (new random seed).
+  void _replay() {
+    final c = _lastChoice;
+    if (c == null) return _toMenu();
+    _start(c);
+  }
+
+  void _toMenu() => setState(() {
     _game = null;
     _paused = false;
+    _page = MenuPage.home;
   });
 
   void _lobby() {
@@ -136,7 +197,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     return Scaffold(
       backgroundColor: TikiPalette.background,
       body: game == null
-          ? StartCard(onStart: _start, onBack: _lobby)
+          ? _menu()
           : Listener(
               onPointerDown: _onPointerDown,
               child: KeyboardControls(
@@ -157,13 +218,50 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
                     if (_paused)
                       PauseCard(
                         onResume: _resume,
-                        onRestart: _newMatch,
-                        onLobby: _lobby,
+                        onRestart: _replay,
+                        onLobby: _toMenu,
                       ),
                   ],
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _menu() {
+    final setup = _setup;
+    if (setup == null) return const SizedBox.expand();
+    final page = switch (_page) {
+      MenuPage.home => HomeHub(
+        setup: setup,
+        onKickOff: () => _openKickOff(watch: false),
+        onGamePlan: () => setState(() {
+          _planTab = PlanTab.style;
+          _page = MenuPage.gamePlan;
+        }),
+        onLab: () => _openKickOff(watch: true),
+        onClub: () => setState(() => _page = MenuPage.club),
+        onExit: _lobby,
+      ),
+      MenuPage.gamePlan => GamePlanScreen(
+        setup: setup,
+        startTab: _planTab,
+        onChanged: _changeSetup,
+        onBack: () => setState(() => _page = MenuPage.home),
+        onTest: () => _openKickOff(watch: false),
+      ),
+      MenuPage.club => ClubScreen(
+        setup: setup,
+        onSave: (s) {
+          _changeSetup(s);
+          setState(() => _page = MenuPage.home);
+        },
+        onBack: () => setState(() => _page = MenuPage.home),
+      ),
+    };
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: KeyedSubtree(key: ValueKey(_page), child: page),
     );
   }
 
@@ -183,7 +281,15 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
               bottom: 10,
               child: KeyHint(attacking: snap.homeAttacking),
             ),
-          Positioned(top: 8, left: 12, child: ScoreBar(snap: snap)),
+          Positioned(
+            top: 8,
+            left: 12,
+            child: ScoreBar(
+              snap: snap,
+              homeCode: game.runner.state.home.code,
+              awayCode: game.runner.state.away.code,
+            ),
+          ),
           Positioned(
             top: 8,
             right: 12,
@@ -201,8 +307,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
           if (snap.phase == MatchPhase.fullTime)
             FullTimeCard(
               state: game.runner.state,
-              onPlayAgain: _newMatch,
-              onLobby: _lobby,
+              onPlayAgain: _replay,
+              onLobby: _toMenu,
             ),
         ],
       ),
