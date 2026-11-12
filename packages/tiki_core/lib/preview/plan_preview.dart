@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:tiki_core/brain/home_spots.dart';
+import 'package:tiki_core/brain/keeper.dart';
 import 'package:tiki_core/brain/perception/team_view.dart';
 import 'package:tiki_core/brain/phase.dart';
 import 'package:tiki_core/brain/team_brain.dart';
@@ -120,6 +123,7 @@ abstract final class PlanPreview {
     carrier.pos.set(bx - 0.9 * s.dir(owner), by);
     carrier.facing.set(s.dir(owner), 0.0);
     BallControl.give(s, carrier);
+    _separate(s, carrier);
 
     // 3. Run our brain on that moment.
     final brain = TeamBrain(Side.home);
@@ -171,7 +175,13 @@ abstract final class PlanPreview {
       );
       for (final d in team.discs) {
         final out = Vec2();
-        HomeSpots.compute(v, team.formation.spots[d.slot], team.plan, out);
+        if (d.isKeeper) {
+          // Keepers stand in their goal, never on a formation home spot.
+          Keeper.place(v, d, team.plan.lineHeight);
+          out.setFrom(d.target);
+        } else {
+          HomeSpots.compute(v, team.formation.spots[d.slot], team.plan, out);
+        }
         spots[d] = out;
       }
     }
@@ -179,6 +189,43 @@ abstract final class PlanPreview {
       d.pos.setFrom(p);
       d.prev.setFrom(p);
     });
+  }
+
+  /// Pushes overlapping discs apart (the staged shapes don't run the
+  /// physics, so two home spots can land on top of each other). Keepers
+  /// and the ball carrier stay put; everyone else gives way.
+  static void _separate(MatchState s, Disc carrier) {
+    const minGap = 2.7; // a little more than two disc widths
+    for (var pass = 0; pass < 10; pass++) {
+      var moved = false;
+      for (var i = 0; i < s.discs.length; i++) {
+        for (var j = i + 1; j < s.discs.length; j++) {
+          final a = s.discs[i];
+          final b = s.discs[j];
+          var dx = b.pos.x - a.pos.x;
+          var dy = b.pos.y - a.pos.y;
+          var d = math.sqrt(dx * dx + dy * dy);
+          if (d >= minGap) continue;
+          if (d < 1e-3) {
+            dx = 0.0;
+            dy = 1.0;
+            d = 1.0;
+          }
+          final push = (minGap - d) / d;
+          final aFixed = a.isKeeper || identical(a, carrier);
+          final bFixed = b.isKeeper || identical(b, carrier);
+          if (aFixed && bFixed) continue;
+          final share = aFixed || bFixed ? 1.0 : 0.5;
+          if (!aFixed) a.pos.set(a.pos.x - dx * push * share, a.pos.y - dy * push * share);
+          if (!bFixed) b.pos.set(b.pos.x + dx * push * share, b.pos.y + dy * push * share);
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    for (final d in s.discs) {
+      d.prev.setFrom(d.pos);
+    }
   }
 
   static Disc _nearest(MatchState s, Side side, double x, double y) {
