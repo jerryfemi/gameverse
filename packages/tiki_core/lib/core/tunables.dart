@@ -186,8 +186,15 @@ abstract final class T {
   /// Nobody touching the ball for this long → the taker passes on its own.
   static const double setPieceAutoTake = 5.0;
 
-  // ── Team brain (placeholder until milestone 4) ────────────────────────
+  // ── Team brain ────────────────────────────────────────────────────────
   static const double brainInterval = 0.2;
+
+  /// Seconds after the ball changes hands that count as a transition
+  /// (counter-press, counter-attack).
+  static const double transitionSeconds = 3.0;
+
+  /// A committed disc only switches job for one scoring this much better.
+  static const double jobSwitchMargin = 1.0;
 
   // ── Input ─────────────────────────────────────────────────────────────
   /// Holding PASS/SHOOT this long gives full power.
