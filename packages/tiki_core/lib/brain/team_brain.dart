@@ -1,28 +1,73 @@
 import 'package:tiki_core/brain/ball_prediction.dart';
+import 'package:tiki_core/brain/behaviours/behaviour.dart';
+import 'package:tiki_core/brain/behaviours/chase_loose_ball.dart';
+import 'package:tiki_core/brain/behaviours/hold_shape.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/cut_inside.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/drop_to_receive.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/hold_width.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/overlap.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/run_in_behind.dart';
+import 'package:tiki_core/brain/behaviours/in_possession/support.dart';
+import 'package:tiki_core/brain/behaviours/out_of_possession/cover.dart';
+import 'package:tiki_core/brain/behaviours/out_of_possession/cut_lane.dart';
+import 'package:tiki_core/brain/behaviours/out_of_possession/mark_man.dart';
+import 'package:tiki_core/brain/behaviours/out_of_possession/press.dart';
+import 'package:tiki_core/brain/behaviours/out_of_possession/track_runner.dart';
+import 'package:tiki_core/brain/candidate.dart';
+import 'package:tiki_core/brain/coordination/assignments.dart';
+import 'package:tiki_core/brain/coordination/defence_assigner.dart';
+import 'package:tiki_core/brain/coordination/support_assigner.dart';
 import 'package:tiki_core/brain/home_spots.dart';
-import 'package:tiki_core/brain/support_spots.dart';
-import 'package:tiki_core/core/geometry.dart';
+import 'package:tiki_core/brain/job_picker.dart';
+import 'package:tiki_core/brain/keeper.dart';
+import 'package:tiki_core/brain/patterns/pattern_director.dart';
+import 'package:tiki_core/brain/perception/team_view.dart';
+import 'package:tiki_core/brain/phase.dart';
 import 'package:tiki_core/core/tunables.dart';
-import 'package:tiki_core/model/disc.dart';
+import 'package:tiki_core/core/vec2.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/model/side.dart';
-import 'package:tiki_core/model/team_state.dart';
+import 'package:tiki_core/tactics/roles.dart';
 
-/// Decides a target for every disc the controller isn't steering.
+/// Decides a target for every disc the controller isn't steering, five
+/// times a second. One tick, in order:
 ///
-/// **Placeholder brain for milestones 0–3.** It knows just enough to make a
-/// match playable: receive passes, offer support to the carrier, chase
-/// loose balls, keeper stays in goal, 2ND MAN joins the press, everyone else
-/// holds a home spot.
-/// Milestone 5 replaces the job list with scored behaviours
-/// (see `claude/tactics-architecture.md` §4).
+/// 1. **Perceive** — build a [TeamView] (ball, lines, space) once.
+/// 2. **Phase** — attacking / just won it / defending / just lost it.
+/// 3. **Coordinate** — team-level jobs: support spots, pressers, lane
+///    cutters, markers, cover, loose-ball chaser.
+/// 4. **Patterns** — start or continue a combination.
+/// 5. **Each disc** — home spot, then every behaviour its role allows
+///    proposes a candidate; the job picker takes the best.
 class TeamBrain {
   final Side side;
+  final PhaseTracker _phase;
+  final PatternDirector patterns = PatternDirector();
   double _timer = 0.0;
+  Phase phase = Phase.defending;
 
-  TeamBrain(this.side);
+  final Vec2 _home = Vec2();
+  final List<Candidate> _candidates = [];
+  final List<Behaviour> _behaviours = [
+    HoldShape(),
+    Support(),
+    RunInBehind(),
+    HoldWidth(),
+    DropToReceive(),
+    CutInside(),
+    Overlap(),
+    Press(),
+    CutLane(),
+    MarkMan(),
+    Cover(),
+    TrackRunner(),
+    ChaseLooseBall(),
+  ];
+
+  TeamBrain(this.side) : _phase = PhaseTracker(side);
 
   void update(MatchState s, double dt) {
+    phase = _phase.update(s, dt);
     _timer -= dt;
     if (_timer > 0.0) return;
     _timer = T.brainInterval;
@@ -31,94 +76,51 @@ class TeamBrain {
 
   void _think(MatchState s) {
     final team = s.team(side);
-    final b = s.ball;
-    final attacking = s.possessionSide == side;
-    final receiving = b.isLoose && b.lastTouchSide == side;
-    final chaser = _chaser(s, team, receiving);
-    final second = team.secondManHeld ? _secondMan(s, team) : -1;
-    final carrier = s.owner;
-    final supporters = carrier != null && carrier.side == side
-        ? SupportSpots.assign(s, team, carrier)
-        : const <int>[];
+    final plan = team.plan;
+    final v = TeamView.build(s, side, phase);
+    final a = Assignments();
+    SupportAssigner.assign(v, plan, a);
+    DefenceAssigner.assign(v, plan, a);
+    patterns.update(v, T.brainInterval);
 
+    final b = s.ball;
+    final receiving = b.isLoose && b.lastTouchSide == side;
     for (final d in team.discs) {
       if (d.id == team.cursorId) {
         d.job = 'controlled';
-      } else if (supporters.contains(d.id)) {
-        // Target already set by SupportSpots.
-      } else if (receiving && d.id == b.intendedReceiverId) {
+        continue;
+      }
+      if (d.isKeeper) {
+        Keeper.place(v, d, plan.lineHeight);
+        continue;
+      }
+      if (receiving && d.id == b.intendedReceiverId) {
         BallPrediction.meetPoint(b, d, d.target);
         d.urgency = 1.4;
         d.job = 'receive pass';
-      } else if (d.isKeeper) {
-        _keeper(s, d);
-      } else if (d.id == second) {
-        d.target.setFrom(s.owner!.pos);
-        d.urgency = 1.4;
-        d.job = '2nd man press';
-      } else if (d.id == chaser) {
-        BallPrediction.meetPoint(b, d, d.target);
-        d.urgency = 1.4;
-        d.job = 'chase loose ball';
-      } else {
-        HomeSpots.place(s, team, d, attacking);
+        continue;
       }
-    }
-  }
-
-  /// Nearest outfield disc (not the controlled one) to a loose ball nobody
-  /// is meant to receive.
-  int _chaser(MatchState s, TeamState team, bool receiving) {
-    final b = s.ball;
-    if (!b.isLoose || s.isFrozen) return -1;
-    if (receiving && b.intendedReceiverId >= 0) return -1;
-    var best = -1;
-    var bestD = 12.0;
-    for (final d in team.discs) {
-      if (d.isKeeper || d.id == team.cursorId) continue;
-      final dist = d.pos.distTo(b.pos);
-      if (dist < bestD) {
-        bestD = dist;
-        best = d.id;
+      final spot = team.formation.spots[d.slot];
+      final role = Roles.forPosition(spot.position);
+      HomeSpots.compute(v, spot, plan, _home);
+      final ctx = DiscContext(
+        v: v,
+        a: a,
+        d: d,
+        spot: spot,
+        role: role,
+        plan: plan,
+        home: _home,
+      );
+      _candidates.clear();
+      for (final behaviour in _behaviours) {
+        if (role.weight(behaviour.kind) <= 0.0) continue;
+        final c = behaviour.propose(ctx);
+        if (c != null) _candidates.add(c);
       }
+      final pc = patterns.candidateFor(d);
+      if (pc != null) _candidates.add(pc);
+      JobPicker.choose(d, _candidates, role, T.brainInterval);
     }
-    return best;
-  }
-
-  int _secondMan(MatchState s, TeamState team) {
-    final carrier = s.owner;
-    if (carrier == null || carrier.side == side) return -1;
-    var best = -1;
-    var bestD = double.infinity;
-    for (final d in team.discs) {
-      if (d.isKeeper || d.id == team.cursorId) continue;
-      final dist = d.pos.distTo(carrier.pos);
-      if (dist < bestD) {
-        bestD = dist;
-        best = d.id;
-      }
-    }
-    return best;
-  }
-
-  void _keeper(MatchState s, Disc d) {
-    final m = s.mode;
-    final dir = side.attackDir;
-    final b = s.ball;
-    // Claim a slow loose ball in our box.
-    final ballDepth = b.pos.x * dir;
-    final inBox = ballDepth < -(m.halfLength - m.boxDepth) &&
-        b.pos.y.abs() < m.boxWidth / 2.0;
-    if (b.isLoose && inBox && b.speed < 6.0) {
-      d.target.setFrom(b.pos);
-      d.urgency = 1.3;
-      d.job = 'keeper claims';
-      return;
-    }
-    final gx = -dir * (m.halfLength - T.keeperOffLine);
-    final gy = clampD(b.pos.y * 0.5, -m.goalWidth * 0.45, m.goalWidth * 0.45);
-    d.target.set(gx, gy);
-    d.urgency = 1.2;
-    d.job = 'keeper';
   }
 }
