@@ -37,19 +37,19 @@ class BotLevel {
 
   static const BotLevel easy = BotLevel(
     name: 'Easy',
-    thinkInterval: 0.25,
-    holdMax: 1.8,
-    tacklePerSecond: 0.8,
+    thinkInterval: 0.4,
+    holdMax: 2.6,
+    tacklePerSecond: 0.5,
     setPieceDelay: 1.2,
     shootChance: 0.12,
     decisionNoise: 0.35,
-    aimNoiseDeg: 12.0,
+    aimNoiseDeg: 9.0,
   );
 
   static const BotLevel normal = BotLevel(
     name: 'Normal',
     thinkInterval: 0.12,
-    holdMax: 1.3,
+    holdMax: 2.0,
     tacklePerSecond: 1.2,
     setPieceDelay: 0.9,
     shootChance: 0.2,
@@ -60,7 +60,7 @@ class BotLevel {
   static const BotLevel hard = BotLevel(
     name: 'Hard',
     thinkInterval: 0.07,
-    holdMax: 0.9,
+    holdMax: 1.5,
     tacklePerSecond: 1.8,
     setPieceDelay: 0.6,
     shootChance: 0.28,
