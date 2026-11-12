@@ -33,6 +33,10 @@ class Disc {
   /// Short label of the current job, shown in the debug overlay.
   String job = '';
 
+  /// Seconds left before the brain may switch this disc to another job
+  /// (see `brain/job_picker.dart`).
+  double commitTimer = 0.0;
+
   // ── Set each tick by the command applier for the controlled disc ──────
   /// True when a controller (stick/bot) drives this disc directly.
   bool manual = false;
