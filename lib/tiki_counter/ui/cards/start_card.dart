@@ -2,23 +2,52 @@ import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/cards/card_frame.dart';
+import 'package:b_ball/tiki_counter/ui/cards/choice_row.dart';
+import 'package:b_ball/tiki_counter/ui/cards/match_choice.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
+import 'package:tiki_core/control/bot_level.dart';
 import 'package:tiki_core/model/game_mode.dart';
+import 'package:tiki_core/tactics/formation.dart';
+import 'package:tiki_core/tactics/formations.dart';
+import 'package:tiki_core/tactics/presets.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
-typedef StartMatch = void Function(GameMode mode, {required bool watch});
-
-/// First screen: pick 5v5 or 7v7 against the bot, or watch two bots.
-class StartCard extends StatelessWidget {
-  final StartMatch onStart;
+/// First screen: mode, your formation and style, the bot's style and level,
+/// then play — or watch two bots.
+class StartCard extends StatefulWidget {
+  final ValueChanged<MatchChoice> onStart;
   final VoidCallback onBack;
 
   const StartCard({super.key, required this.onStart, required this.onBack});
+
+  @override
+  State<StartCard> createState() => _StartCardState();
+}
+
+class _StartCardState extends State<StartCard> {
+  GameMode _mode = GameMode.fiveASide;
+  Formation _formation = Formations.defaultFor(GameMode.fiveASide);
+  TeamPlan _plan = Presets.tikiTaka;
+  TeamPlan? _botPlan; // null = random
+  BotLevel _level = BotLevel.normal;
+
+  void _go(bool watch) => widget.onStart(
+    MatchChoice(
+      mode: _mode,
+      watch: watch,
+      homeFormation: _formation,
+      homePlan: _plan,
+      awayPlan: _botPlan,
+      botLevel: _level,
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return CardFrame(
       eyebrow: 'TIKI COUNTER · EARLY BUILD',
       title: 'Football on a tactics board',
+      maxWidth: 520,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -27,32 +56,54 @@ class StartCard extends StatelessWidget {
             '7 minutes, half-time at 3:30.',
             style: TikiText.body(size: 13),
           ),
-          const SizedBox(height: 16),
-          for (final mode in GameMode.values) ...[
-            CardButton(
-              label: '${mode.label} VS BOT'
-                  '${mode.offside ? '  ·  OFFSIDE ON' : ''}',
-              primary: mode == GameMode.fiveASide,
-              onTap: () => onStart(mode, watch: false),
-            ),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 6),
-          Text('Watch bots play', style: TikiText.body(size: 11, weight: 600)),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final mode in GameMode.values) ...[
-                Expanded(
-                  child: CardButton(
-                    label: mode.label,
-                    onTap: () => onStart(mode, watch: true),
-                  ),
-                ),
-                if (mode != GameMode.values.last) const SizedBox(width: 8),
-              ],
-            ],
+          const SizedBox(height: 14),
+          ChoiceRow<GameMode>(
+            label: 'MODE',
+            options: GameMode.values,
+            selected: _mode,
+            name: (m) => m.offside ? '${m.label} · offside on' : m.label,
+            onChanged: (m) => setState(() {
+              _mode = m;
+              _formation = Formations.defaultFor(m);
+            }),
           ),
+          ChoiceRow<Formation>(
+            label: 'YOUR FORMATION',
+            options: Formations.forMode(_mode),
+            selected: _formation,
+            name: (f) => f.name,
+            onChanged: (f) => setState(() => _formation = f),
+          ),
+          Text(
+            _formation.blurb,
+            style: TikiText.body(size: 11, color: TikiPalette.slate),
+          ),
+          const SizedBox(height: 10),
+          ChoiceRow<TeamPlan>(
+            label: 'YOUR STYLE',
+            options: Presets.all,
+            selected: _plan,
+            name: (p) => p.name,
+            onChanged: (p) => setState(() => _plan = p),
+          ),
+          ChoiceRow<TeamPlan?>(
+            label: 'BOT STYLE',
+            options: [null, ...Presets.all],
+            selected: _botPlan,
+            name: (p) => p?.name ?? 'Random',
+            onChanged: (p) => setState(() => _botPlan = p),
+          ),
+          ChoiceRow<BotLevel>(
+            label: 'BOT LEVEL',
+            options: BotLevel.all,
+            selected: _level,
+            name: (l) => l.name,
+            onChanged: (l) => setState(() => _level = l),
+          ),
+          const SizedBox(height: 6),
+          CardButton(label: 'PLAY VS BOT', primary: true, onTap: () => _go(false)),
+          const SizedBox(height: 8),
+          CardButton(label: 'WATCH BOTS PLAY', onTap: () => _go(true)),
           const SizedBox(height: 14),
           Text(
             'Touch: joystick to move · PASS / THROUGH / LOB / SHOOT: hold for '
@@ -69,7 +120,7 @@ class StartCard extends StatelessWidget {
             style: TikiText.body(size: 11, color: TikiPalette.slate),
           ),
           const SizedBox(height: 12),
-          CardButton(label: 'BACK', onTap: onBack),
+          CardButton(label: 'BACK', onTap: widget.onBack),
         ],
       ),
     );
