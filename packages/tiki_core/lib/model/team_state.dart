@@ -17,6 +17,10 @@ class TeamState {
 
   final List<Disc> discs;
 
+  /// Club name and 3-letter short form (score bar, stats). Set by the app.
+  String name = 'Home';
+  String code = 'HOM';
+
   int score = 0;
 
   /// The disc the controller steers (the "cursor").
