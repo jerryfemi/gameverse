@@ -66,7 +66,7 @@ class SwitchSelector {
     final dx = px - d.pos.x;
     final dy = py - d.pos.y;
     var t = math.sqrt(dx * dx + dy * dy) / T.runSpeed;
-    final dir = team.side.attackDir;
+    final dir = s.dir(team.side);
     if (d.pos.x * dir < px * dir) t -= T.goalSideBonus;
     return t;
   }
