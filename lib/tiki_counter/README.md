@@ -27,7 +27,7 @@ The touch buttons hide once you press a key and come back on a touch.
 
 Tap **DBG** (top right) during a match to see every disc's target and job.
 
-## Status: milestones 0–3 (first playable)
+## Status
 
 | # | What works |
 |---|---|
@@ -41,9 +41,14 @@ shots and stands off his line, bots shoot less and from closer, shots are
 a little less accurate, two teammates come to offer a pass, and sounds
 (kick, whistle, net, thud).
 
-The team brain is a **placeholder** (hold a home spot, support the
-carrier, receive, chase, keeper, 2nd man). Milestones 4–6 replace it with formations that shift,
-scored behaviours and defensive dials.
+### Milestones 4–7 (tactics)
+
+| # | What works |
+|---|---|
+| 4 | Positions + 3 formations per mode, each with an attacking and a defending shape. Home spots shift with the ball, the line height, compactness and width |
+| 5 | The brain is scored **behaviours** (support, run in behind, hold width, drop to receive, cut inside, overlap; press, cut lane, mark man, cover, track runner, chase). Each position has a role preset that weights them. A disc keeps its job a moment before switching (no jitter) |
+| 6 | Four-phase **game plan** (attacking / defending / after winning / after losing) + dials. 8 presets (Tiki-taka, Gegenpress, Counter, Low block, Overload, Wing play, Man-to-man, Balanced). Assigners pick who presses, who is 2nd man, who cuts lanes, who marks, who covers |
+| 7 | **Patterns** (up-back-through, overlap, third-man run) start on their own when the trigger fits. Start card: formation, your style, bot style, bot level (easy/normal/hard), watch bots. Half-time card lets you change formation and style. Ends swap at half-time. "Pattern runs found" stat |
 
 ## Where the code lives
 
@@ -57,7 +62,7 @@ is only the **app side**: drawing, sounds, HUD and controls.
 |---|---|---|
 | `tiki_core/lib/core/` | Maths, seeded random, every tuning number (`tunables.dart`) | nothing in the game |
 | `tiki_core/lib/model/` | Plain state: discs, ball, teams, intent, events. No logic | `core` |
-| `tiki_core/lib/tactics/` | Formations (data) | `core`, `model` |
+| `tiki_core/lib/tactics/` | Positions, formations, roles, game plans, presets (all data) | `core`, `model` |
 | `tiki_core/lib/sim/` | The rules of the world, one 1/60 s step | `core`, `model`, `tactics` |
 | `tiki_core/lib/brain/` | Targets for the discs you're not controlling | `core`, `model`, `sim` (read-only helpers) |
 | `tiki_core/lib/control/` | Who steers the controlled disc: human, bot; switching | `core`, `model`, `sim/rules/receivers` |
@@ -99,11 +104,32 @@ sounds; the engine never knows audio exists.
   the ball first.
 - **Same seed, same match** (`core/rng.dart`): tests rely on it.
 
+## How a disc decides where to go (M4–M7)
+
+Read `brain/team_brain.dart` top to bottom; it runs 5×/s per team:
+
+1. **TeamView** (`brain/perception/`) — what the team sees, in *its own*
+   coordinates (+x = towards the goal it attacks), so no code cares which
+   end you're playing.
+2. **PhaseTracker** — attacking, defending, or the 3 s just after winning
+   / losing the ball.
+3. **Assigners** (`brain/coordination/`) — team-level jobs: who supports
+   where, who presses, who is 2nd man, who marks whom, who covers.
+4. **PatternDirector** (`brain/patterns/`) — if a pattern is running,
+   its parts get a strong candidate.
+5. **Behaviours** (`brain/behaviours/`) — each proposes a `Candidate`
+   (spot + score). The score is multiplied by the position's role weight.
+6. **JobPicker** — takes the best, but only swaps jobs when the new one is
+   clearly better (`jobSwitchMargin`) or the commit time is up.
+
+To add a pattern from a clip: write a trigger and its parts (pick who +
+where they move) in `brain/patterns/library.dart`. Nothing else changes.
+
 ## Known rough edges (on purpose, for later milestones)
 
 - Set-piece takers jump to the spot instead of running to it.
 - The ball passes through discs that fail to stop it (no deflection
   off bodies besides a small angle change).
-- Ends don't swap at half-time.
 - The lobby tile is marked "Coming soon".
-- One formation per mode (5v5 2-1-1, 7v7 2-3-1) and one bot level.
+- Only three patterns so far; more come from the tactics-board clips.
+- Your own custom formation / per-player instructions aren't in yet.
