@@ -124,4 +124,33 @@ void tacticsChecks() {
     expectEqual(back.width, 0.3, 'width');
     expectEqual(back.name, 'Custom', 'name');
   });
+
+  check('previews: keepers stay in goal and nobody overlaps', () {
+    for (final mode in GameMode.values) {
+      for (final m in PreviewMoment.values) {
+        final scene = PlanPreview.build(
+          mode: mode,
+          formation: Formations.defaultFor(mode),
+          plan: Presets.counterAttack,
+          moment: m,
+        );
+        final hl = mode.halfLength;
+        for (final d in scene.discs) {
+          if (!d.keeper) continue;
+          final goalX = d.ours ? -hl : hl;
+          expectThat((d.x - goalX).abs() < 6.0, '${m.label}: keeper near goal');
+          expectThat((d.tx - d.x).abs() < 3.0, '${m.label}: keeper stays home');
+        }
+        for (var i = 0; i < scene.discs.length; i++) {
+          for (var j = i + 1; j < scene.discs.length; j++) {
+            final a = scene.discs[i];
+            final b = scene.discs[j];
+            final dx = a.x - b.x;
+            final dy = a.y - b.y;
+            expectThat(dx * dx + dy * dy > 2.0 * 2.0, '${m.label}: discs overlap');
+          }
+        }
+      }
+    }
+  });
 }
