@@ -39,6 +39,29 @@ class TikiSetup {
     botLevel: BotLevel.easy.name,
   );
 
+  /// "Lagos Tiki FC" → "LTF"; short names borrow their next letters.
+  static String codeFor(String name) {
+    final letter = RegExp('[A-Za-z]');
+    final firsts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty && letter.hasMatch(w[0]))
+        .map((w) => w[0])
+        .join();
+    final all = (firsts + name.replaceAll(RegExp('[^A-Za-z]'), '')).toUpperCase();
+    return all.length >= 3 ? all.substring(0, 3) : all.padRight(3, 'X');
+  }
+
+  /// A first club name from a player's GameVerse name: "Oyin" → "Oyin FC".
+  /// Null if the name has no letters to use.
+  static String? clubNameFor(String playerName) {
+    final first = playerName.trim().split(RegExp(r'\s+')).first;
+    final clean = first.replaceAll(RegExp('[^A-Za-z0-9]'), '');
+    if (clean.isEmpty || !RegExp('[A-Za-z]').hasMatch(clean)) return null;
+    final cut = clean.length > 16 ? clean.substring(0, 16) : clean;
+    return '$cut FC';
+  }
+
   Formation formationFor(GameMode m) {
     final want = m == GameMode.fiveASide ? formation5 : formation7;
     for (final f in Formations.forMode(m)) {
