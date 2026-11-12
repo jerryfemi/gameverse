@@ -26,6 +26,7 @@ class StatsTable extends StatelessWidget {
       ('Interceptions', '${h.interceptions}', '${a.interceptions}'),
       ('Tackles won', '${h.tacklesWon}', '${a.tacklesWon}'),
       ('Saves', '${h.saves}', '${a.saves}'),
+      ('Pattern runs found', '${h.patternRuns}', '${a.patternRuns}'),
       if (state.mode.offside) ('Offsides', '${h.offsides}', '${a.offsides}'),
     ];
     return Column(
