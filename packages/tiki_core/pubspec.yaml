@@ -1,0 +1,11 @@
+name: tiki_core
+description: Tiki Counter's match engine — rules, physics, AI and controllers. Pure Dart (no Flutter), so it can be tested with plain `dart`.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.6.0
+
+# No dependencies on purpose: the engine must stay plain Dart.
+# The checks in tool/run_checks.dart use a tiny built-in harness, so nothing
+# has to be downloaded to run them.

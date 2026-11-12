@@ -10,6 +10,7 @@ import 'package:b_ball/game/ui/game_hud_overlay.dart';
 import 'package:b_ball/lobby/game_lobby_screen.dart';
 import 'package:b_ball/paintball/paintball_game_screen.dart';
 import 'package:b_ball/routes/match_route_screen.dart';
+import 'package:b_ball/tiki_counter/ui/tiki_counter_screen.dart';
 
 /// Central GameVerse GoRouter setup.
 ///
@@ -18,6 +19,7 @@ import 'package:b_ball/routes/match_route_screen.dart';
 /// - `/hoops`: Basketball (`/bball` and `/games` are old aliases)
 /// - `/archery`: Standalone & 1v1 Archery Range
 /// - `/darts`: 501 / Cricket Darts preview
+/// - `/tiki-counter`: Tiki Counter (tactics-board football, early build)
 /// - `/match/:id`: Auto-dispatching match loader
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -68,6 +70,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/paintball',
       builder: (context, state) => const PaintballGameScreen(),
+    ),
+    GoRoute(
+      path: '/tiki-counter',
+      builder: (context, state) => const TikiCounterScreen(),
     ),
     GoRoute(
       path: '/match/:id',
