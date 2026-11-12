@@ -52,6 +52,8 @@ void fullMatchChecks() {
       final shots = h.shots + a.shots;
       print('        pass accuracy ${(acc * 100).round()}% (aim 70%+) · '
           'shots $shots (aim 6+)${acc < 0.7 || shots < 6 ? '  <- needs tuning' : ''}');
+      final goals = s.home.score + s.away.score;
+      expectThat(goals <= 8, 'a believable score (got $goals goals)');
     });
   }
 
