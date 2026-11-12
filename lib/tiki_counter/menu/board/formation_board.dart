@@ -99,8 +99,11 @@ class _PitchPainter extends CustomPainter {
   _PitchPainter(this.mode);
 
   @override
-  void paint(Canvas canvas, Size size) =>
-      BoardPaint.pitch(canvas, BoardGeometry(mode, size));
+  void paint(Canvas canvas, Size size) {
+    final g = BoardGeometry(mode, size);
+    BoardPaint.pitch(canvas, g);
+    BoardPaint.directionLabels(canvas, g);
+  }
 
   @override
   bool shouldRepaint(_PitchPainter old) => old.mode != mode;
