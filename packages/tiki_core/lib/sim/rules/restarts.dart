@@ -42,7 +42,8 @@ class Restarts {
     if (b.pos.x.abs() <= hl + T.ballRadius) return;
 
     final end = signD(b.pos.x);
-    final defender = end > 0 ? Side.away : Side.home;
+    // The defending side is the one whose own goal is at this end.
+    final defender = s.dir(Side.home) == -end ? Side.home : Side.away;
     final attacker = defender.other;
     if (b.pos.y.abs() < m.goalWidth / 2.0 && b.z < m.goalHeight) {
       _goal(s, attacker, end);
@@ -111,7 +112,7 @@ class Restarts {
   void start(MatchState s, SetPiece sp) {
     final team = s.team(sp.team);
     final taker = _pickTaker(s, sp);
-    final out = _behindDir(sp);
+    final out = _behindDir(s, sp);
     const gap = T.discRadius + T.ballRadius + T.carryGap;
     taker.pos.set(sp.spot.x + out.x * gap, sp.spot.y + out.y * gap);
     taker.prev.setFrom(taker.pos);
@@ -150,11 +151,11 @@ class Restarts {
   }
 
   /// Unit vector from the ball to where the taker stands.
-  Vec2 _behindDir(SetPiece sp) {
+  Vec2 _behindDir(MatchState s, SetPiece sp) {
     final v = switch (sp.kind) {
       RestartKind.throwIn => Vec2(0.0, signD(sp.spot.y)),
       RestartKind.corner => Vec2(signD(sp.spot.x), signD(sp.spot.y)),
-      _ => Vec2(-sp.team.attackDir, 0.0),
+      _ => Vec2(-s.dir(sp.team), 0.0),
     };
     v.normalize();
     return v;
@@ -199,7 +200,7 @@ class Restarts {
       final d = math.sqrt(dx * dx + dy * dy);
       if (d >= r) continue;
       if (d < 1e-6) {
-        o.pos.x = sp.spot.x - sp.team.attackDir * r;
+        o.pos.x = sp.spot.x - s.dir(sp.team) * r;
         continue;
       }
       o.pos.x = sp.spot.x + dx / d * r;
