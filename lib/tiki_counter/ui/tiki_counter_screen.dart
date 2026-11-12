@@ -6,10 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:b_ball/game/audio/audio_engine.dart';
+import 'package:b_ball/services/auth_service.dart';
 import 'package:b_ball/tiki_counter/menu/club/club_screen.dart';
 import 'package:b_ball/tiki_counter/menu/game_plan/game_plan_screen.dart';
 import 'package:b_ball/tiki_counter/menu/home/home_hub.dart';
 import 'package:b_ball/tiki_counter/menu/kick_off_sheet.dart';
+import 'package:b_ball/tiki_counter/menu/record/record_screen.dart';
+import 'package:b_ball/tiki_counter/menu/record/record_store.dart';
+import 'package:b_ball/tiki_counter/menu/setup/gameverse_link.dart';
 import 'package:b_ball/tiki_counter/menu/setup/setup_store.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/render/hud_model.dart';
@@ -29,12 +33,14 @@ import 'package:tiki_core/control/human_controller.dart';
 import 'package:tiki_core/control/human_input.dart';
 import 'package:tiki_core/core/rng.dart';
 import 'package:tiki_core/model/match_state.dart';
+import 'package:tiki_core/record/club_record.dart';
+import 'package:tiki_core/record/record_entry.dart';
 import 'package:tiki_core/runner/match_runner.dart';
 import 'package:tiki_core/tactics/formations.dart';
 import 'package:tiki_core/tactics/presets.dart';
 
 /// Which menu page shows when no match is running.
-enum MenuPage { home, gamePlan, club }
+enum MenuPage { home, gamePlan, club, record }
 
 /// Tiki Counter's screen: menus (home hub, game plan, club, kick-off sheet)
 /// → match (board + HUD + controls) → half-time → full-time.
@@ -65,6 +71,13 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   /// The last match's choice, for PLAY AGAIN / RESTART.
   MatchChoice? _lastChoice;
 
+  /// Your club's record vs the bot, and whose it is (user id or 'guest').
+  ClubRecord _record = ClubRecord();
+  String _recordOwner = 'guest';
+
+  /// Watches the running match for full-time (removed when it ends).
+  VoidCallback? _fullTimeWatch;
+
   @override
   void initState() {
     super.initState();
@@ -74,8 +87,66 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   }
 
   Future<void> _loadSetup() async {
-    final s = await SetupStore.load();
-    if (mounted) setState(() => _setup = s);
+    final saved = await SetupStore.loadSaved();
+    if (!mounted) return;
+    setState(() => _setup = saved ?? TikiSetup.initial);
+    // First launch: name the club after the player ("Oyin FC").
+    if (saved == null) GameVerseLink.whenUser(_nameClubAfter);
+    unawaited(_loadRecord(GameVerseLink.recordOwner));
+    // Signed in after the screen opened: switch to that account's record.
+    GameVerseLink.whenUser((u) {
+      if (u.uid != _recordOwner) unawaited(_loadRecord(u.uid));
+    });
+  }
+
+  void _nameClubAfter(UserProfile u) {
+    final setup = _setup;
+    final name = TikiSetup.clubNameFor(u.displayName);
+    if (!mounted || setup == null || name == null) return;
+    if (setup.clubName != TikiSetup.initial.clubName) return; // already named
+    _changeSetup(setup.copyWith(clubName: name, clubCode: TikiSetup.codeFor(name)));
+  }
+
+  Future<void> _loadRecord(String owner) async {
+    final r = await RecordStore.load(owner);
+    if (!mounted) return;
+    setState(() {
+      _recordOwner = owner;
+      _record = r;
+    });
+  }
+
+  /// Calls [_matchFinished] once when this match reaches full-time.
+  void _watchFullTime(MatchRunner runner, MatchChoice c) {
+    _stopWatchingFullTime();
+    void watch() {
+      if (_hud.snapshot.value.phase != MatchPhase.fullTime) return;
+      _stopWatchingFullTime();
+      _matchFinished(runner.state, c);
+    }
+
+    _fullTimeWatch = watch;
+    _hud.snapshot.addListener(watch);
+  }
+
+  void _stopWatchingFullTime() {
+    final w = _fullTimeWatch;
+    if (w != null) _hud.snapshot.removeListener(w);
+    _fullTimeWatch = null;
+  }
+
+  /// Full-time: count it for the dashboard and, if you played (not just
+  /// watched), add it to your club record.
+  void _matchFinished(MatchState state, MatchChoice c) {
+    if (c.watch) return;
+    GameVerseLink.soloMatchFinished();
+    final entry = RecordEntry.fromMatch(
+      state,
+      botLevel: c.botLevel.name,
+      playedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    setState(() => _record.add(entry));
+    unawaited(RecordStore.save(_recordOwner, _record));
   }
 
   /// Every menu change goes through here: shown at once, saved quietly.
@@ -120,6 +191,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
       awayPlan: c.awayPlan ?? Presets.all[pick.nextInt(Presets.all.length)],
       seed: seed,
     );
+    _watchFullTime(runner, c);
     final st = runner.state;
     st.home.name = c.homeName;
     st.home.code = c.homeCode;
@@ -171,6 +243,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   }
 
   void _toMenu() => setState(() {
+    _stopWatchingFullTime();
     _game = null;
     _paused = false;
     _page = MenuPage.home;
@@ -187,6 +260,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
 
   @override
   void dispose() {
+    _stopWatchingFullTime();
     _hud.dispose();
     super.dispose();
   }
@@ -234,6 +308,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     final page = switch (_page) {
       MenuPage.home => HomeHub(
         setup: setup,
+        record: _record,
+        onRecord: () => setState(() => _page = MenuPage.record),
         onKickOff: () => _openKickOff(watch: false),
         onGamePlan: () => setState(() {
           _planTab = PlanTab.style;
@@ -249,6 +325,11 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
         onChanged: _changeSetup,
         onBack: () => setState(() => _page = MenuPage.home),
         onTest: () => _openKickOff(watch: false),
+      ),
+      MenuPage.record => RecordScreen(
+        clubName: setup.clubName,
+        record: _record,
+        onBack: () => setState(() => _page = MenuPage.home),
       ),
       MenuPage.club => ClubScreen(
         setup: setup,
