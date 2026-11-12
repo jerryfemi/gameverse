@@ -43,14 +43,14 @@ class _HalfTimeCardState extends State<HalfTimeCard> {
           StatsTable(state: widget.state),
           const SizedBox(height: 14),
           ChoiceRow<Formation>(
-            label: 'YOUR FORMATION',
+            label: 'FORMATION',
             options: Formations.forMode(widget.state.mode),
             selected: _formation,
             name: (f) => f.name,
             onChanged: (f) => setState(() => _formation = f),
           ),
           ChoiceRow<TeamPlan>(
-            label: 'YOUR STYLE',
+            label: 'PLAYSTYLE',
             options: Presets.all,
             selected: _plan,
             name: (p) => p.name,
@@ -95,7 +95,7 @@ class FullTimeCard extends StatelessWidget {
           const SizedBox(height: 16),
           CardButton(label: 'PLAY AGAIN', primary: true, onTap: onPlayAgain),
           const SizedBox(height: 8),
-          CardButton(label: 'LOBBY', onTap: onLobby),
+          CardButton(label: 'MENU', onTap: onLobby),
         ],
       ),
     );
@@ -124,9 +124,9 @@ class PauseCard extends StatelessWidget {
         children: [
           CardButton(label: 'RESUME', primary: true, onTap: onResume),
           const SizedBox(height: 8),
-          CardButton(label: 'NEW MATCH', onTap: onRestart),
+          CardButton(label: 'RESTART', onTap: onRestart),
           const SizedBox(height: 8),
-          CardButton(label: 'LOBBY', onTap: onLobby),
+          CardButton(label: 'MENU', onTap: onLobby),
         ],
       ),
     );
