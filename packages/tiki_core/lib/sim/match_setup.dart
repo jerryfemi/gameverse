@@ -5,7 +5,10 @@ import 'package:tiki_core/model/game_mode.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/model/side.dart';
 import 'package:tiki_core/model/team_state.dart';
+import 'package:tiki_core/core/geometry.dart';
 import 'package:tiki_core/tactics/formation.dart';
+import 'package:tiki_core/tactics/presets.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
 /// Builds a fresh match and puts teams in kick-off positions.
 abstract final class MatchSetup {
@@ -13,16 +16,23 @@ abstract final class MatchSetup {
     required GameMode mode,
     required Formation homeFormation,
     required Formation awayFormation,
+    TeamPlan homePlan = Presets.balanced,
+    TeamPlan awayPlan = Presets.balanced,
   }) {
     final discs = <Disc>[];
-    final home = _team(Side.home, homeFormation, discs);
-    final away = _team(Side.away, awayFormation, discs);
+    final home = _team(Side.home, homeFormation, homePlan, discs);
+    final away = _team(Side.away, awayFormation, awayPlan, discs);
     final state = MatchState(mode: mode, home: home, away: away, discs: discs);
     resetShape(state, kickOffSide: Side.home);
     return state;
   }
 
-  static TeamState _team(Side side, Formation f, List<Disc> all) {
+  static TeamState _team(
+    Side side,
+    Formation f,
+    TeamPlan plan,
+    List<Disc> all,
+  ) {
     final discs = <Disc>[];
     for (var i = 0; i < f.spots.length; i++) {
       final spot = f.spots[i];
@@ -30,7 +40,7 @@ abstract final class MatchSetup {
         id: all.length,
         side: side,
         number: spot.number,
-        role: spot.role,
+        role: spot.position.role,
         slot: i,
       );
       all.add(d);
@@ -39,6 +49,7 @@ abstract final class MatchSetup {
     return TeamState(
       side: side,
       formation: f,
+      plan: plan,
       discs: discs,
       cursorId: discs[f.kickOffSlot].id,
     );
@@ -46,7 +57,7 @@ abstract final class MatchSetup {
 
   /// Formation spot → pitch metres for a team.
   static double worldX(MatchState s, Side side, double teamX) =>
-      teamX * s.mode.halfLength * side.attackDir;
+      teamX * s.mode.halfLength * s.dir(side);
 
   static double worldY(MatchState s, double teamY) =>
       teamY * s.mode.halfWidth * 0.85;
@@ -57,9 +68,9 @@ abstract final class MatchSetup {
       final kicking = team.side == kickOffSide;
       for (final d in team.discs) {
         final spot = team.formation.spots[d.slot];
-        // Squeeze the shape into the own half.
-        var tx = -1.0 + (spot.x + 1.0) * 0.48;
-        var ty = spot.y;
+        // Defence shape, kept in the own half.
+        var tx = clampD(spot.dx, -0.95, -0.08);
+        var ty = spot.dy;
         if (kicking && d.slot == team.formation.kickOffSlot) {
           tx = -0.5 / s.mode.halfLength; // just behind the ball
           ty = 0.0;
@@ -70,7 +81,7 @@ abstract final class MatchSetup {
         d.vel.setZero();
         d.desiredVel.setZero();
         d.target.setFrom(d.pos);
-        d.facing.set(team.side.attackDir, 0.0);
+        d.facing.set(s.dir(team.side), 0.0);
         d.stunTimer = 0.0;
         d.tackleCooldown = 0.0;
         d.pickupCooldown = 0.0;
@@ -95,7 +106,7 @@ abstract final class MatchSetup {
     final r = math.sqrt(d.pos.x * d.pos.x + d.pos.y * d.pos.y);
     if (r >= minR) return;
     // Push straight back toward own goal.
-    final back = -d.side.attackDir;
+    final back = -s.dir(d.side);
     final needX = math.sqrt(math.max(0.0, minR * minR - d.pos.y * d.pos.y));
     d.pos.x = back * needX;
   }
