@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:tiki_core/control/bot_controller.dart';
 import 'package:tiki_core/core/rng.dart';
 import 'package:tiki_core/core/tunables.dart';
@@ -44,6 +46,12 @@ void fullMatchChecks() {
           '${h.shots}-${a.shots} · passes ${h.passesCompleted}/${h.passesTried}'
           ' vs ${a.passesCompleted}/${a.passesTried} · saves ${h.saves}-${a.saves}'
           ' · pattern runs ${h.patternRuns}-${a.patternRuns}');
+      // Balance targets: printed, not failed, while we tune.
+      final acc = (h.passesCompleted + a.passesCompleted) /
+          math.max(1, h.passesTried + a.passesTried);
+      final shots = h.shots + a.shots;
+      print('        pass accuracy ${(acc * 100).round()}% (aim 70%+) · '
+          'shots $shots (aim 6+)${acc < 0.7 || shots < 6 ? '  <- needs tuning' : ''}');
     });
   }
 
