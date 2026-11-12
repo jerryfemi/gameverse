@@ -10,6 +10,7 @@ import 'package:b_ball/tiki_counter/render/hud_model.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/cards/match_cards.dart';
+import 'package:b_ball/tiki_counter/ui/cards/match_choice.dart';
 import 'package:b_ball/tiki_counter/ui/cards/start_card.dart';
 import 'package:b_ball/tiki_counter/ui/controls/controls_layer.dart';
 import 'package:b_ball/tiki_counter/ui/controls/keyboard_controls.dart';
@@ -22,9 +23,10 @@ import 'package:tiki_core/control/bot_controller.dart';
 import 'package:tiki_core/control/human_controller.dart';
 import 'package:tiki_core/control/human_input.dart';
 import 'package:tiki_core/core/rng.dart';
-import 'package:tiki_core/model/game_mode.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/runner/match_runner.dart';
+import 'package:tiki_core/tactics/formations.dart';
+import 'package:tiki_core/tactics/presets.dart';
 
 /// Tiki Counter's screen: start card → match (board + HUD + controls) →
 /// half-time → full-time. Owns the game for one match at a time.
@@ -53,15 +55,24 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     unawaited(AudioEngine.loadTikiSfx());
   }
 
-  void _start(GameMode mode, {required bool watch}) {
+  void _start(MatchChoice c) {
     _input.releaseAll();
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+    final pick = Rng(seed + 3);
+    final formations = Formations.forMode(c.mode);
     final runner = MatchRunner.create(
-      mode: mode,
-      home: watch ? BotController(rng: Rng(seed + 1)) : HumanController(_input),
-      away: BotController(rng: Rng(seed + 2)),
+      mode: c.mode,
+      home: c.watch
+          ? BotController(rng: Rng(seed + 1), level: c.botLevel)
+          : HumanController(_input),
+      away: BotController(rng: Rng(seed + 2), level: c.botLevel),
+      homeFormation: c.homeFormation,
+      awayFormation: formations[pick.nextInt(formations.length)],
+      homePlan: c.homePlan,
+      awayPlan: c.awayPlan ?? Presets.all[pick.nextInt(Presets.all.length)],
       seed: seed,
     );
+    final watch = c.watch;
     _hud.snapshot.value = HudSnapshot.initial;
     _hud.banner.value = null;
     setState(() {
