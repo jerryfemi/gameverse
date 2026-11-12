@@ -18,10 +18,6 @@ class TikiSounds {
         case MatchEventKind.goal:
           AudioEngine.playTikiNet();
           AudioEngine.playTikiWhistle();
-        case MatchEventKind.save:
-        case MatchEventKind.tackleWon:
-        case MatchEventKind.tackleLoose:
-          AudioEngine.playTikiThud();
         case MatchEventKind.offside:
         case MatchEventKind.throwIn:
         case MatchEventKind.corner:
@@ -32,6 +28,10 @@ class TikiSounds {
         case MatchEventKind.halfTime:
         case MatchEventKind.fullTime:
           AudioEngine.playTikiWhistle(long: true);
+        // No sound for these (the thud was dropped after the playtest).
+        case MatchEventKind.save:
+        case MatchEventKind.tackleWon:
+        case MatchEventKind.tackleLoose:
         case MatchEventKind.interception:
         case MatchEventKind.tackleMiss:
           break;

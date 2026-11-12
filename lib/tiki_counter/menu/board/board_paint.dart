@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
 
+import 'package:b_ball/tiki_counter/theme/ball_look.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:tiki_core/model/game_mode.dart';
 
@@ -49,9 +50,6 @@ abstract final class BoardPaint {
     ..strokeWidth = 2.5
     ..color = TikiPalette.cyan;
 
-  static final Paint _outline = Paint()
-    ..color = TikiPalette.ballOutline
-    ..style = PaintingStyle.stroke;
   static final Paint _head = Paint()..style = PaintingStyle.fill;
 
   static final Map<String, TextPainter> _labels = {};
@@ -159,10 +157,7 @@ abstract final class BoardPaint {
   static void ball(Canvas c, BoardGeometry g, Offset at) {
     final r = g.px(0.5);
     c.drawCircle(at + Offset(r * 0.3, r * 0.5), r, _shadow);
-    _fill.color = TikiPalette.ball;
-    c.drawCircle(at, r, _fill);
-    _outline.strokeWidth = math.max(1.0, r * 0.25);
-    c.drawCircle(at, r, _outline);
+    BallLook.draw(c, at, r, 0.3);
   }
 
   /// Cached number labels (keyed by text, colour and size).
