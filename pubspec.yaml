@@ -53,6 +53,9 @@ dependencies:
   package_info_plus: ^10.2.2
   go_router: ^18.1.1
   firebase_database: ^12.6.1
+  # Tiki Counter's match engine (pure Dart, lives in this repo).
+  tiki_core:
+    path: packages/tiki_core
 
 dev_dependencies:
   flutter_test:
@@ -92,6 +95,7 @@ flutter:
     - assets/darts/sprites/
     - assets/darts/
     - assets/paintball/
+    - assets/tiki_counter/
 
   # Shot callout lettering (SWISH! / BANK! / +3). Poppins Bold Italic
   # (SIL Open Font License), subset to basic Latin: ~9 KB.

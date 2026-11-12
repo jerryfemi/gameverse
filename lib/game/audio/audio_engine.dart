@@ -155,6 +155,7 @@ class AudioEngine {
       if (_archerySfxWanted) unawaited(loadArcherySfx());
       if (_dartsSfxWanted) unawaited(loadDartsSfx());
       if (_paintballSfxWanted) unawaited(loadPaintballSfx());
+      if (_tikiSfxWanted) unawaited(loadTikiSfx());
     }
     await _savePref(_prefKeySfxEnabled, enabled);
   }
@@ -178,6 +179,8 @@ class AudioEngine {
   static bool _dartsSfxLoaded = false;
   static bool _paintballSfxWanted = false;
   static bool _paintballSfxLoaded = false;
+  static bool _tikiSfxWanted = false;
+  static bool _tikiSfxLoaded = false;
 
   // ── Monotonic stopwatch (zero-allocation rate-limiting) ──
   static final Stopwatch _clock = Stopwatch();
@@ -220,6 +223,13 @@ class AudioEngine {
     Sfx.pbShot5: 'assets/paintball/pb_shot_5.wav',
     Sfx.pbSplat: 'assets/paintball/pb_splat.wav',
     Sfx.pbHit: 'assets/paintball/pb_hit.wav',
+  };
+
+  static const Map<Sfx, String> _tikiSfxAssets = {
+    Sfx.tkKick: 'assets/tiki_counter/kick.wav',
+    Sfx.tkWhistle: 'assets/tiki_counter/whistle.wav',
+    Sfx.tkNet: 'assets/tiki_counter/net.wav',
+    Sfx.tkThud: 'assets/tiki_counter/thud.wav',
   };
 
   // ── Available Background Music Tracks ──
@@ -280,6 +290,7 @@ class AudioEngine {
       if (sfxEnabled && _archerySfxWanted) unawaited(loadArcherySfx());
       if (sfxEnabled && _dartsSfxWanted) unawaited(loadDartsSfx());
       if (sfxEnabled && _paintballSfxWanted) unawaited(loadPaintballSfx());
+      if (sfxEnabled && _tikiSfxWanted) unawaited(loadTikiSfx());
       final ambience = _ambienceTrack;
       if (ambience != null) {
         unawaited(_backend
@@ -361,6 +372,20 @@ class AudioEngine {
     } catch (e) {
       _paintballSfxLoaded = false;
       debugPrint('[AudioEngine] Paintball sounds failed to load: $e');
+    }
+  }
+
+  /// Decodes Tiki Counter's sounds (only when Tiki Counter is opened).
+  /// Safe to call repeatedly.
+  static Future<void> loadTikiSfx() async {
+    _tikiSfxWanted = true;
+    if (_tikiSfxLoaded || !_initialized || !sfxEnabled) return;
+    _tikiSfxLoaded = true;
+    try {
+      await _backend.loadSfx(_tikiSfxAssets);
+    } catch (e) {
+      _tikiSfxLoaded = false;
+      debugPrint('[AudioEngine] Tiki Counter sounds failed to load: $e');
     }
   }
 
@@ -728,6 +753,37 @@ class AudioEngine {
     _safePlay(Sfx.pbHit, 0.5, rate: 1.02 + _pbRng.nextDouble() * 0.06);
   }
 
+  // ── Tiki Counter Sound Effects ──
+
+  static final math.Random _tkRng = math.Random();
+
+  /// A kick: [power] 0..1 sets loudness and a little pitch (harder = lower).
+  static void playTikiKick(double power) {
+    if (!_canPlaySfx) return;
+    final p = power.clamp(0.0, 1.0);
+    final rate = 1.08 - p * 0.16 + _tkRng.nextDouble() * 0.06;
+    _safePlay(Sfx.tkKick, 0.35 + p * 0.6, rate: rate);
+  }
+
+  /// Referee whistle. [long] = half-time / full-time (lower, fuller).
+  static void playTikiWhistle({bool long = false}) {
+    if (!_canPlaySfx) return;
+    _safePlay(Sfx.tkWhistle, long ? 0.75 : 0.55, rate: long ? 0.9 : 1.0);
+  }
+
+  /// Ball in the net.
+  static void playTikiNet() {
+    if (!_canPlaySfx) return;
+    _safePlay(Sfx.tkNet, 0.9);
+    _safeHaptic(HapticFeedback.mediumImpact);
+  }
+
+  /// Bodies meeting: tackles and blocks.
+  static void playTikiThud() {
+    if (!_canPlaySfx) return;
+    _safePlay(Sfx.tkThud, 0.7, rate: 0.95 + _tkRng.nextDouble() * 0.1);
+  }
+
   static void _safePlay(Sfx sfx, double volume, {double rate = 1.0}) {
     final effectiveVolume = (volume * masterVolume * sfxVolume).clamp(
       0.0,
@@ -757,6 +813,7 @@ class AudioEngine {
     _archerySfxLoaded = false;
     _dartsSfxLoaded = false;
     _paintballSfxLoaded = false;
+    _tikiSfxLoaded = false;
     _clock
       ..stop()
       ..reset();

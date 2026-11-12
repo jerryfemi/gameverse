@@ -31,6 +31,10 @@ enum Sfx {
   pbShot5,
   pbSplat,
   pbHit,
+  tkKick,
+  tkWhistle,
+  tkNet,
+  tkThud,
 }
 
 /// Low-level sound output used by [AudioEngine].
