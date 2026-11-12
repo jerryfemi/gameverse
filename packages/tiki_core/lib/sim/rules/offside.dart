@@ -12,7 +12,7 @@ import 'package:tiki_core/model/match_state.dart';
 abstract final class Offside {
   static void snapshot(MatchState s, Disc passer, Set<int> out) {
     out.clear();
-    final dir = passer.side.attackDir;
+    final dir = s.dir(passer.side);
 
     // Two deepest defenders, measured in the attacking direction.
     var first = -double.infinity;
