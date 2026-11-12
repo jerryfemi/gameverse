@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:tiki_core/brain/perception/team_view.dart';
 import 'package:tiki_core/control/bot_level.dart';
+import 'package:tiki_core/control/bot_memory.dart';
 import 'package:tiki_core/core/geometry.dart';
 import 'package:tiki_core/core/rng.dart';
 import 'package:tiki_core/model/disc.dart';
@@ -11,13 +12,15 @@ import 'package:tiki_core/sim/rules/receivers.dart';
 /// The bot's choices with the ball: shoot, pass (reading its teammates'
 /// runs), or carry. It only ever sets the same intent a human would.
 abstract final class BotAttack {
+  static const double _shotWait = 1.0;
+
   static void decide(
     TeamView v,
     Disc c,
     Intent i,
     BotLevel level,
     Rng rng,
-    double holdTime,
+    BotMemory mem,
   ) {
     final sp = v.s.setPiece;
     if (sp != null && sp.takerId == c.id) {
@@ -25,25 +28,51 @@ abstract final class BotAttack {
       if (sp.timer > level.setPieceDelay) _pass(v, c, i, level, rng, force: true);
       return;
     }
-    if (_shoot(v, c, i, level, rng)) return;
+    if (_shoot(v, c, i, level, rng, mem)) return;
     final pressure = v.space(c.pos.x, c.pos.y);
-    final hurry = pressure < 1.8 || holdTime > level.holdMax;
+    final hurry = pressure < 1.8 || mem.holdTime > level.holdMax;
     if (_pass(v, c, i, level, rng, force: hurry)) return;
     _carry(v, c, i, pressure);
   }
 
-  static bool _shoot(TeamView v, Disc c, Intent i, BotLevel level, Rng rng) {
+  /// Shoots only from a real chance: in the box, or a clear lane within
+  /// range. Each chance gets one roll; after a "no" the bot waits
+  /// [_shotWait] seconds before weighing a shot again.
+  static bool _shoot(
+    TeamView v,
+    Disc c,
+    Intent i,
+    BotLevel level,
+    Rng rng,
+    BotMemory mem,
+  ) {
+    if (mem.shotLock > 0.0) return false;
     final m = v.s.mode;
     final gx = v.worldX(v.halfL);
     final dx = gx - c.pos.x;
     final dist = math.sqrt(dx * dx + c.pos.y * c.pos.y);
+    final inBox = v.teamX(c) > v.halfL - m.boxDepth &&
+        c.pos.y.abs() < m.boxWidth / 2;
     final clear = _clearShot(v, c, gx);
-    // A clear sight of goal lets it try from a little further out.
-    if (dist > m.shootRange * (clear ? 1.25 : 1.0)) return false;
-    final angleOk = c.pos.y.abs() < m.goalWidth * 2.0 || dist < 9.0;
+    // 7v7 is a bigger pitch: a clear lane allows a little more range.
+    final range = m.shootRange * (m.teamSize > 5 && clear ? 1.2 : 1.0);
+    if (dist > range) return false;
+    final angleOk = c.pos.y.abs() < m.goalWidth * 1.8 || dist < 8.0;
     if (!angleOk) return false;
-    final chance = level.shootChance * (clear ? 2.0 : 0.5);
-    if (!rng.chance(chance)) return false;
+    final double chance;
+    if (inBox && clear) {
+      chance = 0.85;
+    } else if (clear) {
+      chance = level.shootChance * 2.5;
+    } else if (inBox) {
+      chance = level.shootChance;
+    } else {
+      return false; // blocked lane from outside the box: not a chance
+    }
+    if (!rng.chance(chance)) {
+      mem.shotLock = _shotWait;
+      return false;
+    }
 
     // Aim for the corner away from their keeper.
     var keeperY = 0.0;
