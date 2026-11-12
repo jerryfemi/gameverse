@@ -1,28 +1,67 @@
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/ui/cards/card_frame.dart';
+import 'package:b_ball/tiki_counter/ui/cards/choice_row.dart';
 import 'package:b_ball/tiki_counter/ui/cards/stats_table.dart';
 import 'package:tiki_core/model/match_state.dart';
+import 'package:tiki_core/tactics/formation.dart';
+import 'package:tiki_core/tactics/formations.dart';
+import 'package:tiki_core/tactics/presets.dart';
+import 'package:tiki_core/tactics/team_plan.dart';
 
-/// Half-time: stats, then the second half.
-/// (Milestone 8 adds the quick tactics changes here.)
-class HalfTimeCard extends StatelessWidget {
+/// Half-time: stats, a quick change of formation or style for your team,
+/// then the second half (ends swap).
+class HalfTimeCard extends StatefulWidget {
   final MatchState state;
   final VoidCallback onContinue;
 
   const HalfTimeCard({super.key, required this.state, required this.onContinue});
 
   @override
+  State<HalfTimeCard> createState() => _HalfTimeCardState();
+}
+
+class _HalfTimeCardState extends State<HalfTimeCard> {
+  late Formation _formation = widget.state.home.formation;
+  late TeamPlan _plan = widget.state.home.plan;
+
+  void _continue() {
+    widget.state.home.formation = _formation;
+    widget.state.home.plan = _plan;
+    widget.onContinue();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return CardFrame(
       eyebrow: 'HALF-TIME',
       title: 'First half stats',
+      maxWidth: 500,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          StatsTable(state: state),
-          const SizedBox(height: 16),
-          CardButton(label: 'START SECOND HALF', primary: true, onTap: onContinue),
+          StatsTable(state: widget.state),
+          const SizedBox(height: 14),
+          ChoiceRow<Formation>(
+            label: 'YOUR FORMATION',
+            options: Formations.forMode(widget.state.mode),
+            selected: _formation,
+            name: (f) => f.name,
+            onChanged: (f) => setState(() => _formation = f),
+          ),
+          ChoiceRow<TeamPlan>(
+            label: 'YOUR STYLE',
+            options: Presets.all,
+            selected: _plan,
+            name: (p) => p.name,
+            onChanged: (p) => setState(() => _plan = p),
+          ),
+          const SizedBox(height: 6),
+          CardButton(
+            label: 'START SECOND HALF',
+            primary: true,
+            onTap: _continue,
+          ),
         ],
       ),
     );
