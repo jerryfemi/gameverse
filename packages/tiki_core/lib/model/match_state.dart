@@ -21,6 +21,9 @@ class MatchState {
 
   MatchPhase phase = MatchPhase.firstHalf;
 
+  /// Ends swap at half-time: true in the first half.
+  bool homeAttacksRight = true;
+
   /// Seconds played (0 → 420).
   double clock = 0.0;
 
@@ -41,6 +44,11 @@ class MatchState {
   });
 
   TeamState team(Side side) => side == Side.home ? home : away;
+
+  /// +1 if [side] attacks toward +x (right) in this half, −1 if toward −x.
+  /// Multiply an x by this to get "how far forward" it is for that team.
+  double dir(Side side) =>
+      (side == Side.home) == homeAttacksRight ? 1.0 : -1.0;
 
   Disc? get owner => ball.ownerId >= 0 ? discs[ball.ownerId] : null;
 
