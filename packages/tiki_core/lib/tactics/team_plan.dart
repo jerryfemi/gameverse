@@ -74,4 +74,72 @@ class TeamPlan {
     this.width = 0.6,
     this.pressIntensity = 0.5,
   });
+
+  /// A copy with some choices changed. Changing anything but [name] usually
+  /// means the plan is now "Custom" — the caller decides the name.
+  TeamPlan copyWith({
+    String? name,
+    AttackStyle? attack,
+    AfterWin? afterWin,
+    AfterLoss? afterLoss,
+    Marking? marking,
+    double? lineHeight,
+    double? compactness,
+    double? width,
+    double? pressIntensity,
+  }) {
+    return TeamPlan(
+      name: name ?? this.name,
+      attack: attack ?? this.attack,
+      afterWin: afterWin ?? this.afterWin,
+      afterLoss: afterLoss ?? this.afterLoss,
+      marking: marking ?? this.marking,
+      lineHeight: lineHeight ?? this.lineHeight,
+      compactness: compactness ?? this.compactness,
+      width: width ?? this.width,
+      pressIntensity: pressIntensity ?? this.pressIntensity,
+    );
+  }
+
+  /// Plain map for saving (shared preferences, later online).
+  Map<String, Object> toJson() => {
+    'name': name,
+    'attack': attack.name,
+    'afterWin': afterWin.name,
+    'afterLoss': afterLoss.name,
+    'marking': marking.name,
+    'lineHeight': lineHeight,
+    'compactness': compactness,
+    'width': width,
+    'pressIntensity': pressIntensity,
+  };
+
+  /// Reads [toJson]'s map; anything missing or unknown falls back to the
+  /// defaults, so old saves never crash.
+  factory TeamPlan.fromJson(Map<String, Object?> j) {
+    T pick<T extends Enum>(List<T> values, Object? v, T fallback) {
+      for (final e in values) {
+        if (e.name == v) return e;
+      }
+      return fallback;
+    }
+
+    double num01(Object? v, double fallback) {
+      if (v is! num) return fallback;
+      final d = v.toDouble();
+      return d < 0.0 ? 0.0 : (d > 1.0 ? 1.0 : d);
+    }
+
+    return TeamPlan(
+      name: j['name'] is String ? j['name']! as String : 'Custom',
+      attack: pick(AttackStyle.values, j['attack'], AttackStyle.possession),
+      afterWin: pick(AfterWin.values, j['afterWin'], AfterWin.keep),
+      afterLoss: pick(AfterLoss.values, j['afterLoss'], AfterLoss.dropIntoShape),
+      marking: pick(Marking.values, j['marking'], Marking.zonal),
+      lineHeight: num01(j['lineHeight'], 0.5),
+      compactness: num01(j['compactness'], 0.5),
+      width: num01(j['width'], 0.6),
+      pressIntensity: num01(j['pressIntensity'], 0.5),
+    );
+  }
 }
