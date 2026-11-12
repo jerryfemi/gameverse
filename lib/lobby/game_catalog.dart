@@ -115,6 +115,20 @@ const List<LobbyGame> lobbyGames = [
     route: '/paintball',
     featured: true,
   ),
+  LobbyGame(
+    id: 'tiki_counter',
+    title: 'Tiki Counter',
+    tagline: 'Football on a tactics board. Pass and press.',
+    pitch: 'No dribbling: move, pass and press to break them down. 5v5 or 7v7, seven minutes.',
+    heroLabel: 'Early build',
+    accent: Color(0xFF00FFCC),
+    image: 'assets/lobby/tiki_counter.webp',
+    heroImage: 'assets/lobby/tiki_counter.webp',
+    heroAlignment: Alignment.center,
+    heroImageNarrow: 'assets/lobby/tiki_counter.webp',
+    route: '/tiki-counter',
+    available: false,
+  ),
 ];
 
 LobbyGame get featuredGame =>
