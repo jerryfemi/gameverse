@@ -28,6 +28,18 @@ void passingChecks() {
     i.power = 0.3;
 
     runFor(runner, 3.0);
+    if (s.home.stats.passesCompleted != 1) {
+      // Tell us what happened instead of just "got 0".
+      final b = s.ball;
+      print('        ball at (${b.pos.x.toStringAsFixed(1)}, '
+          '${b.pos.y.toStringAsFixed(1)}) speed ${b.speed.toStringAsFixed(1)} '
+          'owner ${b.ownerId} lastTouch ${b.lastTouchId} '
+          'missed ${b.missedIds} restart ${s.pending?.setPiece.kind}');
+      print('        taker ${taker.id} at (${taker.pos.x.toStringAsFixed(1)}, '
+          '${taker.pos.y.toStringAsFixed(1)}) · mate ${mate.id} at '
+          '(${mate.pos.x.toStringAsFixed(1)}, ${mate.pos.y.toStringAsFixed(1)}) '
+          'job "${mate.job}" · cursor ${s.home.cursorId}');
+    }
     expectEqual(s.home.stats.passesTried, 1, 'passes tried');
     expectEqual(s.home.stats.passesCompleted, 1, 'passes completed');
     expectEqual(s.ball.ownerId, mate.id, 'ball owner');
