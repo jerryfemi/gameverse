@@ -5,6 +5,7 @@ import 'full_match_checks.dart';
 import 'harness.dart';
 import 'offside_checks.dart';
 import 'passing_checks.dart';
+import 'record_checks.dart';
 import 'restarts_checks.dart';
 import 'tactics_checks.dart';
 
@@ -22,6 +23,8 @@ void main() {
   offsideChecks();
   print('Tactics, shape, patterns');
   tacticsChecks();
+  print('Club record');
+  recordChecks();
   print('Full matches (bots)');
   fullMatchChecks();
   exitCode = report() == 0 ? 0 : 1;
