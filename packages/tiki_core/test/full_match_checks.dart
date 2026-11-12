@@ -4,6 +4,7 @@ import 'package:tiki_core/core/tunables.dart';
 import 'package:tiki_core/model/game_mode.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/runner/match_runner.dart';
+import 'package:tiki_core/tactics/presets.dart';
 
 import 'harness.dart';
 
@@ -13,6 +14,8 @@ MatchRunner playMatch(GameMode mode, int seed) {
     mode: mode,
     home: BotController(rng: Rng(seed + 1)),
     away: BotController(rng: Rng(seed + 2)),
+    homePlan: Presets.tikiTaka,
+    awayPlan: Presets.gegenpress,
     seed: seed,
   );
   final maxSteps = (T.matchSeconds / T.fixedDt).round() + 600;
@@ -39,9 +42,15 @@ void fullMatchChecks() {
       final a = s.away.stats;
       print('        score ${s.home.score}-${s.away.score} · shots '
           '${h.shots}-${a.shots} · passes ${h.passesCompleted}/${h.passesTried}'
-          ' vs ${a.passesCompleted}/${a.passesTried} · saves ${h.saves}-${a.saves}');
+          ' vs ${a.passesCompleted}/${a.passesTried} · saves ${h.saves}-${a.saves}'
+          ' · pattern runs ${h.patternRuns}-${a.patternRuns}');
     });
   }
+
+  check('ends swap at half-time', () {
+    final s = playMatch(GameMode.fiveASide, 5).state;
+    expectThat(!s.homeAttacksRight, 'home attacks left in the second half');
+  });
 
   check('same seed, same match', () {
     final a = playMatch(GameMode.fiveASide, 9).state;
