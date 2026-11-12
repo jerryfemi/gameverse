@@ -17,4 +17,6 @@ dart run test/run_checks.dart
 
 The checks use a tiny built-in harness (`test/harness.dart`) instead of
 `package:test`, so they need no download. They play full bot-vs-bot
-matches and print the score and stats, which is handy for balancing.
+matches and print the score and stats (incl. pattern runs), which is handy
+for balancing. `tactics_checks.dart` checks formations, that a high line
+really defends higher than a low block, and that the overlap starts.
