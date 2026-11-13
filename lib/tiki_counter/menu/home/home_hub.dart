@@ -121,7 +121,7 @@ class _HomeHubState extends State<HomeHub> with SingleTickerProviderStateMixin {
                           child: HubTile(
                             art: _labArt,
                             title: 'Lab',
-                            line: 'Watch bots play your playstyle.',
+                            line: 'Watch bots, patterns, scenarios and drills.',
                             onTap: widget.onLab,
                           ),
                         ),
