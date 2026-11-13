@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/game.dart';
 import 'package:flutter/gestures.dart';
@@ -11,9 +12,12 @@ import 'package:b_ball/tiki_counter/menu/club/club_screen.dart';
 import 'package:b_ball/tiki_counter/menu/game_plan/game_plan_screen.dart';
 import 'package:b_ball/tiki_counter/menu/home/home_hub.dart';
 import 'package:b_ball/tiki_counter/menu/kick_off_sheet.dart';
+import 'package:b_ball/tiki_counter/menu/lab/drill_store.dart';
+import 'package:b_ball/tiki_counter/menu/lab/lab_screen.dart';
 import 'package:b_ball/tiki_counter/menu/record/record_screen.dart';
 import 'package:b_ball/tiki_counter/menu/record/record_store.dart';
 import 'package:b_ball/tiki_counter/menu/setup/gameverse_link.dart';
+import 'package:b_ball/tiki_counter/menu/setup/opponent_clubs.dart';
 import 'package:b_ball/tiki_counter/menu/setup/setup_store.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/platform/landscape_lock.dart';
@@ -24,15 +28,18 @@ import 'package:b_ball/tiki_counter/ui/cards/match_cards.dart';
 import 'package:b_ball/tiki_counter/ui/cards/match_choice.dart';
 import 'package:b_ball/tiki_counter/ui/controls/controls_layer.dart';
 import 'package:b_ball/tiki_counter/ui/controls/keyboard_controls.dart';
+import 'package:b_ball/tiki_counter/ui/hud/drill_bar.dart';
 import 'package:b_ball/tiki_counter/ui/hud/event_banner.dart';
 import 'package:b_ball/tiki_counter/ui/hud/key_hint.dart';
 import 'package:b_ball/tiki_counter/ui/portrait_gate.dart';
 import 'package:b_ball/tiki_counter/ui/hud/score_bar.dart';
 import 'package:b_ball/tiki_counter/ui/hud/top_buttons.dart';
 import 'package:tiki_core/control/bot_controller.dart';
+import 'package:tiki_core/control/bot_level.dart';
 import 'package:tiki_core/control/human_controller.dart';
 import 'package:tiki_core/control/human_input.dart';
 import 'package:tiki_core/core/rng.dart';
+import 'package:tiki_core/drills/drill.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/record/club_record.dart';
 import 'package:tiki_core/record/record_entry.dart';
@@ -41,7 +48,7 @@ import 'package:tiki_core/tactics/formations.dart';
 import 'package:tiki_core/tactics/presets.dart';
 
 /// Which menu page shows when no match is running.
-enum MenuPage { home, gamePlan, club, record }
+enum MenuPage { home, gamePlan, club, record, lab }
 
 /// Tiki Counter's screen: menus (home hub, game plan, club, kick-off sheet)
 /// → match (board + HUD + controls) → half-time → full-time.
@@ -56,6 +63,17 @@ class TikiCounterScreen extends StatefulWidget {
 class _TikiCounterScreenState extends State<TikiCounterScreen> {
   final HumanInput _input = HumanInput();
   final HudModel _hud = HudModel();
+
+  // ── Lab ──
+  /// Where MENU / BACK goes after a match (the Lab after a Lab match).
+  MenuPage _returnTo = MenuPage.home;
+  double _speed = 1.0;
+  Map<String, double> _bestTimes = {};
+  Drill? _drill;
+  DrillStart? _drillStart;
+  final ValueNotifier<double> _drillClock = ValueNotifier(0.0);
+  DrillOutcome _drillOutcome = DrillOutcome.running;
+  String _drillDetail = '';
   TikiFlameGame? _game;
   bool _watching = false;
   bool _paused = false;
@@ -85,6 +103,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     // Decoded only when Tiki Counter opens, so other games never pay for it.
     unawaited(AudioEngine.loadTikiSfx());
     unawaited(_loadSetup());
+    unawaited(_loadBestTimes());
   }
 
   Future<void> _loadSetup() async {
@@ -174,10 +193,18 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     );
   }
 
+  Future<void> _loadBestTimes() async {
+    final b = await DrillStore.load();
+    if (mounted) setState(() => _bestTimes = b);
+  }
+
   void _start(MatchChoice c) {
     // Called from the KICK OFF tap: the browser allows full screen here.
     LandscapeLock.request();
     _lastChoice = c;
+    _drill = null;
+    _speed = 1.0;
+    _returnTo = c.lab ? MenuPage.lab : MenuPage.home;
     _input.releaseAll();
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
     final pick = Rng(seed + 3);
@@ -211,7 +238,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
         input: _input,
         hud: _hud,
         humanPlays: !watch,
-      );
+      )..showDebug = c.lab;
     });
   }
 
@@ -240,6 +267,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
 
   /// Same choice again (new random seed).
   void _replay() {
+    final d = _drill;
+    if (d != null) return _startDrill(d);
     final c = _lastChoice;
     if (c == null) return _toMenu();
     _start(c);
@@ -249,8 +278,102 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     _stopWatchingFullTime();
     _game = null;
     _paused = false;
-    _page = MenuPage.home;
+    _drill = null;
+    _page = _returnTo;
   });
+
+  /// A Lab drill: a staged moment vs a bot, judged every step.
+  void _startDrill(Drill d) {
+    final setup = _setup;
+    if (setup == null) return;
+    LandscapeLock.request();
+    _stopWatchingFullTime();
+    _input.releaseAll();
+    final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
+    final runner = MatchRunner.create(
+      mode: d.mode,
+      home: HumanController(_input),
+      away: BotController(rng: Rng(seed + 2), level: BotLevel.normal),
+      homeFormation: setup.formationFor(d.mode),
+      awayFormation: Formations.defaultFor(d.mode),
+      homePlan: setup.plan,
+      awayPlan: d.opponentPlan,
+      seed: seed,
+    );
+    final st = runner.state;
+    st.home.name = setup.clubName;
+    st.home.code = setup.clubCode;
+    final opp = OpponentClubs.random(math.Random(seed), avoidCode: setup.clubCode);
+    st.away.name = opp.name;
+    st.away.code = opp.code;
+    final start = Drills.start(st, d);
+    _hud.snapshot.value = HudSnapshot.initial;
+    _hud.banner.value = null;
+    _drillClock.value = 0.0;
+    final game = TikiFlameGame(
+      runner: runner,
+      input: _input,
+      hud: _hud,
+      humanPlays: true,
+    );
+    game.onStep = (dt) => _drillStep(game, dt);
+    setState(() {
+      _drill = d;
+      _drillStart = start;
+      _drillOutcome = DrillOutcome.running;
+      _drillDetail = '';
+      _returnTo = MenuPage.lab;
+      _watching = false;
+      _paused = false;
+      _speed = 1.0;
+      _game = game;
+    });
+  }
+
+  /// Runs inside the game loop after each sim step.
+  void _drillStep(TikiFlameGame game, double dt) {
+    final d = _drill;
+    final start = _drillStart;
+    if (d == null || start == null || _drillOutcome != DrillOutcome.running) {
+      return;
+    }
+    final t = _drillClock.value + dt;
+    _drillClock.value = t;
+    final s = game.runner.state;
+    final outcome = d.judge(s, t, start);
+    if (outcome == DrillOutcome.running) return;
+    _drillOutcome = outcome;
+    if (outcome == DrillOutcome.passed) {
+      final best = _bestTimes[d.id];
+      final record = best == null || t < best;
+      final time = 'Done in ${t.toStringAsFixed(1)} s';
+      if (best == null) {
+        _drillDetail = '$time.';
+      } else if (record) {
+        _drillDetail = '$time — a new best.';
+      } else {
+        _drillDetail = '$time (best ${best.toStringAsFixed(1)} s).';
+      }
+      if (record) {
+        _bestTimes = {..._bestTimes, d.id: t};
+        unawaited(DrillStore.save(_bestTimes));
+      }
+    } else {
+      _drillDetail = d.failReason(s, t, start);
+    }
+    // Stop the board and show the result once this frame is done.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_game, game)) return;
+      _input.releaseAll();
+      game.pauseEngine();
+      setState(() {});
+    });
+  }
+
+  Drill? _nextDrill(Drill d) {
+    final i = Drills.all.indexOf(d);
+    return i >= 0 && i + 1 < Drills.all.length ? Drills.all[i + 1] : null;
+  }
 
   void _lobby() {
     final router = GoRouter.maybeOf(context);
@@ -263,6 +386,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
 
   @override
   void dispose() {
+    _drillClock.dispose();
     _stopWatchingFullTime();
     _hud.dispose();
     super.dispose();
@@ -330,7 +454,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
           _planTab = PlanTab.style;
           _page = MenuPage.gamePlan;
         }),
-        onLab: () => _openKickOff(watch: true),
+        onLab: () => setState(() => _page = MenuPage.lab),
         onClub: () => setState(() => _page = MenuPage.club),
         onExit: _lobby,
       ),
@@ -340,6 +464,13 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
         onChanged: _changeSetup,
         onBack: () => setState(() => _page = MenuPage.home),
         onTest: () => _openKickOff(watch: false),
+      ),
+      MenuPage.lab => LabScreen(
+        setup: setup,
+        bestTimes: _bestTimes,
+        onBack: () => setState(() => _page = MenuPage.home),
+        onWatch: _start,
+        onDrill: _startDrill,
       ),
       MenuPage.record => RecordScreen(
         clubName: setup.clubName,
@@ -395,12 +526,47 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
               onPause: _pause,
             ),
           ),
-          if (snap.phase == MatchPhase.halfTime)
+          if (_watching)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: SpeedBar(
+                  speed: _speed,
+                  onChanged: (v) => setState(() {
+                    _speed = v;
+                    game.timeScale = v;
+                  }),
+                ),
+              ),
+            ),
+          if (_drill != null)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: DrillBar(drill: _drill!, elapsed: _drillClock),
+              ),
+            ),
+          if (_drill != null && _drillOutcome != DrillOutcome.running)
+            DrillResultCard(
+              passed: _drillOutcome == DrillOutcome.passed,
+              title: _drill!.title,
+              detail: _drillDetail,
+              onRetry: _replay,
+              onNext: _nextDrill(_drill!) == null
+                  ? null
+                  : () => _startDrill(_nextDrill(_drill!)!),
+              onLab: _toMenu,
+            ),
+          if (_drill == null && snap.phase == MatchPhase.halfTime)
             HalfTimeCard(
               state: game.runner.state,
               onContinue: game.runner.startSecondHalf,
             ),
-          if (snap.phase == MatchPhase.fullTime)
+          if (_drill == null && snap.phase == MatchPhase.fullTime)
             FullTimeCard(
               state: game.runner.state,
               onPlayAgain: _replay,
