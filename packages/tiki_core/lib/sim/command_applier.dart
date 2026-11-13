@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:tiki_core/brain/ball_prediction.dart';
 import 'package:tiki_core/core/tunables.dart';
+import 'package:tiki_core/core/vec2.dart';
 import 'package:tiki_core/model/disc.dart';
 import 'package:tiki_core/model/intent.dart';
 import 'package:tiki_core/model/match_state.dart';
@@ -17,6 +19,7 @@ import 'package:tiki_core/sim/rules/tackle.dart';
 class CommandApplier {
   final Passing passing;
   final Tackle tackle;
+  final Vec2 _meet = Vec2();
 
   CommandApplier(this.passing, this.tackle);
 
@@ -36,6 +39,10 @@ class CommandApplier {
   }
 
   void _move(MatchState s, TeamState team, Disc c, Intent intent) {
+    if (_receiving(s, team, c)) {
+      _runOntoPass(s, c);
+      return;
+    }
     final hasBall = s.ball.ownerId == c.id;
     final mx = intent.moveX;
     final my = intent.moveY;
@@ -54,6 +61,33 @@ class CommandApplier {
       return;
     }
     c.desiredVel.setZero();
+  }
+
+  /// Our pass is on its way to [c]: the stick is ignored until he has it,
+  /// so you can't steer the receiver away from his own ball.
+  bool _receiving(MatchState s, TeamState team, Disc c) {
+    final b = s.ball;
+    return b.isLoose &&
+        !b.dribbleTouch && // a carry touch: the carrier keeps his stick
+        b.lastTouchSide == team.side &&
+        b.intendedReceiverId == c.id &&
+        b.lastKick != ActionKind.shoot;
+  }
+
+  /// Run to where the ball's path passes closest, quickly if it's far,
+  /// easing off on arrival so he meets it instead of overrunning it.
+  void _runOntoPass(MatchState s, Disc c) {
+    BallPrediction.meetPoint(s.ball, c, _meet);
+    final dx = _meet.x - c.pos.x;
+    final dy = _meet.y - c.pos.y;
+    final dist = math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.15) {
+      c.desiredVel.setZero();
+      return;
+    }
+    final top = dist > 3.0 ? T.sprintSpeed : T.runSpeed;
+    final speed = top * math.min(1.0, dist / T.arriveRadius);
+    c.desiredVel.set(dx / dist * speed, dy / dist * speed);
   }
 
   /// PRESS with the stick centred: close down at a controlled speed and
