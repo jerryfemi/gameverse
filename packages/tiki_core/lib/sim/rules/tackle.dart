@@ -27,7 +27,10 @@ class Tackle {
       return;
     }
 
-    final r = rng.next();
+    // A dashing carrier is easier to rob: the bonus moves the win line
+    // and the knocked-loose line up together.
+    final bonus = carrier.dashing ? T.tackleDashBonus : 0.0;
+    final r = rng.next() - bonus;
     if (r < T.tackleWinChance) {
       s.team(d.side).stats.tacklesWon++;
       carrier.pickupCooldown = 0.4;
