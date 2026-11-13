@@ -35,6 +35,13 @@ class TikiFlameGame extends FlameGame {
   bool showDebug = false;
   double _acc = 0.0;
 
+  /// Match speed: 0.5 = half speed, 2 = double (Lab's watch-bots). The sim
+  /// still takes exact 1/60 s steps; only how many per frame changes.
+  double timeScale = 1.0;
+
+  /// Called after every sim step (the Lab's drills judge themselves here).
+  void Function(double dt)? onStep;
+
   TikiFlameGame({
     required this.runner,
     required this.input,
@@ -72,10 +79,11 @@ class TikiFlameGame extends FlameGame {
     super.update(dt);
     final frame = dt > T.maxFrameDt ? T.maxFrameDt : dt;
     input.tick(frame);
-    _acc += frame;
+    _acc += frame * timeScale;
     while (_acc >= T.fixedDt) {
       runner.step(T.fixedDt);
       _acc -= T.fixedDt;
+      onStep?.call(T.fixedDt);
       hud.onEvents(runner.state.events);
       _sounds.onEvents(runner.state);
     }
