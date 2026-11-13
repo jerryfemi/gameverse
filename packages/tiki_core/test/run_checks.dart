@@ -3,6 +3,7 @@ import 'dart:io';
 import 'ball_physics_checks.dart';
 import 'full_match_checks.dart';
 import 'harness.dart';
+import 'lab_checks.dart';
 import 'offside_checks.dart';
 import 'passing_checks.dart';
 import 'record_checks.dart';
@@ -23,6 +24,8 @@ void main() {
   offsideChecks();
   print('Tactics, shape, patterns');
   tacticsChecks();
+  print('Lab: patterns, scenarios, drills');
+  labChecks();
   print('Club record');
   recordChecks();
   print('Full matches (bots)');
