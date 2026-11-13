@@ -22,6 +22,9 @@ class MatchChoice {
   final String homeCode;
   final OpponentClub opponent;
 
+  /// Started from the Lab: debug view on and speed controls shown.
+  final bool lab;
+
   const MatchChoice({
     required this.mode,
     required this.watch,
@@ -32,5 +35,6 @@ class MatchChoice {
     required this.homeName,
     required this.homeCode,
     required this.opponent,
+    this.lab = false,
   });
 }
