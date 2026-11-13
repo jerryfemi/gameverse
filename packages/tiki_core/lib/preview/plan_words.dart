@@ -1,4 +1,4 @@
-import 'package:tiki_core/preview/plan_preview.dart';
+import 'package:tiki_core/preview/preview_scene.dart';
 import 'package:tiki_core/tactics/team_plan.dart';
 
 /// Plain-English text for the game plan screen, written from the plan's
@@ -83,5 +83,66 @@ abstract final class PlanWords {
             : 'Everyone runs back into shape first. Nobody chases; the team '
                   'waits in its block for the next press trigger.';
     }
+  }
+
+  /// A brain job in plain words: "drop to receive" → "drops short to
+  /// receive", "mark #7" → "marks their 7".
+  static String move(String job) {
+    final number = RegExp(r'#(\d+)').firstMatch(job)?.group(1);
+    if (job.contains(':')) {
+      final parts = job.split(':');
+      return 'plays the ${parts[1].trim()} in the ${parts[0].trim()}';
+    }
+    if (job.startsWith('cut lane')) return 'blocks the pass to their $number';
+    if (job.startsWith('mark')) return 'marks their $number';
+    if (job.startsWith('track')) return 'tracks their $number';
+    return switch (job) {
+      'support' => 'comes close to offer a pass',
+      'run in behind' => 'runs in behind',
+      'hold width' => 'holds the width',
+      'drop to receive' => 'drops short to receive',
+      'cut inside' => 'cuts inside',
+      'overlap' => 'overlaps round the outside',
+      'press' => 'presses the ball',
+      'counter-press' => 'sprints at the ball',
+      'second presser' => 'blocks the easy pass',
+      'cover' => 'covers behind the press',
+      'chase loose ball' => 'chases the loose ball',
+      'drop into shape' => 'runs back into shape',
+      'receive pass' => 'meets the pass',
+      'keeper' || 'keeper claims' => 'keeps goal',
+      _ when job.startsWith('shape') => 'holds his spot',
+      _ => job,
+    };
+  }
+
+  /// Where the ball is, for a team attacking to the right.
+  static String where(double ballX, double halfLength) {
+    if (ballX < -halfLength / 3) return 'in your half';
+    if (ballX > halfLength / 3) return 'in their half';
+    return 'in midfield';
+  }
+
+  /// "You have the ball in midfield. Watch: 9 drops short to receive,
+  /// 7 runs in behind."
+  static String caption(PreviewMoment m, double ballX, double halfLength,
+      List<PreviewDisc> discs) {
+    final w = where(ballX, halfLength);
+    final opening = switch (m) {
+      PreviewMoment.attacking => 'You have the ball $w.',
+      PreviewMoment.defending => 'They have the ball $w.',
+      PreviewMoment.gainingPossession => 'You just won the ball $w.',
+      PreviewMoment.losingPossession => 'You just lost the ball $w.',
+    };
+    final movers = [
+      for (final d in discs)
+        if (d.moves && !d.keeper) d,
+    ]..sort((a, b) => b.distanceSquared.compareTo(a.distanceSquared));
+    if (movers.isEmpty) return '$opening Everyone holds their spot.';
+    final watch = movers
+        .take(2)
+        .map((d) => '${d.number} ${move(d.job)}')
+        .join(', ');
+    return '$opening Watch: $watch.';
   }
 }
