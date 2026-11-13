@@ -23,7 +23,7 @@ abstract final class T {
   /// multiplied by it. 1.0 = the original feel. 0.9 = 10% calmer, etc.
   /// (A 0.75 trial made 5v5 a shooting gallery: shot and press timings
   /// are tuned for 1.0, so retune with the checks if this changes.)
-  static const double pace = 1.0;
+  static const double pace = 0.8;
 
   // ── Disc movement ─────────────────────────────────────────────────────
   static const double runSpeed = 5.0 * pace;
@@ -65,16 +65,14 @@ abstract final class T {
   /// Horizontal speed kept when the ball bounces.
   static const double bounceKeep = 0.85;
 
-  // ── Carrying / heavy touch ────────────────────────────────────────────
+  // ── Carrying ──────────────────────────────────────────────────────────
   /// Gap between the carrier's edge and the ball.
   static const double carryGap = 0.05;
 
-  /// Time between touches while dashing with the ball.
-  static const double heavyTouchInterval = 0.45;
-
-  /// Ball speed on a heavy touch = carrier speed × this + [heavyTouchBoost].
-  static const double heavyTouchMultiplier = 1.15;
-  static const double heavyTouchBoost = 1.0;
+  /// Dashing with the ball keeps it a little further out in front (still
+  /// stuck to him: it never runs off on its own). The cost of dashing is
+  /// the wider turn ([accelDashCarry]) and [tackleDashBonus].
+  static const double dashCarryGap = 0.4;
 
   // ── Picking up / intercepting ─────────────────────────────────────────
   /// Extra reach beyond touching bodies.
@@ -119,6 +117,13 @@ abstract final class T {
 
   /// Extra roll-on distance so a pass arrives with some pace.
   static const double passArriveExtra = 1.5;
+
+  /// A pass leads its receiver by where he'll be when the ball arrives,
+  /// but never by more than this (metres).
+  static const double passLeadMax = 4.0;
+
+  /// The player a pass is meant for reaches a little further for it.
+  static const double receiverReachBonus = 0.6;
   static const double passPowerExtra = 3.0;
 
   /// Pass into space (no teammate in the aim cone): 6 m + power × this.
@@ -162,6 +167,9 @@ abstract final class T {
   /// Centre-to-centre distance for a tackle to reach the carrier.
   static const double tackleRange = 1.9;
   static const double tackleWinChance = 0.45;
+
+  /// Extra chance to win the ball cleanly from a carrier who is dashing.
+  static const double tackleDashBonus = 0.15;
 
   /// win < r < this → ball comes loose; above → miss.
   static const double tackleLooseChance = 0.80;
