@@ -113,17 +113,28 @@ class Passing {
   _Plan _pass(MatchState s, Disc d, double ax, double ay, double power) {
     final r = Receivers.inDirection(s, d, ax, ay, T.passConeDeg);
     if (r == null) return _space(d, ax, ay, power, T.spacePassBase);
-    final tx = r.pos.x + r.vel.x * 0.35;
-    final ty = r.pos.y + r.vel.y * 0.35;
-    final dist = _dist(d, tx, ty);
-    final roll = dist + T.passArriveExtra + power * T.passPowerExtra;
-    return (
-      tx: tx,
-      ty: ty,
-      speed: _clampSpeed(BallPhysics.speedForDistance(roll)),
-      vz: 0.0,
-      receiver: r.id,
-    );
+    // Pass to the player, not the spot: aim where he'll be when the ball
+    // gets there (two rounds: lead → new distance → new travel time).
+    var tx = r.pos.x;
+    var ty = r.pos.y;
+    var speed = T.passMinSpeed;
+    for (var k = 0; k < 2; k++) {
+      final dist = _dist(d, tx, ty);
+      final roll = dist + T.passArriveExtra + power * T.passPowerExtra;
+      speed = _clampSpeed(BallPhysics.speedForDistance(roll));
+      // A rolling ball slows down; ~70% of the launch speed on average.
+      final t = dist / (speed * 0.7);
+      var lx = r.vel.x * t;
+      var ly = r.vel.y * t;
+      final ll = math.sqrt(lx * lx + ly * ly);
+      if (ll > T.passLeadMax) {
+        lx *= T.passLeadMax / ll;
+        ly *= T.passLeadMax / ll;
+      }
+      tx = r.pos.x + lx;
+      ty = r.pos.y + ly;
+    }
+    return (tx: tx, ty: ty, speed: speed, vz: 0.0, receiver: r.id);
   }
 
   _Plan _through(MatchState s, Disc d, double ax, double ay, double power) {
