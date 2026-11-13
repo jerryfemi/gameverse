@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:b_ball/tiki_counter/ui/cards/card_frame.dart';
 import 'package:b_ball/tiki_counter/ui/cards/choice_row.dart';
 import 'package:b_ball/tiki_counter/ui/cards/stats_table.dart';
+import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/tactics/formation.dart';
 import 'package:tiki_core/tactics/formations.dart';
@@ -127,6 +128,49 @@ class PauseCard extends StatelessWidget {
           CardButton(label: 'RESTART', onTap: onRestart),
           const SizedBox(height: 8),
           CardButton(label: 'MENU', onTap: onLobby),
+        ],
+      ),
+    );
+  }
+}
+
+/// End of a Lab drill: passed or failed, the time, and what next.
+class DrillResultCard extends StatelessWidget {
+  final bool passed;
+  final String title;
+  final String detail;
+  final VoidCallback onRetry;
+  final VoidCallback? onNext;
+  final VoidCallback onLab;
+
+  const DrillResultCard({
+    super.key,
+    required this.passed,
+    required this.title,
+    required this.detail,
+    required this.onRetry,
+    required this.onNext,
+    required this.onLab,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CardFrame(
+      eyebrow: title.toUpperCase(),
+      title: passed ? 'Drill passed' : 'Not this time',
+      maxWidth: 360,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(detail, style: TikiText.body(size: 14, color: Colors.white)),
+          const SizedBox(height: 16),
+          CardButton(label: 'TRY AGAIN', primary: !passed || onNext == null, onTap: onRetry),
+          if (passed && onNext != null) ...[
+            const SizedBox(height: 8),
+            CardButton(label: 'NEXT DRILL', primary: true, onTap: onNext!),
+          ],
+          const SizedBox(height: 8),
+          CardButton(label: 'BACK TO LAB', onTap: onLab),
         ],
       ),
     );
