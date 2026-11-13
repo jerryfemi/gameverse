@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:b_ball/tiki_counter/menu/board/board_caption.dart';
 import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
 import 'package:b_ball/tiki_counter/menu/board/preview_board.dart';
 import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
@@ -55,6 +56,7 @@ class _TuneTabState extends State<TuneTab> {
   Widget build(BuildContext context) {
     final s = widget.setup;
     final p = _plan;
+    final scene = _sceneFor(s);
     final aspect = (s.mode.length + BoardGeometry.margin * 2) /
         (s.mode.width + BoardGeometry.margin * 2);
     return Row(
@@ -118,11 +120,13 @@ class _TuneTabState extends State<TuneTab> {
                 '${_moment.label} · ${PlanWords.headline(p, _moment)}',
                 style: TikiText.display(size: 16, weight: 800),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
+              BoardCaption(scene.caption),
+              const SizedBox(height: 8),
               Expanded(
                 child: BoardBox(
                   aspect: aspect,
-                  child: PreviewBoard(scene: _sceneFor(s)),
+                  child: PreviewBoard(scene: scene),
                 ),
               ),
             ],
