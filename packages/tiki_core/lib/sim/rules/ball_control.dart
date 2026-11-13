@@ -26,9 +26,10 @@ abstract final class BallControl {
     placeAtFeet(b, d);
   }
 
-  /// Ball sits just in front of the carrier.
-  static void placeAtFeet(Ball b, Disc d) {
-    const r = T.discRadius + T.ballRadius + T.carryGap;
+  /// Ball sits just in front of the carrier ([extraGap] further while he
+  /// dashes).
+  static void placeAtFeet(Ball b, Disc d, {double extraGap = 0.0}) {
+    final r = T.discRadius + T.ballRadius + T.carryGap + extraGap;
     b.pos.set(d.pos.x + d.facing.x * r, d.pos.y + d.facing.y * r);
   }
 
