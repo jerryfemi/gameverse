@@ -16,6 +16,7 @@ import 'package:b_ball/tiki_counter/menu/record/record_store.dart';
 import 'package:b_ball/tiki_counter/menu/setup/gameverse_link.dart';
 import 'package:b_ball/tiki_counter/menu/setup/setup_store.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
+import 'package:b_ball/tiki_counter/platform/landscape_lock.dart';
 import 'package:b_ball/tiki_counter/render/hud_model.dart';
 import 'package:b_ball/tiki_counter/render/tiki_flame_game.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
@@ -25,7 +26,7 @@ import 'package:b_ball/tiki_counter/ui/controls/controls_layer.dart';
 import 'package:b_ball/tiki_counter/ui/controls/keyboard_controls.dart';
 import 'package:b_ball/tiki_counter/ui/hud/event_banner.dart';
 import 'package:b_ball/tiki_counter/ui/hud/key_hint.dart';
-import 'package:b_ball/tiki_counter/ui/hud/rotate_hint.dart';
+import 'package:b_ball/tiki_counter/ui/portrait_gate.dart';
 import 'package:b_ball/tiki_counter/ui/hud/score_bar.dart';
 import 'package:b_ball/tiki_counter/ui/hud/top_buttons.dart';
 import 'package:tiki_core/control/bot_controller.dart';
@@ -174,6 +175,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   }
 
   void _start(MatchChoice c) {
+    // Called from the KICK OFF tap: the browser allows full screen here.
+    LandscapeLock.request();
     _lastChoice = c;
     _input.releaseAll();
     final seed = DateTime.now().millisecondsSinceEpoch & 0x7fffffff;
@@ -270,7 +273,21 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     final game = _game;
     return Scaffold(
       backgroundColor: TikiPalette.background,
-      body: game == null
+      body: PortraitGate(
+        onPortrait: _pauseForPortrait,
+        child: _body(game),
+      ),
+    );
+  }
+
+  /// Phone turned upright mid-match: pause (the pause card is waiting when
+  /// it turns back). Watching bots just carries on.
+  void _pauseForPortrait() {
+    if (_game != null && !_paused && !_watching) _pause();
+  }
+
+  Widget _body(TikiFlameGame? game) {
+    return game == null
           ? _menu()
           : Listener(
               onPointerDown: _onPointerDown,
@@ -288,7 +305,6 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
                       builder: (context, snap, _) => _hudLayer(game, snap),
                     ),
                     EventBanner(banner: _hud.banner),
-                    const RotateHint(),
                     if (_paused)
                       PauseCard(
                         onResume: _resume,
@@ -298,8 +314,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
                   ],
                 ),
               ),
-            ),
-    );
+            );
   }
 
   Widget _menu() {
