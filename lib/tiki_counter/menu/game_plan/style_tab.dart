@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:b_ball/tiki_counter/menu/board/board_caption.dart';
 import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
 import 'package:b_ball/tiki_counter/menu/board/preview_board.dart';
 import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
@@ -69,7 +70,9 @@ class _StyleTabState extends State<StyleTab> {
                 size: 15,
                 onChanged: (m) => setState(() => _moment = m),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
+              BoardCaption(scene.caption),
+              const SizedBox(height: 8),
               Expanded(
                 child: BoardBox(
                   aspect: aspect,
@@ -106,7 +109,7 @@ class _StyleTabState extends State<StyleTab> {
   Widget _side(TeamPlan plan, PreviewScene scene) {
     final jobs = [
       for (final d in scene.discs)
-        if (d.moves) '${d.number}  ${d.job}',
+        if (d.moves && !d.keeper) '${d.number}  ${PlanWords.move(d.job)}',
     ];
     return PlanPanel(
       child: SingleChildScrollView(
@@ -136,38 +139,10 @@ class _StyleTabState extends State<StyleTab> {
                 child: Text(j, style: TikiText.body(size: 13, color: Colors.white)),
               ),
             const SizedBox(height: 14),
-            _legend(),
+            const BoardLegend(),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _legend() {
-    Widget item(Color c, String t, {bool dashed = false}) => Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Container(
-            width: 18,
-            height: 3,
-            decoration: BoxDecoration(
-              color: dashed ? null : c,
-              border: dashed ? Border(top: BorderSide(color: c, width: 3)) : null,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(t, style: TikiText.body(size: 12, color: TikiPalette.slate)),
-        ],
-      ),
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        item(Colors.white, 'Run'),
-        item(const Color(0xFFEF4444), 'Press'),
-        item(TikiPalette.cyan, 'Pass option', dashed: true),
-      ],
     );
   }
 }
