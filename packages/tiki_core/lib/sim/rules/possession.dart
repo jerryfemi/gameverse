@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:tiki_core/core/geometry.dart';
 import 'package:tiki_core/core/rng.dart';
 import 'package:tiki_core/core/tunables.dart';
+import 'package:tiki_core/model/ball.dart';
 import 'package:tiki_core/model/disc.dart';
 import 'package:tiki_core/model/intent.dart';
 import 'package:tiki_core/model/match_event.dart';
@@ -12,8 +13,8 @@ import 'package:tiki_core/sim/rules/ball_control.dart';
 import 'package:tiki_core/sim/rules/restarts.dart';
 
 /// Who has the ball:
-/// - [carry] keeps a carried ball at the carrier's feet, or pushes it ahead
-///   in heavy touches while dashing.
+/// - [carry] keeps a carried ball at the carrier's feet (a little further
+///   out while dashing — it stays with him when he turns).
 /// - [checkPickups] lets a disc take a loose ball: certain for slow balls
 ///   and teammates, a dice roll for interceptions.
 class Possession {
@@ -27,27 +28,8 @@ class Possession {
     if (d == null) return;
     final b = s.ball;
     b.touchClock += dt;
-    final speed = d.vel.length;
-    final heavy = d.manual &&
-        d.dashing &&
-        speed > 2.0 &&
-        s.setPiece == null &&
-        b.touchClock >= T.heavyTouchInterval;
-    if (heavy) {
-      final push = speed * T.heavyTouchMultiplier + T.heavyTouchBoost;
-      BallControl.release(
-        s,
-        d,
-        d.facing.x * push,
-        d.facing.y * push,
-        0.0,
-        receiverId: d.id,
-        cooldown: T.pickupCooldownAfterTouch,
-      );
-      b.dribbleTouch = true;
-      return;
-    }
-    BallControl.placeAtFeet(b, d);
+    final dashCarry = d.dashing && d.vel.length > 2.0 && s.setPiece == null;
+    BallControl.placeAtFeet(b, d, extraGap: dashCarry ? T.dashCarryGap : 0.0);
     b.vel.setFrom(d.vel);
   }
 
@@ -64,6 +46,7 @@ class Possession {
     for (final d in s.discs) {
       if (d.pickupCooldown > 0.0 || d.stunTimer > 0.0) continue;
       if (b.missedIds.contains(d.id)) continue;
+      if (_ownPassLeaving(b, d)) continue;
       final frac = d.pos.distTo(b.pos) / _reach(s, d);
       if (frac <= bestFrac) {
         bestFrac = frac;
@@ -88,7 +71,10 @@ class Possession {
         b.lastKick == ActionKind.shoot &&
         b.lastTouchSide != d.side &&
         inOwnBox(s, d);
-    return diving ? normal + T.keeperDiveReach : normal;
+    if (diving) return normal + T.keeperDiveReach;
+    final meantForHim =
+        d.id == b.intendedReceiverId && b.lastTouchSide == d.side;
+    return meantForHim ? normal + T.receiverReachBonus : normal;
   }
 
   double _chance(MatchState s, Disc d, double distFrac) {
@@ -107,6 +93,19 @@ class Possession {
     var p = base * (1.0 - 0.5 * distFrac);
     if (d.isKeeper && inOwnBox(s, d)) p = math.max(p, T.keeperSaveChance);
     return p;
+  }
+
+  /// A passer can't "receive" his own pass while it's still travelling:
+  /// a backward pass from the kick-off spot runs through his own body.
+  /// Once it slows to a loose ball he may take it again.
+  static bool _ownPassLeaving(Ball b, Disc d) {
+    final k = b.lastKick;
+    if (d.id != b.lastTouchId || k == null || b.dribbleTouch) return false;
+    final passLike = k == ActionKind.pass ||
+        k == ActionKind.through ||
+        k == ActionKind.lob ||
+        k == ActionKind.shoot;
+    return passLike && b.speed > T.looseBallSpeed;
   }
 
   void _collect(MatchState s, Disc d) {
