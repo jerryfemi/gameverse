@@ -28,6 +28,10 @@ class BoardGeometry {
 
   double px(double metres) => metres * scale;
 
+  /// Canvas point → pitch metres (the reverse of [at]).
+  ({double x, double y}) toPitch(Offset p) =>
+      (x: (p.dx - origin.dx) / scale, y: (p.dy - origin.dy) / scale);
+
   /// The pitch as fractions of the canvas (for placing Flutter widgets).
   Offset fraction(double x, double y) {
     final p = at(x, y);
@@ -139,18 +143,22 @@ abstract final class BoardPaint {
     required bool ours,
     bool ring = false,
     double radiusM = 1.15,
+    bool faded = false,
   }) {
     final r = g.px(radiusM);
-    c.drawOval(
-      Rect.fromCenter(center: at + Offset(r * 0.15, r * 0.45), width: r * 2.2, height: r * 1.1),
-      _shadow,
-    );
-    _fill.color = ours ? TikiPalette.homeEdge : TikiPalette.awayEdge;
+    final a = faded ? 0.38 : 1.0;
+    if (!faded) {
+      c.drawOval(
+        Rect.fromCenter(center: at + Offset(r * 0.15, r * 0.45), width: r * 2.2, height: r * 1.1),
+        _shadow,
+      );
+    }
+    _fill.color = (ours ? TikiPalette.homeEdge : TikiPalette.awayEdge).withValues(alpha: a);
     c.drawCircle(at + Offset(0, r * 0.14), r, _fill);
-    _fill.color = ours ? TikiPalette.homeFill : TikiPalette.awayFill;
+    _fill.color = (ours ? TikiPalette.homeFill : TikiPalette.awayFill).withValues(alpha: a);
     c.drawCircle(at, r * 0.94, _fill);
     if (ring) c.drawCircle(at, r * 1.25, _ring);
-    final tp = _label('$number', ours, r);
+    final tp = _label('$number', ours, r, faded);
     tp.paint(c, at - Offset(tp.width / 2, tp.height / 2));
   }
 
@@ -161,9 +169,9 @@ abstract final class BoardPaint {
   }
 
   /// Cached number labels (keyed by text, colour and size).
-  static TextPainter _label(String text, bool ours, double r) {
+  static TextPainter _label(String text, bool ours, double r, bool faded) {
     final size = (r * 1.05).roundToDouble();
-    final key = '$text|$ours|$size';
+    final key = '$text|$ours|$size|$faded';
     return _labels.putIfAbsent(key, () {
       return TextPainter(
         text: TextSpan(
@@ -172,7 +180,8 @@ abstract final class BoardPaint {
             fontFamily: 'Archivo',
             fontWeight: FontWeight.w800,
             fontSize: size,
-            color: ours ? TikiPalette.homeText : TikiPalette.awayText,
+            color: (ours ? TikiPalette.homeText : TikiPalette.awayText)
+                .withValues(alpha: faded ? 0.55 : 1.0),
           ),
         ),
         textDirection: TextDirection.ltr,
