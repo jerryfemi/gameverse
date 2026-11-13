@@ -1,5 +1,8 @@
+import 'package:tiki_core/control/team_controller.dart';
 import 'package:tiki_core/model/game_mode.dart';
 import 'package:tiki_core/model/intent.dart';
+import 'package:tiki_core/model/match_state.dart';
+import 'package:tiki_core/model/team_state.dart';
 import 'package:tiki_core/runner/match_runner.dart';
 
 import 'harness.dart';
@@ -45,6 +48,28 @@ void passingChecks() {
     expectEqual(s.ball.ownerId, mate.id, 'ball owner');
   });
 
+  check('a pass reaches a receiver even if you keep steering him away', () {
+    final pusher = _StickAway();
+    final runner = MatchRunner.create(
+      mode: GameMode.fiveASide,
+      home: pusher,
+      away: IdleController(),
+      seed: 5,
+    );
+    final s = runner.state;
+    final taker = s.discs[s.home.cursorId];
+    final mate = s.home.discs[3];
+    mate.pos.set(-7.0, 2.0);
+    mate.prev.setFrom(mate.pos);
+    mate.vel.set(0.0, 3.0); // already running sideways
+    pusher.aimAt(mate.pos.x - taker.pos.x, mate.pos.y - taker.pos.y);
+
+    runFor(runner, 3.5);
+    expectEqual(s.home.stats.passesTried, 1, 'passes tried');
+    expectEqual(s.home.stats.passesCompleted, 1, 'passes completed');
+    expectEqual(s.ball.ownerId, mate.id, 'ball owner');
+  });
+
   check('SHOOT counts as a shot, not a pass', () {
     final runner = MatchRunner.create(
       mode: GameMode.fiveASide,
@@ -61,4 +86,31 @@ void passingChecks() {
     expectEqual(runner.state.home.stats.shots, 1, 'shots');
     expectEqual(runner.state.home.stats.passesTried, 0, 'passes');
   });
+}
+
+/// Passes once, then holds the stick hard "down" the whole time — like a
+/// thumb still on the stick after the pass.
+class _StickAway implements TeamController {
+  double _ax = 1.0;
+  double _ay = 0.0;
+  bool _passed = false;
+
+  void aimAt(double x, double y) {
+    _ax = x;
+    _ay = y;
+  }
+
+  @override
+  void fill(MatchState s, TeamState team, double dt) {
+    final i = team.intent;
+    i.moveX = 0.0;
+    i.moveY = 1.0;
+    if (!_passed) {
+      _passed = true;
+      i.action = ActionKind.pass;
+      i.aimX = _ax;
+      i.aimY = _ay;
+      i.power = 0.3;
+    }
+  }
 }
