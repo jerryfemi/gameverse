@@ -8,6 +8,7 @@ extension type _Element(JSObject _) implements JSObject {
 
 extension type _ScreenOrientation(JSObject _) implements JSObject {
   external JSPromise<JSAny?>? lock(JSString orientation);
+  external void unlock();
 }
 
 @JS('document.documentElement')
@@ -39,5 +40,14 @@ void _lock() {
     _orientation?.lock('landscape'.toJS)?.toDart.then((_) {}, onError: (_) {});
   } catch (e) {
     debugPrint('[Tiki] orientation lock not available: $e');
+  }
+}
+
+/// Lets the phone turn again (full screen stays on). Never throws.
+void releaseLandscape() {
+  try {
+    _orientation?.unlock();
+  } catch (e) {
+    debugPrint('[Tiki] orientation unlock not available: $e');
   }
 }
