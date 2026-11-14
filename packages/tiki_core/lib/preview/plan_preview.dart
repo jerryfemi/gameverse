@@ -55,6 +55,7 @@ abstract final class PlanPreview {
     Staging.shape(s, before, bx, by);
     // 2. The owner's nearest disc takes the ball where it is.
     final carrier = Staging.takeBall(s, owner, bx, by);
+    s.ball.touchClock = 1.0; // settled on the ball: runs can go
 
     // 3. Run our brain on that moment.
     final brain = TeamBrain(Side.home);
