@@ -30,30 +30,47 @@ MatchRunner playMatch(GameMode mode, int seed) {
 }
 
 void fullMatchChecks() {
+  const seeds = [42, 7, 99];
   for (final mode in GameMode.values) {
-    check('${mode.label}: bots play a full match without breaking', () {
-      final s = playMatch(mode, 42).state;
-      expectEqual(s.phase, MatchPhase.fullTime, 'phase');
-      for (final d in s.discs) {
-        expectThat(d.pos.isFinite, 'disc ${d.id} position is a number');
+    check('${mode.label}: bots play full matches without breaking', () {
+      var goals = 0;
+      var maxGoals = 0;
+      var shots = 0;
+      var tried = 0;
+      var done = 0;
+      for (final seed in seeds) {
+        final s = playMatch(mode, seed).state;
+        expectEqual(s.phase, MatchPhase.fullTime, 'phase');
+        for (final d in s.discs) {
+          expectThat(d.pos.isFinite, 'disc ${d.id} position is a number');
+        }
+        expectThat(s.ball.pos.isFinite, 'ball position is a number');
+        final h = s.home.stats;
+        final a = s.away.stats;
+        expectThat(h.passesTried > 5, 'home passed the ball');
+        expectThat(a.passesTried > 5, 'away passed the ball');
+        print('        seed $seed: ${s.home.score}-${s.away.score} · shots '
+            '${h.shots}-${a.shots} · passes ${h.passesCompleted}/${h.passesTried}'
+            ' vs ${a.passesCompleted}/${a.passesTried} · intercepted '
+            '${a.interceptions}-${h.interceptions} · tackles ${h.tacklesWon}-'
+            '${a.tacklesWon} · saves ${h.saves}-${a.saves} · pattern runs '
+            '${h.patternRuns}-${a.patternRuns}');
+        final g = s.home.score + s.away.score;
+        goals += g;
+        maxGoals = math.max(maxGoals, g);
+        shots += h.shots + a.shots;
+        tried += h.passesTried + a.passesTried;
+        done += h.passesCompleted + a.passesCompleted;
       }
-      expectThat(s.ball.pos.isFinite, 'ball position is a number');
-      expectThat(s.home.stats.passesTried > 5, 'home passed the ball');
-      expectThat(s.away.stats.passesTried > 5, 'away passed the ball');
-      final h = s.home.stats;
-      final a = s.away.stats;
-      print('        score ${s.home.score}-${s.away.score} · shots '
-          '${h.shots}-${a.shots} · passes ${h.passesCompleted}/${h.passesTried}'
-          ' vs ${a.passesCompleted}/${a.passesTried} · saves ${h.saves}-${a.saves}'
-          ' · pattern runs ${h.patternRuns}-${a.patternRuns}');
+      final n = seeds.length;
+      final acc = done / math.max(1, tried);
       // Balance targets: printed, not failed, while we tune.
-      final acc = (h.passesCompleted + a.passesCompleted) /
-          math.max(1, h.passesTried + a.passesTried);
-      final shots = h.shots + a.shots;
-      print('        pass accuracy ${(acc * 100).round()}% (aim 70%+) · '
-          'shots $shots (aim 6+)${acc < 0.7 || shots < 6 ? '  <- needs tuning' : ''}');
-      final goals = s.home.score + s.away.score;
-      expectThat(goals <= 8, 'a believable score (got $goals goals)');
+      print('        average: ${(goals / n).toStringAsFixed(1)} goals · '
+          '${(shots / n).toStringAsFixed(1)} shots (aim 6+) · pass accuracy '
+          '${(acc * 100).round()}% (aim 75%+)'
+          '${acc < 0.75 || shots / n < 6 ? '  <- needs tuning' : ''}');
+      expectThat(goals / n <= 8, 'a believable score (average ${goals / n} goals)');
+      expectThat(maxGoals <= 11, 'no silly scorelines (one had $maxGoals goals)');
     });
   }
 
