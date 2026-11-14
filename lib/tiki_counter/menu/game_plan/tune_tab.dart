@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/menu/board/board_caption.dart';
-import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
+import 'package:b_ball/tiki_counter/menu/board/board_layout.dart';
 import 'package:b_ball/tiki_counter/menu/board/preview_board.dart';
-import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/text_tabs.dart';
@@ -57,82 +55,60 @@ class _TuneTabState extends State<TuneTab> {
     final s = widget.setup;
     final p = _plan;
     final scene = _sceneFor(s);
-    final aspect = (s.mode.length + BoardGeometry.margin * 2) /
-        (s.mode.width + BoardGeometry.margin * 2);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: 360,
-          child: PlanPanel(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _row<AttackStyle>(
-                    PreviewMoment.attacking,
-                    AttackStyle.values,
-                    p.attack,
-                    PlanWords.attack,
-                    (v) => p.copyWith(attack: v),
-                  ),
-                  _row<Marking>(
-                    PreviewMoment.defending,
-                    Marking.values,
-                    p.marking,
-                    PlanWords.marking,
-                    (v) => p.copyWith(marking: v),
-                  ),
-                  _row<AfterWin>(
-                    PreviewMoment.gainingPossession,
-                    AfterWin.values,
-                    p.afterWin,
-                    PlanWords.afterWin,
-                    (v) => p.copyWith(afterWin: v),
-                  ),
-                  _row<AfterLoss>(
-                    PreviewMoment.losingPossession,
-                    AfterLoss.values,
-                    p.afterLoss,
-                    PlanWords.afterLoss,
-                    (v) => p.copyWith(afterLoss: v),
-                  ),
-                  const SizedBox(height: 6),
-                  _slider('Line height', PlanWords.line(p.lineHeight), p.lineHeight,
-                      (v) => _set(p.copyWith(lineHeight: v), PreviewMoment.defending)),
-                  _slider('Compactness', _pct(p.compactness), p.compactness,
-                      (v) => _set(p.copyWith(compactness: v), PreviewMoment.defending)),
-                  _slider('Width', _pct(p.width), p.width,
-                      (v) => _set(p.copyWith(width: v), PreviewMoment.attacking)),
-                  _slider('Press intensity', _pct(p.pressIntensity), p.pressIntensity,
-                      (v) => _set(p.copyWith(pressIntensity: v), PreviewMoment.defending)),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 18),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '${_moment.label} · ${PlanWords.headline(p, _moment)}',
-                style: TikiText.display(size: 16, weight: 800),
-              ),
-              const SizedBox(height: 6),
-              BoardCaption(scene.caption),
-              const SizedBox(height: 8),
-              Expanded(
-                child: BoardBox(
-                  aspect: aspect,
-                  child: PreviewBoard(scene: scene),
-                ),
-              ),
-            ],
-          ),
+    return BoardLayout(
+      mode: s.mode,
+      sideFirst: true,
+      sideWidth: 360,
+      above: [
+        Text(
+          '${_moment.label} · ${PlanWords.headline(p, _moment)}',
+          style: TikiText.display(size: 16, weight: 800),
         ),
       ],
+      caption: scene.caption,
+      board: PreviewBoard(scene: scene),
+      side: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _row<AttackStyle>(
+            PreviewMoment.attacking,
+            AttackStyle.values,
+            p.attack,
+            PlanWords.attack,
+            (v) => p.copyWith(attack: v),
+          ),
+          _row<Marking>(
+            PreviewMoment.defending,
+            Marking.values,
+            p.marking,
+            PlanWords.marking,
+            (v) => p.copyWith(marking: v),
+          ),
+          _row<AfterWin>(
+            PreviewMoment.gainingPossession,
+            AfterWin.values,
+            p.afterWin,
+            PlanWords.afterWin,
+            (v) => p.copyWith(afterWin: v),
+          ),
+          _row<AfterLoss>(
+            PreviewMoment.losingPossession,
+            AfterLoss.values,
+            p.afterLoss,
+            PlanWords.afterLoss,
+            (v) => p.copyWith(afterLoss: v),
+          ),
+          const SizedBox(height: 6),
+          _slider('Line height', PlanWords.line(p.lineHeight), p.lineHeight,
+              (v) => _set(p.copyWith(lineHeight: v), PreviewMoment.defending)),
+          _slider('Compactness', _pct(p.compactness), p.compactness,
+              (v) => _set(p.copyWith(compactness: v), PreviewMoment.defending)),
+          _slider('Width', _pct(p.width), p.width,
+              (v) => _set(p.copyWith(width: v), PreviewMoment.attacking)),
+          _slider('Press intensity', _pct(p.pressIntensity), p.pressIntensity,
+              (v) => _set(p.copyWith(pressIntensity: v), PreviewMoment.defending)),
+        ],
+      ),
     );
   }
 
@@ -154,10 +130,12 @@ class _TuneTabState extends State<TuneTab> {
             onTap: () => setState(() => _moment = m),
             child: SectionLabel(m.label),
           ),
+          // Wrapped so every option stays in view in the panel.
           TextTabs<T>(
             options: options,
             selected: selected,
             label: name,
+            wrap: true,
             onChanged: (v) => _set(change(v), m),
           ),
         ],
