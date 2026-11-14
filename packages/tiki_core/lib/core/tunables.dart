@@ -91,6 +91,9 @@ abstract final class T {
   /// Interception chance = base − (speed − looseBallSpeed) × falloff,
   /// then scaled by how close the ball passes.
   static const double interceptBase = 0.55;
+
+  /// Same idea for a shot: defenders in the way block more of those.
+  static const double shotBlockBase = 0.72;
   static const double interceptSpeedFalloff = 0.035;
   static const double interceptMin = 0.12;
   static const double interceptMax = 0.95;
