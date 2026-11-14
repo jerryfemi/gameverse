@@ -6,6 +6,7 @@ import 'package:tiki_core/model/match_state.dart';
 import 'package:tiki_core/model/side.dart';
 import 'package:tiki_core/model/team_state.dart';
 import 'package:tiki_core/core/geometry.dart';
+import 'package:tiki_core/core/vec2.dart';
 import 'package:tiki_core/tactics/formation.dart';
 import 'package:tiki_core/tactics/presets.dart';
 import 'package:tiki_core/tactics/team_plan.dart';
@@ -62,21 +63,33 @@ abstract final class MatchSetup {
   static double worldY(MatchState s, double teamY) =>
       teamY * s.mode.halfWidth * 0.85;
 
-  /// Everyone back to their own half, ball on the centre spot.
+  /// Where [d] stands for a kick-off taken by [kickOffSide]: its defence
+  /// shape kept in its own half (and outside the circle if it isn't
+  /// kicking off). Written into [out].
+  static void kickOffSpot(
+    MatchState s,
+    Disc d, {
+    required Side kickOffSide,
+    required Vec2 out,
+  }) {
+    final team = s.team(d.side);
+    final kicking = d.side == kickOffSide;
+    final spot = team.formation.spots[d.slot];
+    var tx = clampD(spot.dx, -0.95, -0.08);
+    var ty = spot.dy;
+    if (kicking && d.slot == team.formation.kickOffSlot) {
+      tx = -0.5 / s.mode.halfLength; // just behind the ball
+      ty = 0.0;
+    }
+    out.set(worldX(s, d.side, tx), worldY(s, ty));
+    if (!kicking) _keepOutOfCircle(s, d.side, out);
+  }
+
+  /// Everyone to their kick-off spot, ball on the centre spot.
   static void resetShape(MatchState s, {required Side kickOffSide}) {
     for (final team in [s.home, s.away]) {
-      final kicking = team.side == kickOffSide;
       for (final d in team.discs) {
-        final spot = team.formation.spots[d.slot];
-        // Defence shape, kept in the own half.
-        var tx = clampD(spot.dx, -0.95, -0.08);
-        var ty = spot.dy;
-        if (kicking && d.slot == team.formation.kickOffSlot) {
-          tx = -0.5 / s.mode.halfLength; // just behind the ball
-          ty = 0.0;
-        }
-        d.pos.set(worldX(s, team.side, tx), worldY(s, ty));
-        if (!kicking) _keepOutOfCircle(s, d);
+        kickOffSpot(s, d, kickOffSide: kickOffSide, out: d.pos);
         d.prev.setFrom(d.pos);
         d.vel.setZero();
         d.desiredVel.setZero();
@@ -101,13 +114,13 @@ abstract final class MatchSetup {
     b.missedIds.clear();
   }
 
-  static void _keepOutOfCircle(MatchState s, Disc d) {
+  static void _keepOutOfCircle(MatchState s, Side side, Vec2 p) {
     final minR = s.mode.centreCircle + 1.0;
-    final r = math.sqrt(d.pos.x * d.pos.x + d.pos.y * d.pos.y);
+    final r = math.sqrt(p.x * p.x + p.y * p.y);
     if (r >= minR) return;
     // Push straight back toward own goal.
-    final back = -s.dir(d.side);
-    final needX = math.sqrt(math.max(0.0, minR * minR - d.pos.y * d.pos.y));
-    d.pos.x = back * needX;
+    final back = -s.dir(side);
+    final needX = math.sqrt(math.max(0.0, minR * minR - p.y * p.y));
+    p.x = back * needX;
   }
 }
