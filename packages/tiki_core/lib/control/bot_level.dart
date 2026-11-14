@@ -43,7 +43,7 @@ class BotLevel {
     setPieceDelay: 1.2,
     shootChance: 0.12,
     decisionNoise: 0.35,
-    aimNoiseDeg: 9.0,
+    aimNoiseDeg: 5.0,
   );
 
   static const BotLevel normal = BotLevel(
@@ -54,7 +54,7 @@ class BotLevel {
     setPieceDelay: 0.9,
     shootChance: 0.2,
     decisionNoise: 0.15,
-    aimNoiseDeg: 5.0,
+    aimNoiseDeg: 2.5,
   );
 
   static const BotLevel hard = BotLevel(
