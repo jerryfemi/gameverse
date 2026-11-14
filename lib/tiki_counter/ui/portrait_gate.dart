@@ -3,15 +3,21 @@ import 'package:flutter/material.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 
-/// Tiki Counter is played sideways. On a phone held upright this covers
-/// everything (menus and match) with a "turn your phone" screen, and tells
-/// [onPortrait] so a running match can pause. Tablets and desktops are
-/// never blocked.
+/// Matches are played sideways. While a match is on ([active]) and a phone
+/// is held upright, this covers it with a "turn your phone" screen and
+/// tells [onPortrait] so the match can pause. The menus work both ways up,
+/// so they are never covered. Tablets and desktops are never blocked.
 class PortraitGate extends StatefulWidget {
   final Widget child;
+  final bool active;
   final VoidCallback onPortrait;
 
-  const PortraitGate({super.key, required this.child, required this.onPortrait});
+  const PortraitGate({
+    super.key,
+    required this.child,
+    required this.active,
+    required this.onPortrait,
+  });
 
   /// A phone (short side under 600 px) held upright.
   static bool isPortraitPhone(BuildContext context) {
@@ -39,7 +45,7 @@ class _PortraitGateState extends State<PortraitGate>
 
   @override
   Widget build(BuildContext context) {
-    final portrait = PortraitGate.isPortraitPhone(context);
+    final portrait = widget.active && PortraitGate.isPortraitPhone(context);
     if (portrait && !_wasPortrait) {
       WidgetsBinding.instance.addPostFrameCallback((_) => widget.onPortrait());
     }
