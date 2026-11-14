@@ -8,4 +8,7 @@ import 'package:b_ball/tiki_counter/platform/landscape_lock_stub.dart'
 /// "turn your phone" screen does the job). Never throws.
 abstract final class LandscapeLock {
   static void request() => impl.requestLandscape();
+
+  /// Back to the menus: let the phone turn freely again.
+  static void release() => impl.releaseLandscape();
 }
