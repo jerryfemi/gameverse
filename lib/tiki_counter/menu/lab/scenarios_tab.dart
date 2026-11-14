@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/menu/board/board_caption.dart';
+import 'package:b_ball/tiki_counter/menu/board/board_layout.dart';
 import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
 import 'package:b_ball/tiki_counter/menu/board/preview_board.dart';
-import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/text_tabs.dart';
@@ -55,102 +55,83 @@ class _ScenariosTabState extends State<ScenariosTab> {
   Widget build(BuildContext context) {
     final s = widget.setup;
     final scene = _scene(s);
-    final aspect = (s.mode.length + BoardGeometry.margin * 2) /
-        (s.mode.width + BoardGeometry.margin * 2);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextTabs<PreviewMoment>(
-                options: PreviewMoment.values,
-                selected: _moment,
-                label: (m) => m.label,
-                size: 15,
-                onChanged: (m) => setState(() => _moment = m),
-              ),
-              const SizedBox(height: 8),
-              BoardCaption(scene.caption),
-              const SizedBox(height: 8),
-              Expanded(
-                child: BoardBox(
-                  aspect: aspect,
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      final g = BoardGeometry(s.mode, Size(box.maxWidth, box.maxHeight));
-                      return GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapUp: (e) => _moveBall(g, e.localPosition),
-                        onPanStart: (e) {
-                          _dragging = true;
-                          _moveBall(g, e.localPosition);
-                        },
-                        onPanUpdate: (e) => _moveBall(g, e.localPosition),
-                        onPanEnd: (_) => setState(() => _dragging = false),
-                        child: PreviewBoard(scene: scene, animate: !_dragging),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 16),
-        SizedBox(
-          width: 240,
-          child: PlanPanel(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Drag the ball', style: TikiText.display(size: 20, weight: 900)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap or drag anywhere on the board. Both teams move to '
-                    'where their game plans send them for that spot. Let go to '
-                    'watch the runs.',
-                    style: TikiText.body(size: 13, color: const Color(0xFFCBD5E1)),
-                  ),
-                  const SizedBox(height: 14),
-                  SectionLabel('You: ${s.plan.name}'),
-                  const SizedBox(height: 6),
-                  const SectionLabel('Opponent playstyle'),
-                  Wrap(
-                    spacing: 14,
-                    runSpacing: 4,
-                    children: [
-                      for (final p in Presets.all)
-                        TextTabs<TeamPlan>(
-                          options: [p],
-                          selected: _opponent,
-                          label: (x) => x.name,
-                          size: 13,
-                          onChanged: (x) => setState(() => _opponent = x),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      _bx = null;
-                      _by = null;
-                    }),
-                    child: Text(
-                      'Reset the ball',
-                      style: TikiText.body(size: 13, weight: 700, color: TikiPalette.cyan),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const BoardLegend(),
-                ],
-              ),
-            ),
-          ),
+    return BoardLayout(
+      mode: s.mode,
+      above: [
+        TextTabs<PreviewMoment>(
+          options: PreviewMoment.values,
+          selected: _moment,
+          label: (m) => m.label,
+          size: 15,
+          onChanged: (m) => setState(() => _moment = m),
         ),
       ],
+      caption: scene.caption,
+      board: LayoutBuilder(
+        builder: (context, box) {
+          final g = BoardGeometry(s.mode, Size(box.maxWidth, box.maxHeight));
+          // Separate up-down and sideways drags (not one pan) so that on a
+          // scrolling page a drag on the board moves the ball, not the page.
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapUp: (e) => _moveBall(g, e.localPosition),
+            onVerticalDragStart: (e) => _startDrag(g, e.localPosition),
+            onVerticalDragUpdate: (e) => _moveBall(g, e.localPosition),
+            onVerticalDragEnd: (_) => _endDrag(),
+            onHorizontalDragStart: (e) => _startDrag(g, e.localPosition),
+            onHorizontalDragUpdate: (e) => _moveBall(g, e.localPosition),
+            onHorizontalDragEnd: (_) => _endDrag(),
+            child: PreviewBoard(scene: scene, animate: !_dragging),
+          );
+        },
+      ),
+      sideWidth: 240,
+      side: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Drag the ball', style: TikiText.display(size: 20, weight: 900)),
+          const SizedBox(height: 8),
+          Text(
+            'Tap or drag anywhere on the board. Both teams move to '
+            'where their game plans send them for that spot. Let go to '
+            'watch the runs.',
+            style: TikiText.body(size: 13, color: const Color(0xFFCBD5E1)),
+          ),
+          const SizedBox(height: 14),
+          SectionLabel('You: ${s.plan.name}'),
+          const SizedBox(height: 6),
+          const SectionLabel('Opponent playstyle'),
+          TextTabs<TeamPlan>(
+            options: Presets.all,
+            selected: _opponent,
+            label: (x) => x.name,
+            size: 13,
+            gap: 16,
+            wrap: true,
+            onChanged: (x) => setState(() => _opponent = x),
+          ),
+          const SizedBox(height: 14),
+          TextButton(
+            onPressed: () => setState(() {
+              _bx = null;
+              _by = null;
+            }),
+            child: Text(
+              'Reset the ball',
+              style: TikiText.body(size: 13, weight: 700, color: TikiPalette.cyan),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const BoardLegend(),
+        ],
+      ),
     );
   }
+
+  void _startDrag(BoardGeometry g, Offset local) {
+    _dragging = true;
+    _moveBall(g, local);
+  }
+
+  void _endDrag() => setState(() => _dragging = false);
 }
