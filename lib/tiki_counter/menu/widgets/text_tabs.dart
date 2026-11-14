@@ -4,7 +4,9 @@ import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 
 /// A row of plain text labels; the selected one is white with a short cyan
-/// underline. Takes far less room than chips. Scrolls sideways if needed.
+/// underline. Takes far less room than chips. Scrolls sideways if it
+/// doesn't fit, or with [wrap] runs onto more lines (narrow screens and
+/// side panels, where every option should stay in view).
 class TextTabs<T> extends StatelessWidget {
   final List<T> options;
   final T selected;
@@ -12,6 +14,7 @@ class TextTabs<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final double size;
   final double gap;
+  final bool wrap;
 
   const TextTabs({
     super.key,
@@ -21,22 +24,30 @@ class TextTabs<T> extends StatelessWidget {
     required this.onChanged,
     this.size = 14,
     this.gap = 22,
+    this.wrap = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final tabs = [
+      for (final o in options)
+        _TextTab(
+          text: label(o),
+          on: o == selected,
+          size: size,
+          onTap: () => onChanged(o),
+        ),
+    ];
+    if (wrap) {
+      return Wrap(spacing: gap * 0.8, runSpacing: 0, children: tabs);
+    }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (var i = 0; i < options.length; i++) ...[
+          for (var i = 0; i < tabs.length; i++) ...[
             if (i > 0) SizedBox(width: gap),
-            _TextTab(
-              text: label(options[i]),
-              on: options[i] == selected,
-              size: size,
-              onTap: () => onChanged(options[i]),
-            ),
+            tabs[i],
           ],
         ],
       ),
