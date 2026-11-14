@@ -8,29 +8,47 @@ import 'package:tiki_core/model/game_mode.dart';
 
 /// Maps pitch metres (centre = 0,0; +x = the goal we attack) onto a
 /// canvas of a given size, keeping the pitch's proportions.
+///
+/// A canvas taller than it is wide gets an upright pitch: your goal at the
+/// bottom, attacking up the screen (phones held upright). Every board
+/// draws through [at], so they all turn with it.
 class BoardGeometry {
   final GameMode mode;
   final Size size;
+  final bool upright;
   late final double scale;
   late final Offset origin;
 
   static const double margin = 3.2; // board around the lines (room for labels)
 
-  BoardGeometry(this.mode, this.size) {
-    final w = mode.length + margin * 2;
-    final h = mode.width + margin * 2;
-    scale = math.min(size.width / w, size.height / h);
+  BoardGeometry(this.mode, this.size) : upright = size.height > size.width {
+    final long = mode.length + margin * 2;
+    final short = mode.width + margin * 2;
+    scale = upright
+        ? math.min(size.width / short, size.height / long)
+        : math.min(size.width / long, size.height / short);
     origin = Offset(size.width / 2, size.height / 2);
   }
 
-  Offset at(double x, double y) =>
-      Offset(origin.dx + x * scale, origin.dy + y * scale);
+  /// Width ÷ height of a board for [mode], lying down or [upright].
+  static double aspectFor(GameMode mode, {bool upright = false}) {
+    final long = mode.length + margin * 2;
+    final short = mode.width + margin * 2;
+    return upright ? short / long : long / short;
+  }
+
+  /// Pitch metres → canvas point. Upright: +x goes up the screen and +y to
+  /// the right (the same pitch turned a quarter, not mirrored).
+  Offset at(double x, double y) => upright
+      ? Offset(origin.dx + y * scale, origin.dy - x * scale)
+      : Offset(origin.dx + x * scale, origin.dy + y * scale);
 
   double px(double metres) => metres * scale;
 
   /// Canvas point → pitch metres (the reverse of [at]).
-  ({double x, double y}) toPitch(Offset p) =>
-      (x: (p.dx - origin.dx) / scale, y: (p.dy - origin.dy) / scale);
+  ({double x, double y}) toPitch(Offset p) => upright
+      ? (x: (origin.dy - p.dy) / scale, y: (p.dx - origin.dx) / scale)
+      : (x: (p.dx - origin.dx) / scale, y: (p.dy - origin.dy) / scale);
 
   /// The pitch as fractions of the canvas (for placing Flutter widgets).
   Offset fraction(double x, double y) {
@@ -75,7 +93,7 @@ abstract final class BoardPaint {
     c.clipRect(grass);
     for (var x = -hl - 1.2; x < hl + 1.2; x += 10.0) {
       c.drawRect(
-        Rect.fromLTRB(g.at(x, 0).dx, grass.top, g.at(x + 5.0, 0).dx, grass.bottom),
+        Rect.fromPoints(g.at(x, -hw - 1.2), g.at(x + 5.0, hw + 1.2)),
         _stripe,
       );
     }
@@ -100,13 +118,24 @@ abstract final class BoardPaint {
 
   /// "YOUR GOAL" / "THEIR GOAL" by the goals and "ATTACKING →" under the
   /// pitch, so there's never a doubt which way the team plays. Menu boards
-  /// always show your team attacking to the right.
+  /// always show your team attacking to the right (or up, when upright).
   static void directionLabels(Canvas c, BoardGeometry g) {
     final hl = g.mode.halfLength;
     final hw = g.mode.halfWidth;
     final size = (g.px(1.15)).clamp(9.0, 13.0).toDouble();
     final yours = _caption('YOUR GOAL', size, const Color(0xB3E8F0EA));
     final theirs = _caption('THEIR GOAL', size, const Color(0xB3F59E0B));
+    if (g.upright) {
+      // Beside each goal, in the strip behind the goal line.
+      final post = g.mode.goalWidth / 2;
+      final attack = _caption('ATTACKING  ↑', size, TikiPalette.cyan);
+      final topY = g.at(hl + 1.6, 0).dy - theirs.height / 2;
+      theirs.paint(c, Offset(g.at(hl, -post).dx - theirs.width - 8, topY));
+      attack.paint(c, Offset(g.at(hl, post).dx + 8, topY));
+      final bottomY = g.at(-hl - 1.6, 0).dy - yours.height / 2;
+      yours.paint(c, Offset(g.at(-hl, -post).dx - yours.width - 8, bottomY));
+      return;
+    }
     final attack = _caption('ATTACKING  →', size, TikiPalette.cyan);
     final top = g.at(0, -hw - 0.5).dy - yours.height - 2;
     yours.paint(c, Offset(g.at(-hl, 0).dx, top));
