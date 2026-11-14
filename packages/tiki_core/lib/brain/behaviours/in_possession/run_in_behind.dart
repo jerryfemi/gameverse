@@ -2,13 +2,23 @@ import 'dart:math' as math;
 
 import 'package:tiki_core/brain/behaviours/behaviour.dart';
 import 'package:tiki_core/brain/candidate.dart';
+import 'package:tiki_core/brain/perception/team_view.dart';
 import 'package:tiki_core/brain/phase.dart';
+import 'package:tiki_core/model/disc.dart';
 import 'package:tiki_core/tactics/roles.dart';
 import 'package:tiki_core/tactics/team_plan.dart';
 
-/// Sprint into the space behind their back line, starting onside.
-/// The bot (and a human with THROUGH) can then play the ball into the run.
+/// Sprint into the space behind their back line — timed to the passer.
+///
+/// A run only goes when the carrier can actually play it: he has the ball
+/// under control, is facing forward and isn't being closed down. Until
+/// then the runner waits on the last line ("wait to run"), so the run
+/// starts as the pass becomes possible instead of arriving too early,
+/// stalling, or drifting offside. Once a run starts it is committed to.
 class RunInBehind implements Behaviour {
+  /// The carrier needs the ball this long before he can pick out a run.
+  static const double _settle = 0.25;
+
   @override
   BehaviourKind get kind => BehaviourKind.runInBehind;
 
@@ -35,17 +45,35 @@ class RunInBehind implements Behaviour {
         c.plan.afterWin == AfterWin.counter) {
       score += 1.2;
     }
-    // A carrier under pressure can't pick out the run.
-    if (v.space(carrier.pos.x, carrier.pos.y) < 1.5) score -= 0.6;
 
+    if (!_passerReady(v, carrier)) {
+      // Hold on the last line, onside, ready to go.
+      final waitX = math.min(v.offsideLine - 1.0, v.halfL - 4.0);
+      if (myX > waitX + 1.0) return null; // already past it: shape brings him back
+      return Candidate(
+        kind: kind,
+        x: v.worldX(waitX),
+        y: wy,
+        urgency: 0.9,
+        score: score - 0.6,
+        job: 'wait to run',
+      );
+    }
     return Candidate(
       kind: kind,
       x: wx,
       y: wy,
-      urgency: 1.4,
-      score: score,
+      urgency: 1.5,
+      score: score + 0.3,
       job: 'run in behind',
       commit: 1.4,
     );
+  }
+
+  /// Ball under control, facing forward, and no one closing him down.
+  static bool _passerReady(TeamView v, Disc carrier) {
+    if (v.s.ball.touchClock < _settle) return false;
+    if (carrier.facing.x * v.dir < 0.1) return false;
+    return v.space(carrier.pos.x, carrier.pos.y) >= 2.0;
   }
 }
