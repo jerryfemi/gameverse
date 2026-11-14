@@ -5,6 +5,7 @@ import 'package:b_ball/tiki_counter/menu/home/club_badge.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:b_ball/tiki_counter/ui/layout/page_shape.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 
 /// Your club's name and 3-letter short form. The short form fills itself
@@ -60,67 +61,80 @@ class _ClubScreenState extends State<ClubScreen> {
   @override
   Widget build(BuildContext context) {
     final code = _code.text.toUpperCase();
+    final shape = PageShape.of(context);
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+        padding: shape.padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             MenuHeader(title: 'Your club', onBack: widget.onBack),
-            const SizedBox(height: 18),
+            SizedBox(height: shape.gap),
             Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: 380,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SectionLabel('Team name'),
-                          _field(
-                            _name,
-                            maxLength: 22,
-                            onChanged: _nameChanged,
-                            hint: 'e.g. Lagos Tiki FC',
-                          ),
-                          const SizedBox(height: 18),
-                          const SectionLabel('Short form'),
-                          SizedBox(
-                            width: 150,
-                            child: _field(
-                              _code,
-                              maxLength: 3,
-                              display: true,
-                              formatters: [
-                                FilteringTextInputFormatter.allow(RegExp('[A-Za-z]')),
-                                _UpperCase(),
-                              ],
-                              onChanged: (_) => setState(() => _codeTouched = true),
-                            ),
-                          ),
-                          Text(
-                            '3 letters, shown on the score bar.',
-                            style: TikiText.body(size: 12, color: TikiPalette.slate),
-                          ),
-                          const SizedBox(height: 24),
-                          Opacity(
-                            opacity: _valid ? 1 : 0.4,
-                            child: PrimaryButton(label: 'SAVE CLUB', onTap: _save),
-                          ),
-                        ],
-                      ),
+              child: shape.stacked
+                  // Phone upright: the badge on top, the form under it.
+                  ? ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        SizedBox(height: 240, child: _preview(code)),
+                        const SizedBox(height: 18),
+                        _form(),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: shape.side(380),
+                          child: SingleChildScrollView(child: _form()),
+                        ),
+                        SizedBox(width: shape.wide ? 28 : 16),
+                        Expanded(child: _preview(code)),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 28),
-                  Expanded(child: _preview(code)),
-                ],
-              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _form() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Team name'),
+        _field(
+          _name,
+          maxLength: 22,
+          onChanged: _nameChanged,
+          hint: 'e.g. Lagos Tiki FC',
+        ),
+        const SizedBox(height: 18),
+        const SectionLabel('Short form'),
+        SizedBox(
+          width: 150,
+          child: _field(
+            _code,
+            maxLength: 3,
+            display: true,
+            formatters: [
+              FilteringTextInputFormatter.allow(RegExp('[A-Za-z]')),
+              _UpperCase(),
+            ],
+            onChanged: (_) => setState(() => _codeTouched = true),
+          ),
+        ),
+        Text(
+          '3 letters, shown on the score bar.',
+          style: TikiText.body(size: 12, color: TikiPalette.slate),
+        ),
+        const SizedBox(height: 24),
+        Opacity(
+          opacity: _valid ? 1 : 0.4,
+          child: PrimaryButton(label: 'SAVE CLUB', onTap: _save),
+        ),
+      ],
     );
   }
 
@@ -167,41 +181,56 @@ class _ClubScreenState extends State<ClubScreen> {
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: const Color(0xFF1E2E26)),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ClubBadge(code: code.isEmpty ? '?' : code, size: 110),
-          const SizedBox(height: 16),
-          Text(
-            _name.text.trim().isEmpty ? 'Team name' : _name.text.trim(),
-            style: TikiText.display(size: 28, weight: 900),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: TikiPalette.panel,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: TikiPalette.panelBorder),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(code.padRight(3, '·'), style: TikiText.display(size: 14, weight: 800)),
-                const SizedBox(width: 12),
-                Text('2 – 1', style: TikiText.display(size: 18, weight: 900)),
-                const SizedBox(width: 12),
-                Text(
-                  'HRV',
-                  style: TikiText.display(size: 14, weight: 800, color: TikiPalette.amber),
+      padding: const EdgeInsets.all(16),
+      // The badge sizes itself to the room there is (short phone screens).
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final h = box.maxHeight.isFinite ? box.maxHeight : 300.0;
+          final badge = (h * 0.38).clamp(56.0, 110.0).toDouble();
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClubBadge(code: code.isEmpty ? '?' : code, size: badge),
+              SizedBox(height: h < 260 ? 10 : 16),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _name.text.trim().isEmpty ? 'Team name' : _name.text.trim(),
+                  maxLines: 1,
+                  style: TikiText.display(size: h < 260 ? 22 : 28, weight: 900),
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+              SizedBox(height: h < 260 ? 10 : 18),
+              _scoreSample(code),
+            ],
+          );
+        },
       ),
     );
   }
+
+  /// How the short form looks on the score bar.
+  Widget _scoreSample(String code) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    decoration: BoxDecoration(
+      color: TikiPalette.panel,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: TikiPalette.panelBorder),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(code.padRight(3, '·'), style: TikiText.display(size: 14, weight: 800)),
+        const SizedBox(width: 12),
+        Text('2 – 1', style: TikiText.display(size: 18, weight: 900)),
+        const SizedBox(width: 12),
+        Text(
+          'HRV',
+          style: TikiText.display(size: 14, weight: 800, color: TikiPalette.amber),
+        ),
+      ],
+    ),
+  );
 }
 
 class _UpperCase extends TextInputFormatter {
