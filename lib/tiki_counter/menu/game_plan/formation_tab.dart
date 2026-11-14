@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
+import 'package:b_ball/tiki_counter/menu/board/board_layout.dart';
 import 'package:b_ball/tiki_counter/menu/board/formation_board.dart';
-import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/text_tabs.dart';
@@ -34,42 +33,54 @@ class _FormationTabState extends State<FormationTab> {
     final s = widget.setup;
     final f = s.formation;
     final sel = _selected.clamp(0, f.spots.length - 1).toInt();
-    final aspect = (s.mode.length + BoardGeometry.margin * 2) /
-        (s.mode.width + BoardGeometry.margin * 2);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(width: 170, child: _formations(s)),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextTabs<bool>(
-                options: const [true, false],
-                selected: _withBall,
-                label: (b) => b ? 'With the ball' : 'Without the ball',
-                size: 15,
-                onChanged: (b) => setState(() => _withBall = b),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: BoardBox(
-                  aspect: aspect,
-                  child: FormationBoard(
-                    mode: s.mode,
-                    formation: f,
-                    withBall: _withBall,
-                    selected: sel,
-                    onSelect: (i) => setState(() => _selected = i),
-                  ),
-                ),
-              ),
-            ],
-          ),
+    return BoardLayout(
+      mode: s.mode,
+      lead: _formations(s),
+      leadWidth: 170,
+      leadStacked: _formationTabs(s),
+      above: [
+        TextTabs<bool>(
+          options: const [true, false],
+          selected: _withBall,
+          label: (b) => b ? 'With the ball' : 'Without the ball',
+          size: 15,
+          onChanged: (b) => setState(() => _withBall = b),
         ),
-        const SizedBox(width: 16),
-        SizedBox(width: 240, child: _player(f.spots[sel])),
+      ],
+      board: FormationBoard(
+        mode: s.mode,
+        formation: f,
+        withBall: _withBall,
+        selected: sel,
+        onSelect: (i) => setState(() => _selected = i),
+      ),
+      sideWidth: 240,
+      side: _player(f.spots[sel]),
+    );
+  }
+
+  /// Phone upright: the formations as a row of names, the chosen one's
+  /// blurb underneath.
+  Widget _formationTabs(TikiSetup s) {
+    final list = Formations.forMode(s.mode);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Formation'),
+        TextTabs<Formation>(
+          options: list,
+          selected: list.firstWhere(
+            (f) => f.name == s.formation.name,
+            orElse: () => list.first,
+          ),
+          label: (f) => f.name,
+          wrap: true,
+          onChanged: (f) => widget.onChanged(s.withFormation(f)),
+        ),
+        Text(
+          s.formation.blurb,
+          style: TikiText.body(size: 12, color: TikiPalette.slate),
+        ),
       ],
     );
   }
@@ -94,9 +105,7 @@ class _FormationTabState extends State<FormationTab> {
         .where((e) => e.value >= 1.0 && _moveWords.containsKey(e.key))
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    return PlanPanel(
-      child: SingleChildScrollView(
-        child: Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('${spot.number}', style: TikiText.display(size: 34, weight: 900)),
@@ -124,8 +133,6 @@ class _FormationTabState extends State<FormationTab> {
               style: TikiText.body(size: 12, color: TikiPalette.slate),
             ),
           ],
-        ),
-      ),
     );
   }
 
