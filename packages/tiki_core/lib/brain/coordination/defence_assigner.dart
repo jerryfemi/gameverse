@@ -17,7 +17,12 @@ abstract final class DefenceAssigner {
     // Press when the ball is in our press zone. Intensity 0 = only deep in
     // our own half; 1 = anywhere on the pitch.
     final pressFrom = (-0.45 + 1.35 * plan.pressIntensity) * v.halfL;
-    final pressNow = counterPress || v.ballX <= pressFrom;
+    // Their restart (kick-off, throw-in, free kick…): set up around it —
+    // someone steps up to the ball and the nearest options get picked up,
+    // ready to jump the moment it's played.
+    final sp = v.s.setPiece;
+    final theirRestart = sp != null && sp.team != v.team.side;
+    final pressNow = counterPress || theirRestart || v.ballX <= pressFrom;
 
     final ranked = _outfield(v)
       ..sort((p, q) => p.pos
@@ -41,6 +46,8 @@ abstract final class DefenceAssigner {
 
     if (plan.marking == Marking.man) {
       _manMark(v, a, carrier);
+    } else if (theirRestart) {
+      _markOptions(v, a, carrier, 2);
     } else if (plan.pressIntensity >= 0.3) {
       _cutLanes(v, a, carrier);
     }
@@ -95,6 +102,30 @@ abstract final class DefenceAssigner {
         if (!o.isKeeper && o.id != carrier.id) o,
     ]..sort((p, q) => v.teamX(p).compareTo(v.teamX(q)));
     for (final o in targets) {
+      Disc? best;
+      var bestD = double.infinity;
+      for (final d in _outfield(v)) {
+        if (!_free(a, d)) continue;
+        final dd = d.pos.dist2To(o.pos);
+        if (dd < bestD) {
+          bestD = dd;
+          best = d;
+        }
+      }
+      if (best != null) a.marks[best.id] = o.id;
+    }
+  }
+
+  /// At their restart: the taker's [count] nearest options each get the
+  /// nearest free defender, standing goal-side of them.
+  static void _markOptions(TeamView v, Assignments a, Disc carrier, int count) {
+    final options = [
+      for (final o in v.opp.discs)
+        if (!o.isKeeper && o.id != carrier.id) o,
+    ]..sort((p, q) => p.pos
+        .dist2To(carrier.pos)
+        .compareTo(q.pos.dist2To(carrier.pos)));
+    for (final o in options.take(count)) {
       Disc? best;
       var bestD = double.infinity;
       for (final d in _outfield(v)) {
