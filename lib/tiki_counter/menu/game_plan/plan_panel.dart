@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:tiki_core/model/game_mode.dart';
 
 /// The dark rounded box used for the board and the side panel.
 class PlanPanel extends StatelessWidget {
@@ -26,12 +28,18 @@ class PlanPanel extends StatelessWidget {
 }
 
 /// A board that keeps the pitch's proportions inside whatever space it
-/// gets.
+/// gets. [upright] stands the pitch on its end (phones held upright).
 class BoardBox extends StatelessWidget {
-  final double aspect;
+  final GameMode mode;
+  final bool upright;
   final Widget child;
 
-  const BoardBox({super.key, required this.aspect, required this.child});
+  const BoardBox({
+    super.key,
+    required this.mode,
+    required this.child,
+    this.upright = false,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
@@ -41,6 +49,11 @@ class BoardBox extends StatelessWidget {
       border: Border.all(color: const Color(0xFF1E2E26)),
     ),
     padding: const EdgeInsets.all(10),
-    child: Center(child: AspectRatio(aspectRatio: aspect, child: child)),
+    child: Center(
+      child: AspectRatio(
+        aspectRatio: BoardGeometry.aspectFor(mode, upright: upright),
+        child: child,
+      ),
+    ),
   );
 }
