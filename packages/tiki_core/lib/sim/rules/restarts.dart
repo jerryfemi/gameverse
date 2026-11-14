@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 
 import 'package:tiki_core/core/geometry.dart';
 import 'package:tiki_core/core/tunables.dart';
@@ -13,13 +12,15 @@ import 'package:tiki_core/sim/match_setup.dart';
 import 'package:tiki_core/sim/rules/ball_control.dart';
 import 'package:tiki_core/sim/rules/passing.dart';
 import 'package:tiki_core/sim/rules/receivers.dart';
+import 'package:tiki_core/sim/rules/set_piece_zone.dart';
 
 /// Goals, throw-ins, corners, goal kicks, free kicks and kick-offs.
 ///
-/// Flow: the ball goes out → [schedule] freezes play for a moment →
+/// Flow: the ball goes out → [schedule] stops play for a moment (players
+/// keep moving into shape; after a goal they jog back to kick-off spots) →
 /// [tickPending] starts the restart → the nearest disc stands on the spot
-/// with the ball ([holdSetPiece] keeps it there) → it plays the ball and
-/// open play resumes.
+/// with the ball ([holdSetPiece] keeps it there) while both teams set up
+/// around it → it plays the ball and open play resumes.
 class Restarts {
   final Passing passing;
 
@@ -98,14 +99,30 @@ class Restarts {
   };
 
   // ── Waiting, then starting ────────────────────────────────────────────
+  final Vec2 _spot = Vec2();
+
   void tickPending(MatchState s, double dt) {
     final p = s.pending;
     if (p == null) return;
     p.delay -= dt;
     if (p.delay > 0.0) return;
+    // After a goal: kick off once everyone is back (or it's taken too long).
+    if (p.resetShape &&
+        p.delay > -T.walkBackMax &&
+        !_everyoneBack(s, p.setPiece.team)) {
+      return;
+    }
     s.pending = null;
     if (p.resetShape) MatchSetup.resetShape(s, kickOffSide: p.setPiece.team);
     start(s, p.setPiece);
+  }
+
+  bool _everyoneBack(MatchState s, Side kickOffSide) {
+    for (final d in s.discs) {
+      MatchSetup.kickOffSpot(s, d, kickOffSide: kickOffSide, out: _spot);
+      if (d.pos.distTo(_spot) > T.walkBackClose) return false;
+    }
+    return true;
   }
 
   /// Puts the taker on the spot with the ball.
@@ -162,8 +179,9 @@ class Restarts {
   }
 
   // ── During the restart ────────────────────────────────────────────────
-  /// Keeps the taker and ball on the spot and opponents back; takes it
-  /// automatically if nobody does. Runs after `Possession.carry`.
+  /// Keeps the taker and ball on the spot and everyone else where the
+  /// rules allow ([SetPieceZone]); takes it automatically if nobody does.
+  /// Runs after `Possession.carry`.
   void holdSetPiece(MatchState s, double dt) {
     final sp = s.setPiece;
     if (sp == null) return;
@@ -179,7 +197,9 @@ class Restarts {
     taker.facing.setFrom(sp.takerFacing);
     b.pos.setFrom(sp.spot);
     b.vel.setZero();
-    _clearOpponents(s, sp);
+    for (final d in s.discs) {
+      SetPieceZone.keepOut(s, d, d.pos);
+    }
     if (sp.timer > T.setPieceAutoTake) {
       final target = Receivers.bestOpen(s, taker);
       var ax = taker.facing.x;
@@ -189,22 +209,6 @@ class Restarts {
         ay = target.pos.y - taker.pos.y;
       }
       passing.execute(s, taker, ActionKind.pass, ax, ay, 0.5);
-    }
-  }
-
-  void _clearOpponents(MatchState s, SetPiece sp) {
-    const r = T.setPieceClearance;
-    for (final o in s.team(sp.team.other).discs) {
-      final dx = o.pos.x - sp.spot.x;
-      final dy = o.pos.y - sp.spot.y;
-      final d = math.sqrt(dx * dx + dy * dy);
-      if (d >= r) continue;
-      if (d < 1e-6) {
-        o.pos.x = sp.spot.x - s.dir(sp.team) * r;
-        continue;
-      }
-      o.pos.x = sp.spot.x + dx / d * r;
-      o.pos.y = sp.spot.y + dy / d * r;
     }
   }
 }
