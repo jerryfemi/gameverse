@@ -7,6 +7,7 @@ enum BehaviourKind {
   holdShape,
   // With the ball
   support,
+  keepStructure,
   runInBehind,
   holdWidth,
   dropToReceive,
@@ -36,9 +37,11 @@ class RolePreset {
 }
 
 abstract final class Roles {
-  // Shared by everyone without the ball.
+  // Shared by every outfield role: defending, plus keeping the team's
+  // structure when we have the ball (rest defence, far-side width).
   static const Map<BehaviourKind, double> _defending = {
     BehaviourKind.holdShape: 1.0,
+    BehaviourKind.keepStructure: 1.0,
     BehaviourKind.press: 1.0,
     BehaviourKind.cutLane: 1.0,
     BehaviourKind.markMan: 1.0,
