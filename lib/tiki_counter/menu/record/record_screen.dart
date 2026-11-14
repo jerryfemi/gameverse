@@ -4,6 +4,7 @@ import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
 import 'package:b_ball/tiki_counter/menu/home/record_strip.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:b_ball/tiki_counter/ui/layout/page_shape.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 import 'package:tiki_core/control/bot_level.dart';
 import 'package:tiki_core/record/club_record.dart';
@@ -26,14 +27,15 @@ class RecordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = record;
+    final shape = PageShape.of(context);
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
+        padding: shape.padding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             MenuHeader(title: 'Club record', subtitle: clubName, onBack: onBack),
-            const SizedBox(height: 16),
+            SizedBox(height: shape.gap),
             Expanded(
               child: r.total.played == 0
                   ? Center(
@@ -44,16 +46,7 @@ class RecordScreen extends StatelessWidget {
                         style: TikiText.body(size: 15, color: TikiPalette.slate),
                       ),
                     )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(flex: 5, child: _totals(r)),
-                        const SizedBox(width: 16),
-                        Expanded(flex: 5, child: _splits(r)),
-                        const SizedBox(width: 16),
-                        Expanded(flex: 6, child: _recent(r)),
-                      ],
-                    ),
+                  : _body(r, shape),
             ),
           ],
         ),
@@ -61,43 +54,102 @@ class RecordScreen extends StatelessWidget {
     );
   }
 
+  /// Big screens: three columns. Phone sideways: two (totals and splits
+  /// share one). Phone upright: one scrolling list.
+  Widget _body(ClubRecord r, PageShape shape) {
+    if (shape.stacked) {
+      return ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          PlanPanel(child: _totals(r)),
+          const SizedBox(height: 12),
+          PlanPanel(child: _splits(r)),
+          const SizedBox(height: 12),
+          PlanPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('Last 10 matches'),
+                for (var i = 0; i < r.recent.length; i++) ...[
+                  if (i > 0) _divider,
+                  _match(r.recent[i]),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    final gap = SizedBox(width: shape.gap);
+    final recent = Expanded(flex: 6, child: _recent(r));
+    if (shape.size.width < 1000) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 5,
+            child: _scrollPanel(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [_totals(r), const SizedBox(height: 18), _splits(r)],
+              ),
+            ),
+          ),
+          gap,
+          recent,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(flex: 5, child: _scrollPanel(_totals(r))),
+        gap,
+        Expanded(flex: 5, child: _scrollPanel(_splits(r))),
+        gap,
+        recent,
+      ],
+    );
+  }
+
+  static const Widget _divider = Divider(height: 14, color: Color(0xFF1E2E26));
+
+  Widget _scrollPanel(Widget child) =>
+      PlanPanel(child: SingleChildScrollView(child: child));
+
   Widget _totals(ClubRecord r) {
     final t = r.total;
     final best = r.bestWin;
     final style = r.bestPlaystyle();
-    return PlanPanel(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                _big('${t.won}', 'WON'),
-                _big('${t.drawn}', 'DRAWN'),
-                _big('${t.lost}', 'LOST'),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _line('Played', '${t.played}'),
-            _line('Win rate', '${t.winRate}%'),
-            _line('Goals', '${r.goalsFor} for · ${r.goalsAgainst} against'),
-            _line('Clean sheets', '${r.cleanSheets}'),
-            _line('Unbeaten run', '${r.unbeatenNow} now · ${r.unbeatenBest} best'),
-            if (best != null)
-              _line('Best win', '${best.goalsFor}–${best.goalsAgainst} vs ${best.opponentCode}'),
-            _line('Pass accuracy', '${r.averagePassAccuracy}% average'),
-            _line('Possession', '${r.averagePossession}% average'),
-            _line('Pattern runs found', '${r.patternRuns}'),
-            if (style != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                '${style.key} wins you ${style.value.winRate}%',
-                style: TikiText.body(size: 14, weight: 700, color: TikiPalette.cyan),
-              ),
-            ],
+            _big('${t.won}', 'WON'),
+            _big('${t.drawn}', 'DRAWN'),
+            _big('${t.lost}', 'LOST'),
           ],
         ),
-      ),
+        const SizedBox(height: 14),
+        _line('Played', '${t.played}'),
+        _line('Win rate', '${t.winRate}%'),
+        _line('Goals', '${r.goalsFor} for · ${r.goalsAgainst} against'),
+        _line('Clean sheets', '${r.cleanSheets}'),
+        _line('Unbeaten run', '${r.unbeatenNow} now · ${r.unbeatenBest} best'),
+        if (best != null)
+          _line('Best win', '${best.goalsFor}–${best.goalsAgainst} vs ${best.opponentCode}'),
+        _line('Pass accuracy', '${r.averagePassAccuracy}% average'),
+        _line('Possession', '${r.averagePossession}% average'),
+        _line('Pattern runs found', '${r.patternRuns}'),
+        if (style != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            '${style.key} wins you ${style.value.winRate}%',
+            style: TikiText.body(size: 14, weight: 700, color: TikiPalette.cyan),
+          ),
+        ],
+      ],
     );
   }
 
@@ -110,22 +162,18 @@ class RecordScreen extends StatelessWidget {
       ..sort((a, b) => b.value.played.compareTo(a.value.played));
     final forms = r.byFormation.entries.toList()
       ..sort((a, b) => b.value.played.compareTo(a.value.played));
-    return PlanPanel(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SectionLabel('Against the bot'),
-            for (final e in levels) _wdl(e.key, e.value),
-            const SizedBox(height: 14),
-            const SectionLabel('By playstyle'),
-            for (final e in styles) _wdl(e.key, e.value),
-            const SizedBox(height: 14),
-            const SectionLabel('By formation'),
-            for (final e in forms) _wdl(e.key, e.value),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionLabel('Against the bot'),
+        for (final e in levels) _wdl(e.key, e.value),
+        const SizedBox(height: 14),
+        const SectionLabel('By playstyle'),
+        for (final e in styles) _wdl(e.key, e.value),
+        const SizedBox(height: 14),
+        const SectionLabel('By formation'),
+        for (final e in forms) _wdl(e.key, e.value),
+      ],
     );
   }
 
@@ -138,7 +186,7 @@ class RecordScreen extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               itemCount: r.recent.length,
-              separatorBuilder: (_, _) => const Divider(height: 14, color: Color(0xFF1E2E26)),
+              separatorBuilder: (_, _) => _divider,
               itemBuilder: (_, i) => _match(r.recent[i]),
             ),
           ),
