@@ -64,10 +64,16 @@ void passingChecks() {
     mate.vel.set(0.0, 3.0); // already running sideways
     pusher.aimAt(mate.pos.x - taker.pos.x, mate.pos.y - taker.pos.y);
 
-    runFor(runner, 3.5);
+    // Until the pass is received (he may dribble on afterwards — the
+    // stick is still held — so check the moment it arrives).
+    var t = 0.0;
+    while (s.home.stats.passesCompleted == 0 && t < 3.5) {
+      runFor(runner, 1 / 60);
+      t += 1 / 60;
+    }
     expectEqual(s.home.stats.passesTried, 1, 'passes tried');
     expectEqual(s.home.stats.passesCompleted, 1, 'passes completed');
-    expectEqual(s.ball.ownerId, mate.id, 'ball owner');
+    expectEqual(s.ball.ownerId, mate.id, 'received by');
   });
 
   check('SHOOT counts as a shot, not a pass', () {
