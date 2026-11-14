@@ -55,7 +55,10 @@ abstract final class SupportAssigner {
     Disc? best;
     var bestD = double.infinity;
     for (final d in v.team.discs) {
-      if (d.isKeeper || d.id == carrier.id || a.support.containsKey(d.id)) {
+      if (d.isKeeper ||
+          d.id == carrier.id ||
+          a.support.containsKey(d.id) ||
+          a.structure.containsKey(d.id)) {
         continue;
       }
       final dx = d.pos.x - x;
