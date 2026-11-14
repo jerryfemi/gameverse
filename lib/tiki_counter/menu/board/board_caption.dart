@@ -6,8 +6,9 @@ import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 /// The one-line "what's happening, what to watch" text above a board.
 class BoardCaption extends StatelessWidget {
   final String text;
+  final int maxLines;
 
-  const BoardCaption(this.text, {super.key});
+  const BoardCaption(this.text, {super.key, this.maxLines = 2});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +27,7 @@ class BoardCaption extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            maxLines: 2,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: TikiText.body(size: 14, weight: 600, color: Colors.white),
           ),
