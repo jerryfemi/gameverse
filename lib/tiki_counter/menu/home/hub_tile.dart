@@ -56,38 +56,60 @@ class HubTile extends StatelessWidget {
                   border: Border.all(color: const Color(0xFF1E2E26)),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (eyebrow != null)
-                      Text(
-                        eyebrow!,
-                        style: TikiText.body(size: 12, weight: 700, color: TikiPalette.cyan),
-                      ),
-                    Text(title, style: TikiText.display(size: titleSize, weight: 900)),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            line,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TikiText.body(size: 13, color: const Color(0xFFCBD5E1)),
-                          ),
-                        ),
-                        ?action,
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              LayoutBuilder(builder: (context, box) => _words(box)),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Small tiles (a phone) get tighter padding, a smaller title and one
+  /// line; the title also shrinks to fit rather than wrap.
+  Widget _words(BoxConstraints box) {
+    final small = box.maxWidth < 240 || box.maxHeight < 150;
+    final tiny = box.maxHeight < 110;
+    final pad = small ? 14.0 : 22.0;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, small ? 10 : 18, pad, small ? 10 : 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (eyebrow != null && !tiny)
+            Text(
+              eyebrow!,
+              style: TikiText.body(size: 12, weight: 700, color: TikiPalette.cyan),
+            ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: TikiText.display(
+                size: small ? titleSize * 0.8 : titleSize,
+                weight: 900,
+              ),
+            ),
+          ),
+          if (!tiny) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    line,
+                    maxLines: box.maxHeight < 150 ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TikiText.body(size: small ? 12 : 13, color: const Color(0xFFCBD5E1)),
+                  ),
+                ),
+                if (action != null) ...[const SizedBox(width: 10), action!],
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
