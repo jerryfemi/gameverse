@@ -108,7 +108,10 @@ class _KickOffSheetState extends State<_KickOffSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final width = math.min(460.0, MediaQuery.sizeOf(context).width * 0.9);
+    // A phone held upright gets the whole width; bigger screens a 460 px
+    // sheet down the right.
+    final screen = MediaQuery.sizeOf(context).width;
+    final width = screen < 600 ? screen : math.min(460.0, screen * 0.9);
     return Material(
       color: const Color(0xFF0D1612),
       child: Container(
@@ -119,7 +122,7 @@ class _KickOffSheetState extends State<_KickOffSheet> {
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(26, 18, 26, 22),
+            padding: EdgeInsets.fromLTRB(width < 420 ? 18 : 26, 18, width < 420 ? 18 : 26, 22),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -145,6 +148,7 @@ class _KickOffSheetState extends State<_KickOffSheet> {
                   options: GameMode.values,
                   selected: _setup.mode,
                   label: (m) => m.offside ? '${m.label} · offside' : m.label,
+                  wrap: true,
                   onChanged: (m) => _change(_setup.copyWith(mode: m)),
                 ),
                 const SizedBox(height: 14),
@@ -153,6 +157,7 @@ class _KickOffSheetState extends State<_KickOffSheet> {
                   options: BotLevel.all,
                   selected: _setup.level,
                   label: (l) => l.name,
+                  wrap: true,
                   onChanged: (l) => _change(_setup.copyWith(botLevel: l.name)),
                 ),
                 const SizedBox(height: 14),
@@ -161,6 +166,7 @@ class _KickOffSheetState extends State<_KickOffSheet> {
                   options: const [_random, ...Presets.all],
                   selected: _opponentPlan,
                   label: (p) => p.name,
+                  wrap: true,
                   onChanged: (p) => setState(() => _opponentPlan = p),
                 ),
                 const SizedBox(height: 18),
