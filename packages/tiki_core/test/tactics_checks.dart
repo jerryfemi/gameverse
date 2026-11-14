@@ -153,4 +153,20 @@ void tacticsChecks() {
       }
     }
   });
+
+  check('with the ball in midfield, someone stays back (rest defence)', () {
+    for (final mode in GameMode.values) {
+      final scene = PlanPreview.build(
+        mode: mode,
+        formation: Formations.defaultFor(mode),
+        plan: Presets.balanced,
+        moment: PreviewMoment.attacking,
+      );
+      final rest = scene.discs.where((d) => d.ours && d.job == 'rest defence');
+      expectThat(rest.isNotEmpty, '${mode.label}: a rest defender');
+      for (final d in rest) {
+        expectThat(d.tx < scene.ballX, '${mode.label}: rest defence behind the ball');
+      }
+    }
+  });
 }
