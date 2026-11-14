@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:b_ball/tiki_counter/ui/layout/page_shape.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 
 /// Back arrow + page title + optional subtitle and trailing widget.
@@ -20,6 +21,7 @@ class MenuHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shape = PageShape.of(context);
     return Row(
       children: [
         MenuIconButton(
@@ -27,20 +29,36 @@ class MenuHeader extends StatelessWidget {
           label: 'Back',
           onTap: onBack,
         ),
-        const SizedBox(width: 14),
-        Text(title, style: TikiText.display(size: 24, weight: 900)),
-        if (subtitle != null) ...[
-          const SizedBox(width: 12),
-          Flexible(
-            child: Text(
-              subtitle!,
-              overflow: TextOverflow.ellipsis,
-              style: TikiText.body(size: 13, color: TikiPalette.slate),
-            ),
+        SizedBox(width: shape.wide ? 14 : 10),
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                flex: 2,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TikiText.display(size: shape.titleSize, weight: 900),
+                ),
+              ),
+              // The subtitle only fits next to the title on big screens.
+              if (subtitle != null && shape.wide) ...[
+                const SizedBox(width: 12),
+                Flexible(
+                  flex: 3,
+                  child: Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TikiText.body(size: 13, color: TikiPalette.slate),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
-        const Spacer(),
-        ?trailing,
+        ),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }
