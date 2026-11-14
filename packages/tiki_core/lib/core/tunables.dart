@@ -86,11 +86,11 @@ abstract final class T {
 
   /// Teammates control anything slower than this for sure.
   static const double easyControlSpeed = 14.0;
-  static const double hardControlChance = 0.6;
+  static const double hardControlChance = 0.8;
 
   /// Interception chance = base − (speed − looseBallSpeed) × falloff,
   /// then scaled by how close the ball passes.
-  static const double interceptBase = 0.72;
+  static const double interceptBase = 0.55;
   static const double interceptSpeedFalloff = 0.035;
   static const double interceptMin = 0.12;
   static const double interceptMax = 0.95;
@@ -115,8 +115,9 @@ abstract final class T {
   static const double passMinSpeed = 6.0;
   static const double passMaxSpeed = 22.0;
 
-  /// Extra roll-on distance so a pass arrives with some pace.
-  static const double passArriveExtra = 1.5;
+  /// Extra roll-on distance so a pass arrives with some pace (firm
+  /// passes are harder to cut out).
+  static const double passArriveExtra = 3.0;
 
   /// A pass leads its receiver by where he'll be when the ball arrives,
   /// but never by more than this (metres).
@@ -159,7 +160,7 @@ abstract final class T {
 
   /// Opponent closer than this adds pressure to the error.
   static const double pressureRadius = 2.5;
-  static const double bigMissChance = 0.08;
+  static const double bigMissChance = 0.04;
   static const double bigMissFactor = 3.0;
   static const double speedErrorFraction = 0.05;
 
@@ -194,7 +195,15 @@ abstract final class T {
 
   // ── Set pieces ────────────────────────────────────────────────────────
   static const double restartDelay = 0.6;
-  static const double goalCelebration = 1.8;
+  static const double goalCelebration = 1.5;
+
+  /// After a goal everyone jogs back to kick-off positions. The kick-off
+  /// starts once all are within [walkBackClose] of their spots, or at
+  /// most [walkBackMax] seconds after the celebration (then the last few
+  /// metres are snapped).
+  static const double walkBackClose = 1.5;
+  static const double walkBackMax = 3.0;
+  static const double walkBackUrgency = 1.3;
   static const double setPieceClearance = 3.5;
 
   /// Nobody touching the ball for this long → the taker passes on its own.
