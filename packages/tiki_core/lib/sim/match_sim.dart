@@ -51,6 +51,14 @@ class MatchSim {
     if (!s.isPlaying) return; // the half just ended
 
     if (s.isFrozen) {
+      // The ball is dead but nobody stands still: the team brains walk
+      // everyone into shape (back to kick-off spots after a goal).
+      for (final d in s.discs) {
+        d.manual = false;
+        d.dashing = false;
+      }
+      _motion.step(s, dt);
+      _collisions.resolve(s);
       restarts.tickPending(s, dt);
       return;
     }
