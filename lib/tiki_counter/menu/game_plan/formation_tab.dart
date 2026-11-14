@@ -151,6 +151,7 @@ class _FormationTabState extends State<FormationTab> {
   static const Map<BehaviourKind, String> _moveWords = {
     BehaviourKind.holdShape: 'Holds its spot in the shape',
     BehaviourKind.support: 'Comes close to offer a pass',
+    BehaviourKind.keepStructure: 'Stays back or holds the far side when the team needs it',
     BehaviourKind.runInBehind: 'Runs in behind the last defender',
     BehaviourKind.holdWidth: 'Holds the touchline for width',
     BehaviourKind.dropToReceive: 'Drops short to receive',
