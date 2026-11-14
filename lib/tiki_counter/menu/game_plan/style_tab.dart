@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import 'package:b_ball/tiki_counter/menu/board/board_caption.dart';
-import 'package:b_ball/tiki_counter/menu/board/board_paint.dart';
+import 'package:b_ball/tiki_counter/menu/board/board_layout.dart';
 import 'package:b_ball/tiki_counter/menu/board/preview_board.dart';
-import 'package:b_ball/tiki_counter/menu/game_plan/plan_panel.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
 import 'package:b_ball/tiki_counter/menu/widgets/text_tabs.dart';
 import 'package:b_ball/tiki_counter/theme/tiki_palette.dart';
+import 'package:b_ball/tiki_counter/ui/layout/page_shape.dart';
 import 'package:b_ball/tiki_counter/ui/tiki_text.dart';
 import 'package:tiki_core/preview/plan_preview.dart';
 import 'package:tiki_core/preview/plan_words.dart';
@@ -48,61 +48,52 @@ class _StyleTabState extends State<StyleTab> {
   @override
   Widget build(BuildContext context) {
     final s = widget.setup;
+    final shape = PageShape.of(context);
     final scene = _sceneFor(s);
     final styles = <TeamPlan>[
       ...Presets.all,
       if (!Presets.all.any((p) => p.name == s.plan.name)) s.plan,
     ];
     final current = styles.firstWhere((p) => p.name == s.plan.name);
-    final aspect = (s.mode.length + BoardGeometry.margin * 2) /
-        (s.mode.width + BoardGeometry.margin * 2);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextTabs<PreviewMoment>(
-                options: PreviewMoment.values,
-                selected: _moment,
-                label: (m) => m.label,
-                size: 15,
-                onChanged: (m) => setState(() => _moment = m),
-              ),
-              const SizedBox(height: 8),
-              BoardCaption(scene.caption),
-              const SizedBox(height: 8),
-              Expanded(
-                child: BoardBox(
-                  aspect: aspect,
-                  child: PreviewBoard(scene: scene),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    'PLAYSTYLE',
-                    style: TikiText.body(size: 11, weight: 700, color: TikiPalette.slate),
-                  ),
-                  const SizedBox(width: 18),
-                  Expanded(
-                    child: TextTabs<TeamPlan>(
-                      options: styles,
-                      selected: current,
-                      label: (p) => p.name,
-                      onChanged: (p) => widget.onChanged(s.copyWith(plan: p)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+    final styleTabs = TextTabs<TeamPlan>(
+      options: styles,
+      selected: current,
+      label: (p) => p.name,
+      wrap: !shape.wide,
+      onChanged: (p) => widget.onChanged(s.copyWith(plan: p)),
+    );
+    return BoardLayout(
+      mode: s.mode,
+      above: [
+        TextTabs<PreviewMoment>(
+          options: PreviewMoment.values,
+          selected: _moment,
+          label: (m) => m.label,
+          size: 15,
+          onChanged: (m) => setState(() => _moment = m),
         ),
-        const SizedBox(width: 18),
-        SizedBox(width: 260, child: _side(s.plan, scene)),
       ],
+      caption: scene.caption,
+      board: PreviewBoard(scene: scene),
+      below: [
+        if (shape.wide)
+          Row(
+            children: [
+              Text(
+                'PLAYSTYLE',
+                style: TikiText.body(size: 11, weight: 700, color: TikiPalette.slate),
+              ),
+              const SizedBox(width: 18),
+              Expanded(child: styleTabs),
+            ],
+          )
+        else
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [const SectionLabel('Playstyle'), styleTabs],
+          ),
+      ],
+      side: _side(s.plan, scene),
     );
   }
 
@@ -111,9 +102,7 @@ class _StyleTabState extends State<StyleTab> {
       for (final d in scene.discs)
         if (d.moves && !d.keeper) '${d.number}  ${PlanWords.move(d.job)}',
     ];
-    return PlanPanel(
-      child: SingleChildScrollView(
-        child: Column(
+    return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SectionLabel('${plan.name} · ${_moment.label}'),
@@ -141,8 +130,6 @@ class _StyleTabState extends State<StyleTab> {
             const SizedBox(height: 14),
             const BoardLegend(),
           ],
-        ),
-      ),
     );
   }
 }
