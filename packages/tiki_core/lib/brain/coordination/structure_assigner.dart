@@ -11,10 +11,11 @@ import 'package:tiki_core/tactics/team_plan.dart';
 /// With the ball, a couple of players keep the team's structure instead of
 /// all drifting toward the ball:
 ///
-/// - **Rest defence**: the deepest one (5-a-side) or two (7-a-side) stay
-///   behind the ball, goal-side of their most advanced forward, so losing
-///   the ball doesn't mean a free run at our keeper. Not needed while we
-///   build up in our own third.
+/// - **Rest defence**: the deepest player stays behind the ball, goal-side
+///   of their most advanced forward, so losing the ball doesn't mean a
+///   free run at our keeper. In 7-a-side a second one joins once the ball
+///   is in their third (that's when a counter hurts most). Not needed
+///   while we build up in our own third.
 /// - **Far-side width**: the widest player on the side away from the ball
 ///   holds that touchline, so there's always a switch of play on and their
 ///   block can't squeeze over. Skipped by Overload (bodies to the ball)
@@ -37,7 +38,8 @@ abstract final class StructureAssigner {
 
   static void _restDefence(TeamView v, Assignments a, List<Disc> free) {
     if (v.ballX < -0.25 * v.halfL) return; // building up: everyone offers
-    final count = math.min(v.s.mode.teamSize > 5 ? 2 : 1, free.length);
+    final high = v.ballX > v.halfL / 3;
+    final count = math.min(v.s.mode.teamSize > 5 && high ? 2 : 1, free.length);
     if (count == 0) return;
     final spots = v.team.formation.spots;
     free.sort((p, q) => spots[p.slot].ax.compareTo(spots[q.slot].ax));
