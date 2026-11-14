@@ -85,8 +85,10 @@ class Possession {
     if (d.side == b.lastTouchSide) {
       return speed < T.easyControlSpeed ? 1.0 : T.hardControlChance;
     }
+    final start =
+        b.lastKick == ActionKind.shoot ? T.shotBlockBase : T.interceptBase;
     final base = clampD(
-      T.interceptBase - (speed - T.looseBallSpeed) * T.interceptSpeedFalloff,
+      start - (speed - T.looseBallSpeed) * T.interceptSpeedFalloff,
       T.interceptMin,
       T.interceptMax,
     );
