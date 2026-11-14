@@ -98,6 +98,10 @@ abstract final class PlanWords {
     if (job.startsWith('track')) return 'tracks their $number';
     return switch (job) {
       'support' => 'comes close to offer a pass',
+      'rest defence' => 'stays back to stop a counter',
+      'hold far side' => 'holds the far touchline for a switch',
+      'wait to run' => 'waits on the last line to run',
+      'back to position' => 'jogs back to position',
       'run in behind' => 'runs in behind',
       'hold width' => 'holds the width',
       'drop to receive' => 'drops short to receive',
