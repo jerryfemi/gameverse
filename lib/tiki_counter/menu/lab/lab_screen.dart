@@ -5,8 +5,7 @@ import 'package:b_ball/tiki_counter/menu/lab/patterns_tab.dart';
 import 'package:b_ball/tiki_counter/menu/lab/scenarios_tab.dart';
 import 'package:b_ball/tiki_counter/menu/lab/watch_tab.dart';
 import 'package:b_ball/tiki_counter/menu/setup/tiki_setup.dart';
-import 'package:b_ball/tiki_counter/menu/widgets/menu_header.dart';
-import 'package:b_ball/tiki_counter/menu/widgets/text_tabs.dart';
+import 'package:b_ball/tiki_counter/menu/widgets/tabbed_page.dart';
 import 'package:b_ball/tiki_counter/ui/cards/match_choice.dart';
 import 'package:tiki_core/drills/drill.dart';
 
@@ -51,38 +50,15 @@ class _LabScreenState extends State<LabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            MenuHeader(
-              title: 'Lab',
-              subtitle: 'Test and learn tactics',
-              onBack: widget.onBack,
-            ),
-            const SizedBox(height: 18),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(
-                    width: 130,
-                    child: SideTabs<LabTab>(
-                      options: LabTab.values,
-                      selected: _tab,
-                      label: (t) => t.label,
-                      onChanged: (t) => setState(() => _tab = t),
-                    ),
-                  ),
-                  Expanded(child: _body()),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+    return TabbedPage<LabTab>(
+      title: 'Lab',
+      subtitle: 'Test and learn tactics',
+      onBack: widget.onBack,
+      tabs: LabTab.values,
+      selected: _tab,
+      label: (t) => t.label,
+      onTab: (t) => setState(() => _tab = t),
+      body: _body(),
     );
   }
 
