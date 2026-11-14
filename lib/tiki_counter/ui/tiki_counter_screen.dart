@@ -275,6 +275,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
   }
 
   void _toMenu() => setState(() {
+    // Menus work upright too, so the phone is free to turn again.
+    LandscapeLock.release();
     _stopWatchingFullTime();
     _game = null;
     _paused = false;
@@ -398,6 +400,7 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
     return Scaffold(
       backgroundColor: TikiPalette.background,
       body: PortraitGate(
+        active: game != null,
         onPortrait: _pauseForPortrait,
         child: _body(game),
       ),
@@ -543,7 +546,8 @@ class _TikiCounterScreenState extends State<TikiCounterScreen> {
             ),
           if (_drill != null)
             Positioned(
-              top: 8,
+              // Narrow screens: under the score bar instead of beside it.
+              top: MediaQuery.sizeOf(context).width < 900 ? 52 : 8,
               left: 0,
               right: 0,
               child: Center(
