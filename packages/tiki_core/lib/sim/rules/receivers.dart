@@ -33,7 +33,8 @@ abstract final class Receivers {
       final ang = angleBetween(ax, ay, dx, dy);
       if (ang > cone) continue;
       var score = ang / cone + dist / 30.0 * 0.4;
-      if (laneBlocked(passer.pos, m.pos, opp)) score += 0.8;
+      // A covered teammate is picked only when nobody open is near the aim.
+      if (laneBlocked(passer.pos, m.pos, opp)) score += 1.5;
       if (m.isKeeper) score += 0.5;
       if (score < bestScore) {
         bestScore = score;
