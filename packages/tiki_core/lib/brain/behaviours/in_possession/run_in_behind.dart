@@ -17,7 +17,7 @@ import 'package:tiki_core/tactics/team_plan.dart';
 /// stalling, or drifting offside. Once a run starts it is committed to.
 class RunInBehind implements Behaviour {
   /// The carrier needs the ball this long before he can pick out a run.
-  static const double _settle = 0.25;
+  static const double _settle = 0.2;
 
   @override
   BehaviourKind get kind => BehaviourKind.runInBehind;
@@ -70,10 +70,10 @@ class RunInBehind implements Behaviour {
     );
   }
 
-  /// Ball under control, facing forward, and no one closing him down.
+  /// Ball under control, not facing his own goal, and no one right on him.
   static bool _passerReady(TeamView v, Disc carrier) {
     if (v.s.ball.touchClock < _settle) return false;
-    if (carrier.facing.x * v.dir < 0.1) return false;
-    return v.space(carrier.pos.x, carrier.pos.y) >= 2.0;
+    if (carrier.facing.x * v.dir < -0.2) return false;
+    return v.space(carrier.pos.x, carrier.pos.y) >= 1.5;
   }
 }
